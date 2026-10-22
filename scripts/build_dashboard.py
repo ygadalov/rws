@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Сборка самодостаточного HTML-дашборда: dashboard/template.html + данные → dashboard/index.html.
+"""Сборка самодостаточного HTML-дашборда: dashboard/template.html + данные → dashboard/rws1520.html.
 
 Данные встраиваются в страницу компактно (повторяющиеся строки — через словари),
-поэтому index.html открывается двойным щелчком, без сервера.
+поэтому rws1520.html открывается двойным щелчком, без сервера.
 
 Запуск (после build_stations.py): python3 scripts/build_dashboard.py
 """
@@ -15,7 +15,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "data" / "output" / "stations.csv"
 TEMPLATE = ROOT / "dashboard" / "template.html"
-OUT = ROOT / "dashboard" / "index.html"
+OUT = ROOT / "dashboard" / "rws1520.html"
 
 # (колонка в stations.csv, ключ в странице, кодирование: s — строка, d — словарь, n — число, b — флаг)
 FIELDS = [
