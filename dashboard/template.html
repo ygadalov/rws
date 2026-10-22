@@ -211,6 +211,67 @@ button { cursor: pointer; }
 .modal td { padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .modal p { color: var(--muted); }
 
+/* ---------- вкладки и вагоны ---------- */
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 3px; background: var(--hover); border-radius: 11px; margin-bottom: 10px; }
+.tab { height: 32px; border: 0; border-radius: 8px; background: none; font-weight: 550; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.tab[aria-selected="true"] { background: var(--panel-solid); color: var(--text); box-shadow: 0 1px 3px rgba(16,24,40,.12); }
+.tab .tab-badge { font-size: 11px; font-weight: 600; padding: 0 6px; border-radius: 999px; background: #f97316; color: #fff; line-height: 17px; }
+.tab .tab-badge:empty { display: none; }
+.wagons { display: none; }
+.panel.tab-wagons .browse { display: none; }
+.panel.tab-wagons .wagons { display: block; }
+.panel.show-detail .wagons { display: none !important; }
+.drop { margin: 14px; padding: 26px 18px; border: 1.5px dashed var(--line-strong); border-radius: 14px; text-align: center; color: var(--muted); }
+.drop.over { border-color: #f97316; background: rgba(249,115,22,.06); }
+.drop svg { width: 34px; height: 34px; color: #f97316; margin-bottom: 8px; }
+.drop b { display: block; color: var(--text); font-size: 15px; margin-bottom: 4px; }
+.drop p { margin: 4px 0 14px; font-size: 12.5px; }
+.btn { height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--panel-solid); font-weight: 550; display: inline-flex; align-items: center; gap: 8px; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.primary { background: #f97316; border-color: #f97316; color: #fff; }
+.btn.primary:hover { filter: brightness(1.06); color: #fff; }
+.btn svg { width: 16px; height: 16px; }
+.file-card { display: flex; gap: 10px; align-items: center; }
+.file-card .fi { width: 36px; height: 36px; border-radius: 10px; background: rgba(249,115,22,.12); color: #f97316; display: grid; place-items: center; flex: none; }
+.file-card .fi svg { width: 18px; height: 18px; }
+.file-card .fm { flex: 1; min-width: 0; }
+.file-card .fn { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-card .fs { font-size: 12px; color: var(--muted); }
+.chip.wg[aria-pressed="true"] { background: rgba(249,115,22,.12); border-color: #f97316; color: #c2410c; }
+:root[data-theme="dark"] .chip.wg[aria-pressed="true"] { color: #fdba74; }
+.hint { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+.field { width: 100%; height: 36px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--panel-solid); padding: 0 10px; outline: none; }
+.field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 3px; background: var(--hover); border-radius: 10px; }
+.seg button { height: 30px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-weight: 550; }
+.seg button[aria-pressed="true"] { background: var(--panel-solid); color: var(--text); box-shadow: 0 1px 3px rgba(16,24,40,.12); }
+.top { list-style: none; margin: 0; padding: 0; }
+.top li { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-radius: 8px; cursor: pointer; }
+.top li:hover { background: var(--hover); }
+.top .rk { width: 20px; color: var(--faint); font-size: 12px; text-align: right; flex: none; }
+.top .tn { flex: 1; min-width: 0; }
+.top .nm { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top .bar { height: 4px; border-radius: 2px; background: var(--hover); margin-top: 4px; overflow: hidden; }
+.top .bar i { display: block; height: 100%; background: #f97316; border-radius: 2px; }
+.top b { font-size: 13px; }
+.miss { list-style: none; margin: 0; padding: 0; font-size: 12.5px; }
+.miss li { display: flex; gap: 8px; padding: 4px; border-radius: 6px; }
+.miss li[data-i] { cursor: pointer; } .miss li[data-i]:hover { background: var(--hover); }
+.miss .n { flex: 1; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wtable { width: 100%; border-collapse: collapse; font-size: 12px; }
+.wtable th { text-align: left; font-weight: 600; color: var(--faint); padding: 4px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel-solid); }
+.wtable td { padding: 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.wtable-wrap { max-height: 260px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+.mini-bars { display: grid; gap: 4px; margin: 6px 0 10px; font-size: 12.5px; }
+.mini-bars div { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.mini-bars span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wg-count { pointer-events: none; font-size: 11.5px; font-weight: 700; color: #fff; text-shadow: 0 0 3px rgba(124,45,18,.9); }
+.drop-overlay { position: fixed; inset: 0; z-index: 90; display: none; place-items: center; background: rgba(249,115,22,.12); border: 3px dashed #f97316; font-size: 18px; font-weight: 600; color: #c2410c; pointer-events: none; }
+.drop-overlay.show { display: grid; }
+.legend-sizes { display: flex; align-items: flex-end; gap: 14px; padding: 4px 2px; }
+.legend-sizes div { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11.5px; color: var(--muted); }
+.legend-sizes i { display: block; border-radius: 50%; background: rgba(249,115,22,.55); border: 1.2px solid #fff; box-shadow: 0 0 0 1px rgba(249,115,22,.6); }
+
 /* ---------- телефон: панель — нижняя шторка ---------- */
 @media (max-width: 720px) {
   .panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 46vh; border-radius: 18px 18px 0 0; transition: height .25s ease; padding-bottom: env(safe-area-inset-bottom); }
@@ -245,6 +306,10 @@ button { cursor: pointer; }
       <button class="icon-btn" id="infoBtn" title="О данных" aria-label="О данных">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
       </button>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Режим">
+      <button class="tab" role="tab" data-tab="stations" aria-selected="true">Станции</button>
+      <button class="tab" role="tab" data-tab="wagons" aria-selected="false">Вагоны <span class="tab-badge mono" id="wgBadge"></span></button>
     </div>
     <div class="search" id="searchBox">
       <svg class="s-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -285,6 +350,64 @@ button { cursor: pointer; }
       </div>
     </div>
 
+    <div class="wagons" id="wagonsView">
+      <div id="wgEmpty">
+        <div class="drop" id="wgDrop">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
+          <b>Загрузите отчёт по вагонам</b>
+          <p>Excel (.xlsx, .xls) или CSV. Нужны столбцы, в названии которых есть «станция» и «код», например «Станция операции (код)» или «Код станции отстоя». Файл обрабатывается только в браузере и никуда не отправляется.</p>
+          <button class="btn primary" id="wgPick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>Выбрать файл</button>
+          <p style="margin:10px 0 0">или перетащите его на карту</p>
+        </div>
+      </div>
+      <div id="wgLoaded" hidden>
+        <div class="section">
+          <div class="file-card">
+            <div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg></div>
+            <div class="fm"><div class="fn" id="wgFile"></div><div class="fs" id="wgFileMeta"></div></div>
+            <button class="icon-btn" id="wgReplace" title="Загрузить другой файл" aria-label="Загрузить другой файл"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></button>
+            <button class="icon-btn" id="wgClear" title="Убрать отчёт" aria-label="Убрать отчёт"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Станция на карте</div>
+          <div class="chips" id="wgCols" role="radiogroup" aria-label="Столбец с кодом станции"></div>
+          <p class="hint" id="wgColHint"></p>
+        </div>
+        <div class="section">
+          <div class="kpis">
+            <div class="kpi"><b class="mono" id="wkRows">—</b><span>вагонов</span></div>
+            <div class="kpi"><b class="mono" id="wkSt">—</b><span>станций</span></div>
+            <div class="kpi"><b class="mono" id="wkMiss">—</b><span>не на карте</span></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Фильтры по отчёту <button class="link-btn" id="wgReset">Сбросить</button></div>
+          <div class="filters-grid">
+            <input class="field mono" id="wgNum" type="search" inputmode="numeric" placeholder="№ вагона" aria-label="Номер вагона">
+            <div class="filters-grid" id="wgDropdowns"></div>
+            <select class="field" id="wgAddFilter" aria-label="Добавить фильтр"></select>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Отображение</div>
+          <div class="seg" id="wgView"><button data-v="circles" aria-pressed="true">Кружки</button><button data-v="heat" aria-pressed="false">Тепловая карта</button></div>
+        </div>
+        <div class="section">
+          <div class="section-title">Где больше всего вагонов <button class="link-btn" id="wgFit">Показать все</button></div>
+          <ol class="top" id="wgTop"></ol>
+        </div>
+        <div class="section" id="wgMissSec">
+          <div class="section-title">Не показаны на карте</div>
+          <ul class="miss" id="wgMiss"></ul>
+        </div>
+        <div class="section">
+          <button class="btn" id="wgExport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Сводка по станциям (CSV)</button>
+        </div>
+      </div>
+      <input type="file" id="wgInput" accept=".xlsx,.xls,.xlsm,.csv,.txt" hidden>
+    </div>
+
     <div class="detail" id="detail" aria-live="polite"></div>
   </div>
 </aside>
@@ -304,6 +427,8 @@ button { cursor: pointer; }
 <div class="popover" id="layersPop" role="dialog" aria-label="Слои карты">
   <h3>Подложка</h3>
   <div class="bm-grid" id="basemaps"></div>
+  <h3>Схема сети</h3>
+  <label class="switch-row" style="padding:2px 4px 12px">Тарифные участки ТР №4 <span class="switch"><input type="checkbox" id="linesToggle"><span></span></span></label>
   <h3>Железнодорожный слой · OpenRailwayMap</h3>
   <div class="ov-list" id="overlays"></div>
 </div>
@@ -321,7 +446,7 @@ button { cursor: pointer; }
 
 <div class="legend" id="legend">
   <button class="icon-btn collapse" id="legendToggle" aria-label="Свернуть легенду"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
-  <p class="legend-title">Раскраска точек</p>
+  <p class="legend-title" id="legendTitle">Раскраска точек</p>
   <select id="colorBy" aria-label="Раскраска точек">
     <option value="q">Точность координат</option>
     <option value="type">Тип пункта</option>
@@ -335,7 +460,7 @@ button { cursor: pointer; }
 <div class="modal-bg" id="infoModal" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
   <div class="modal">
     <h2 id="infoTitle">О данных</h2>
-    <p>Единый справочник станций с кодами ЕСР собран из справочника ЕСР и OpenStreetMap (osm2esr). Дополнительно использованы ТР №4 (тарифный список станций на 30.12.2023), АСУ «Экспресс» и перекодировка станций Крыма.</p>
+    <p>Единый справочник станций с кодами ЕСР собран из справочника ЕСР и OpenStreetMap (osm2esr). Дополнительно использованы Тарифное руководство №4 на 21.10.2026 (Книга 1 — тарифные участки и расстояния, Книга 2 — списки станций, города и порты) и на 30.12.2023, АСУ «Экспресс» и перекодировка станций Крыма.</p>
     <table id="qTable"></table>
     <p>Подложки: OpenFreeMap, CARTO, Esri World Imagery, OpenStreetMap; ж/д слой — OpenRailwayMap (CC-BY-SA). Данные карты © участники OpenStreetMap.</p>
     <p id="builtAt"></p>
@@ -343,6 +468,7 @@ button { cursor: pointer; }
   </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
+<div class="drop-overlay" id="dropOverlay">Отпустите файл, чтобы загрузить отчёт по вагонам</div>
 
 <script>
 "use strict";
@@ -359,7 +485,7 @@ const QUALITY = {
   B: { label: "B — вероятно", color: "#0ea5b7", hint: "Пройдены 2 из 3 проверок или выбрано из дублей с уверенным отрывом" },
   C: { label: "C — сомнительно", color: "#e11d48", hint: "Неподтверждённая привязка, другое название или неоднозначные дубли" },
   D: { label: "D — по связанному коду", color: "#f59e0b", hint: "Координаты основного кода станции, второго кода (Крым) или одноимённой станции" },
-  E: { label: "E — приблизительно", color: "#94a3b8", hint: "Интерполяция между соседними кодами или транзитный пункт; точность ±10 км и хуже" },
+  E: { label: "E — приблизительно", color: "#94a3b8", hint: "Положение на тарифном участке между соседями (обычно ±1–3 км) или интерполяция по соседним кодам (±10 км и хуже)" },
 };
 const PASS_OPS = { "П": "билеты на все поезда, багаж", "Б": "билеты на все поезда, без багажа", "О": "пригородные и местные поезда", "Х": "операции не производятся", "К": "контрейлерные отправки" };
 const TYPE_COLORS = { "станция": "#2463eb", "остановочный пункт": "#16a34a", "разъезд": "#f59e0b", "обгонный пункт": "#db2777", "блок-пост": "#7c3aed", "путевой пост": "#9333ea", "пост": "#a855f7", "условный пункт": "#64748b" };
@@ -399,7 +525,7 @@ const state = {
   quality: new Set(Object.keys(QUALITY)),
   sets: { country: new Set(), railway: new Set(), region: new Set(), type: new Set() },
   tariff: false, pass: false, freight: false, hideVirt: true,
-  colorBy: "q", selected: null,
+  colorBy: "q", selected: null, tab: "stations",
 };
 let filtered = S;
 
@@ -459,6 +585,9 @@ const OVERLAYS = {
 const darkPref = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
 let basemap = store.get("basemap") || (darkPref() ? "dark" : "positron");
 let overlay = store.get("overlay") || "off";
+let showLines = store.get("lines") !== "0";
+const LINES_FC = { type: "FeatureCollection", features: (RAW.lines || []).map(([id, name, kind, parts], j) => ({
+  type: "Feature", id: j, geometry: { type: "MultiLineString", coordinates: parts }, properties: { id, name, k: kind } })) };
 if (!BASEMAPS[basemap]) basemap = "positron";
 if (!OVERLAYS[overlay]) overlay = "off";
 
@@ -515,6 +644,11 @@ function addStationLayers() {
       tileSize: 256, maxzoom: 19, attribution: '<a href="https://www.openrailwaymap.org/">OpenRailwayMap</a>' });
     map.addLayer({ id: "orm", type: "raster", source: "orm", paint: { "raster-opacity": 0.85 } });
   }
+  map.addSource("lines", { type: "geojson", data: LINES_FC });
+  map.addLayer({ id: "lines", type: "line", source: "lines", layout: { visibility: showLines ? "visible" : "none", "line-join": "round", "line-cap": "round" },
+    paint: { "line-color": ["case", ["boolean", ["feature-state", "hover"], false], "#f97316", dark ? "#8fa4c4" : "#5b6f8f"],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.6, 8, 1.6, 12, 3],
+      "line-opacity": ["match", ["get", "k"], "Основной тарифный участок", 0.75, 0.45] } });
   map.addSource("st", { type: "geojson", data: stationFeatures() });
   map.addSource("sel", { type: "geojson", data: emptyFC() });
   map.addLayer({ id: "sel-prec", type: "fill", source: "sel", filter: ["==", ["geometry-type"], "Polygon"],
@@ -532,6 +666,7 @@ function addStationLayers() {
   } });
   map.addLayer({ id: "sel-pt", type: "circle", source: "sel", filter: ["==", ["geometry-type"], "Point"], paint: {
     "circle-radius": 9, "circle-color": "rgba(0,0,0,0)", "circle-stroke-width": 3, "circle-stroke-color": "#2463eb" } });
+  addWagonLayers(); applyModeStyling();
   if (state.selected) drawSelection(state.selected);
 }
 const emptyFC = () => ({ type: "FeatureCollection", features: [] });
@@ -573,6 +708,8 @@ map.on("mouseleave", "st", () => {
 });
 map.on("click", e => {
   const pad = 6, p = e.point;
+  const wg = map.getLayer("wg-circle") && state.tab === "wagons" ? map.queryRenderedFeatures(p, { layers: ["wg-circle"] }) : [];
+  if (wg.length) return selectStation(S[wg.sort((a, b) => a.properties.n - b.properties.n)[0].properties.i], { fly: false });
   const fs = map.getLayer("st") ? map.queryRenderedFeatures([[p.x - pad, p.y - pad], [p.x + pad, p.y + pad]], { layers: ["st"] }) : [];
   if (!fs.length) return;
   let best = fs[0], bd = Infinity;
@@ -580,10 +717,36 @@ map.on("click", e => {
   selectStation(S[best.properties.i], { fly: false });
 });
 
+let lineHover = null;
+map.on("mousemove", "lines", e => {
+  if (map.queryRenderedFeatures(e.point, { layers: ["st", ...(map.getLayer("wg-circle") ? ["wg-circle"] : [])] }).length) return;
+  const f = e.features[0]; if (!f) return;
+  if (lineHover !== null) map.setFeatureState({ source: "lines", id: lineHover }, { hover: false });
+  lineHover = f.id; map.setFeatureState({ source: "lines", id: lineHover }, { hover: true });
+  tip.setLngLat(e.lngLat).setHTML(`<div class="tip"><b>Участок ${esc(f.properties.id)}</b><br>${esc(f.properties.name)}<br><span>${esc(f.properties.k)}</span></div>`).addTo(map);
+});
+map.on("mouseleave", "lines", () => {
+  if (lineHover !== null) map.setFeatureState({ source: "lines", id: lineHover }, { hover: false });
+  lineHover = null; tip.remove();
+});
+
 /* подписи станций (DOM, чтобы кириллица не зависела от шрифтов подложки) */
 let labelMarkers = [];
 function updateLabels() {
   labelMarkers.forEach(m => m.remove()); labelMarkers = [];
+  if (map.getLayer("wg-circle") && state.tab === "wagons" && W.loaded && W.view === "circles") {
+    const z = map.getZoom(), k = z <= 3 ? 0.75 : z >= 8 ? 1 : 0.75 + (z - 3) * 0.05;
+    const taken = ["panel", "legend"].map(id => $(id).getBoundingClientRect()).filter(r => r.width).map(r => [r.left, r.top, r.right, r.bottom]);
+    for (const f of map.queryRenderedFeatures({ layers: ["wg-circle"] }).sort((a, b) => b.properties.n - a.properties.n).slice(0, 400)) {
+      if (f.properties.r * k < 10) continue;
+      const p = map.project(f.geometry.coordinates), hw = String(f.properties.n).length * 4 + 4;
+      const box = [p.x - hw, p.y - 8, p.x + hw, p.y + 8];
+      if (taken.some(b => !(box[2] < b[0] || box[0] > b[2] || box[3] < b[1] || box[1] > b[3]))) continue;
+      taken.push(box);
+      const el = document.createElement("div"); el.className = "wg-count mono"; el.textContent = fmt(f.properties.n);
+      labelMarkers.push(new maplibregl.Marker({ element: el }).setLngLat(f.geometry.coordinates).addTo(map));
+    }
+  }
   if (!map.getLayer("st") || map.getZoom() < 10.5) return;
   const fs = map.queryRenderedFeatures({ layers: ["st"] });
   fs.sort((a, b) => b.properties.k - a.properties.k);
@@ -696,6 +859,18 @@ $("resetFilters").addEventListener("click", () => {
 
 /* ================= легенда ================= */
 function renderLegend() {
+  const wg = state.tab === "wagons" && W.loaded;
+  $("colorBy").hidden = wg;
+  $("legendTitle").textContent = wg ? (W.view === "heat" ? "Плотность вагонов" : "Вагонов на станции") : "Раскраска точек";
+  if (wg) {
+    const max = W.agg ? [...W.agg.by.values()].reduce((m, o) => Math.max(m, o.n), 0) : 0;
+    $("legendItems").innerHTML = W.view === "heat"
+      ? `<div style="height:10px;border-radius:5px;background:linear-gradient(90deg,#fed976,#feb24c,#fd8d3c,#f03b20,#bd0026)"></div><div class="legend-item"><span class="t">меньше</span><span class="c">больше</span></div>`
+      : `<div class="legend-sizes">${[...new Set([max, Math.round(max / 4), 1])].filter(n => n > 0).map(n =>
+        `<div><i style="width:${2 * (4 + 26 * Math.sqrt(n / Math.max(max, 1)))}px;height:${2 * (4 + 26 * Math.sqrt(n / Math.max(max, 1)))}px"></i>${fmt(n)}</div>`).join("")}</div>
+        <div class="legend-item"><span class="t">Столбец: ${esc(activeCol().h)}</span></div>`;
+    return;
+  }
   const by = state.colorBy, cnt = new Map();
   filtered.forEach(s => { if (!s.has) return; const k = by === "q" ? s.q : by === "ops" ? s.ops : (s[by] || "—"); cnt.set(k, (cnt.get(k) || 0) + 1); });
   let items;
@@ -743,9 +918,15 @@ function search(q) {
       if (r) res.push([r + (s.tariff ? 2 : 0) + (s.has ? 1 : 0) + (s.type === "станция" ? 1 : 0), s]);
     }
   }
+  if (nq.length >= 3) for (const [city, region, esr, km] of RAW.cities || []) {
+    const nc = norm(city);
+    if (!(nc === nq || nc.startsWith(nq))) continue;
+    const s = BY_ESR.get(esr); if (!s) continue;
+    res.push([nc === nq ? 96 : 84, { ...s, i: s.i, _city: { city, region, km } }]);
+  }
   const seen = new Set();
   return res.sort((a, b) => b[0] - a[0] || a[1].name.length - b[1].name.length)
-    .filter(([, s]) => !seen.has(s.i) && seen.add(s.i)).slice(0, 60).map(x => x[1]);
+    .filter(([, s]) => { const k = s._city ? "c" + s._city.city + s.i : s.i; return !seen.has(k) && seen.add(k); }).slice(0, 60).map(x => x[1]);
 }
 function highlight(name, q) {
   const nq = norm(q); if (!nq) return esc(name);
@@ -763,8 +944,10 @@ function runSearch() {
   $("results").innerHTML = lastResults.length ? lastResults.map((s, j) => `
     <li class="res${j === activeIdx ? " active" : ""}" role="option" data-i="${s.i}" id="r${j}">
       <span class="dot" style="background:${s.has ? colorOf(s, "q") : "transparent"};${s.has ? "" : "border:1.5px dashed var(--faint)"}"></span>
-      <div class="main"><div class="nm">${highlight(s.name, q)}</div>
-        <div class="sub">${esc([s.type, s.railway || s.country, s.region].filter(Boolean).join(" · "))}${s.has ? "" : ' · <span class="badge">нет координат</span>'}</div></div>
+      <div class="main">${s._city
+        ? `<div class="nm">${highlight(s._city.city, q)} <span class="badge">город</span></div><div class="sub">${esc(s._city.region)} → ст. ${esc(s.name)}, ${s._city.km} км</div>`
+        : `<div class="nm">${highlight(s.name, q)}</div>
+        <div class="sub">${esc([s.type, s.railway || s.country, s.region].filter(Boolean).join(" · "))}${s.has ? "" : ' · <span class="badge">нет координат</span>'}</div>`}</div>
       <span class="code mono">${s.esr}</span></li>`).join("")
     : `<div class="empty">Ничего не найдено.<br><small>Попробуйте часть названия или 6-значный код ЕСР</small></div>`;
 }
@@ -827,7 +1010,8 @@ const ICON = {
 function row(k, v) { return v || v === 0 ? `<dt>${k}</dt><dd>${v}</dd>` : ""; }
 function stationLink(code) { const o = BY_ESR.get(code); return o ? `<a href="#esr=${code}" data-goto="${code}" class="mono">${code}</a> ${esc(o.name)}` : `<span class="mono">${code}</span>`; }
 
-function selectStation(s, { fly = true, push = true } = {}) {
+function selectStation(s, { fly = true, push = true, keepScroll = false } = {}) {
+  const scroll = $("panelBody").scrollTop;
   state.selected = s;
   const q = QUALITY[s.q];
   const coords = s.has ? `${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}` : "";
@@ -837,7 +1021,9 @@ function selectStation(s, { fly = true, push = true } = {}) {
     <div class="d-top"><button class="icon-btn" id="dBack" aria-label="Назад к списку">${ICON.back}</button>
       <span style="flex:1"></span>
       ${s.tariff ? '<span class="badge" title="Станция есть в Тарифном руководстве №4">ТР №4</span>' : ""}
-      ${s.virt ? '<span class="badge">условный пункт</span>' : ""}</div>
+      ${s.virt ? '<span class="badge">условный пункт</span>' : ""}
+      ${s.newcode ? '<span class="badge" title="Кода нет в справочнике ЕСР, он есть в ТР №4 на 21.10.2026">новый код</span>' : ""}
+      ${s.excluded ? '<span class="badge" title="Станция была в ТР №4 на 30.12.2023, но отсутствует на 21.10.2026">исключена из ТР №4</span>' : ""}</div>
     <div class="d-head">
       <h2>${esc(s.name)}</h2>
       <div class="sub">${esc([s.type, s.railway && s.railway + " ж. д.", s.country].filter(Boolean).join(" · "))}</div>
@@ -853,6 +1039,7 @@ function selectStation(s, { fly = true, push = true } = {}) {
       <a class="act" target="_blank" rel="noopener" href="https://yandex.ru/maps/?pt=${s.lon},${s.lat}&z=15&l=map">${ICON.ext}Яндекс</a>
       <a class="act" target="_blank" rel="noopener" href="https://www.openrailwaymap.org/?lat=${s.lat}&lon=${s.lon}&zoom=15">${ICON.rail}ORM</a>` : ""}
     </div>
+    ${wagonSection(s)}
     <div class="section">
       <div class="section-title">Координаты</div>
       ${s.has ? `<div class="qbox"><span class="dot" style="background:${q.color}"></span><div><b>${q.label}</b>${s.prec ? ` · точность ±${s.prec} км` : ""}
@@ -874,19 +1061,24 @@ function selectStation(s, { fly = true, push = true } = {}) {
       </dl>
     </div>
     ${s.tariff ? `<div class="section">
-      <div class="section-title">Тарифное руководство №4</div>
+      <div class="section-title">Тарифное руководство №4 · на ${esc(s.tr4date || "")}</div>
       <dl class="kv">
         ${row("Владелец", esc(s.owner))}
         ${row("Пассажирские", s.pops ? `<b>${esc(s.pops)}</b> — ${esc(PASS_OPS[s.pops] || "")}` : "не производятся")}
         ${row("Грузовые (§)", s.fops ? `<span class="mono">${esc(s.fops)}</span>` : "не производятся")}
         ${row("Транзитный пункт", s.transit ? `${esc(s.transit)}${s.transitkm !== null ? ` · ${s.transitkm} км` : ""}` : "")}
+        ${row("Порт перевалки", esc(s.port))}
         ${row("Комментарий", esc(s.comment))}
-      </dl></div>` : ""}
+      </dl></div>` : s.excluded ? `<div class="section"><div class="section-title">Тарифное руководство №4</div>
+      <p class="hint" style="margin:0">Станция была в ТР №4 на 30.12.2023, в списке на 21.10.2026 её нет — вероятно, закрыта или переименована.</p></div>` : ""}
+    ${s.sections ? `<div class="section"><div class="section-title">Тарифные участки · Книга 1 ТР №4</div><ul class="near">
+      ${s.sections.split(" | ").map(t => `<li style="cursor:default"><span class="n" title="${esc(t)}">${esc(t)}</span></li>`).join("")}</ul>
+      ${s.sconf ? '<p class="hint" style="color:var(--danger)">Координаты противоречат расстояниям участка</p>' : ""}</div>` : ""}
     ${near.length ? `<div class="section"><div class="section-title">Рядом</div><ul class="near">
       ${near.map(([d, o]) => `<li data-goto="${o.esr}"><span class="dot" style="background:${colorOf(o, "q")}"></span><span class="n">${esc(o.name)}</span><span class="d mono">${d < 1 ? Math.round(d * 1000) + " м" : d.toFixed(1) + " км"}</span></li>`).join("")}
     </ul></div>` : ""}`;
   $("panel").classList.add("show-detail");
-  $("panelBody").scrollTop = 0;
+  $("panelBody").scrollTop = keepScroll ? scroll : 0;
   setSheet("mid");
   drawSelection(s);
   if (push) history.replaceState(null, "", "#esr=" + s.esr);
@@ -906,6 +1098,8 @@ function closeDetail(clearHash = true) {
 $("detail").addEventListener("click", e => {
   if (e.target.closest("#dBack")) return closeDetail();
   const cp = e.target.closest("[data-copy]"); if (cp) return copy(cp.dataset.copy);
+  const wc = e.target.closest("[data-wcol]"); if (wc) { W.active = +wc.dataset.wcol; return applyWagons(); }
+  const we = e.target.closest("[data-wexport]"); if (we) return exportStationWagons(+we.dataset.wexport);
   const g = e.target.closest("[data-goto]"); if (g) { e.preventDefault(); return selectStation(BY_ESR.get(g.dataset.goto)); }
   const a = e.target.closest("[data-act]"); if (!a) return;
   if (a.dataset.act === "share") copy(location.href.split("#")[0] + "#esr=" + state.selected.esr, "Ссылка скопирована");
@@ -950,10 +1144,7 @@ function exportGeoJSON(rows, name) {
 }
 async function exportXLSX(rows, name) {
   toast("Готовлю Excel…");
-  if (!window.XLSX) await new Promise((ok, fail) => {
-    const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
-    sc.onload = ok; sc.onerror = () => fail(new Error("SheetJS")); document.head.appendChild(sc);
-  }).catch(() => { toast("Не удалось загрузить SheetJS — используйте CSV"); throw new Error("no xlsx"); });
+  await ensureXLSX().catch(() => { toast("Не удалось загрузить SheetJS — используйте CSV"); throw new Error("no xlsx"); });
   const aoa = [EXPORT_COLS.map(c => c[1]), ...rows.map(s => EXPORT_COLS.map(([k]) => cell(s, k)))];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws["!cols"] = EXPORT_COLS.map(([k]) => ({ wch: k === "name" || k === "exname" ? 28 : k === "region" || k === "railway" ? 22 : 12 }));
@@ -991,6 +1182,11 @@ function renderLayersPop() {
 }
 $("basemaps").addEventListener("click", e => { const b = e.target.closest("[data-bm]"); if (b && b.dataset.bm !== basemap) setBasemap(b.dataset.bm); });
 $("overlays").addEventListener("change", e => setOverlay(e.target.value));
+$("linesToggle").checked = showLines;
+$("linesToggle").addEventListener("change", e => {
+  showLines = e.target.checked; store.set("lines", showLines ? "1" : "0");
+  if (map.getLayer("lines")) map.setLayoutProperty("lines", "visibility", showLines ? "visible" : "none");
+});
 
 const THEMES = ["auto", "light", "dark"];
 function applyTheme(t) {
@@ -1029,6 +1225,368 @@ $("infoModal").addEventListener("click", e => { if (e.target === $("infoModal"))
 $("qTable").innerHTML = Object.entries(QUALITY).map(([k, v]) =>
   `<tr><td style="white-space:nowrap"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${v.color};margin-right:6px"></span><b>${v.label}</b></td><td>${v.hint}</td></tr>`).join("");
 $("builtAt").textContent = "Сборка данных: " + RAW.built + " · станций в справочнике: " + fmt(S.length);
+
+
+/* ================= вагоны из отчёта ================= */
+// Отчёт разбирается только в браузере. Столбцы с кодами станций — те, где в заголовке есть «станц» и «код».
+const WG_PREFERRED = ["Род ПС", "Состояние", "ГРУЖ/ПОР (Вагон)", "Подход", "Тип простоя", "Собственник", "В пользовании",
+  "Арендатор", "Груз ЕТСНГ (Вагон)", "Группа вагона", "Тип ПС", "Дорога операции", "Операция"];
+const WG_CODE_ORDER = ["операции", "отстоя", "назначения", "отправления", "приписки", "отцепки"];
+const WG_LIST_COLS = ["Род ПС", "Состояние", "ГРУЖ/ПОР (Вагон)", "Дней без движения", "Суток в отстое"];
+const WG_COLOR = "#f97316";
+let W = { loaded: false };
+const BY_ESR5 = new Map();
+for (const s of S) { const k = s.esr.slice(0, 5), o = BY_ESR5.get(k); if (!o || (!o.has && s.has)) BY_ESR5.set(k, s); }
+const codeCache = new Map();
+function resolveCode(raw) {
+  const d = String(raw ?? "").replace(/\D/g, "");
+  if (!d || d.length > 6) return null;
+  if (codeCache.has(d)) return codeCache.get(d);
+  // 6 знаков — код ЕСР; короче — Excel мог съесть ведущие нули, либо это код без контрольной цифры
+  const s = d.length === 6 ? BY_ESR.get(d) : (BY_ESR.get(d.padStart(6, "0")) || BY_ESR5.get(d.padStart(5, "0")));
+  codeCache.set(d, s || null);
+  return s || null;
+}
+const cellStr = v => String(v ?? "").trim();
+const isCodeHeader = h => /станц/i.test(h) && /код/i.test(h) && !/етснг|дорог|нод|депо|груз|плательщ/i.test(h);
+
+async function ensureXLSX() {
+  if (window.XLSX) return;
+  await new Promise((ok, fail) => {
+    const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+    sc.onload = ok; sc.onerror = () => fail(new Error("не удалось загрузить библиотеку SheetJS")); document.head.appendChild(sc);
+  });
+}
+function parseCSV(text) {
+  text = text.replace(/^﻿/, "");
+  const head = text.slice(0, 5000);
+  const delim = [";", "\t", ","].sort((a, b) => head.split(b).length - head.split(a).length)[0];
+  const rows = []; let row = [], cur = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === delim) { row.push(cur); cur = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cur); rows.push(row); row = []; cur = ""; }
+    else cur += c;
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+async function loadReport(file) {
+  if (!file) return;
+  try {
+    toast("Читаю «" + file.name + "»…");
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    let aoa;
+    if (ext === "csv" || ext === "txt") aoa = parseCSV(await file.text());
+    else {
+      await ensureXLSX();
+      const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true, dense: true });
+      for (const n of wb.SheetNames) {
+        const a = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: false, defval: "", dateNF: "dd.mm.yyyy hh:mm", blankrows: false });
+        if (!aoa || a.length > aoa.length) aoa = a;
+      }
+    }
+    setReport(file.name, aoa || []);
+  } catch (e) { console.error(e); toast("Не удалось прочитать файл: " + (e.message || e)); }
+}
+
+function setReport(name, aoa) {
+  const hi = aoa.findIndex((r, i) => i < 50 && r.filter(v => cellStr(v)).length >= 3 && r.some(v => isCodeHeader(cellStr(v))));
+  if (hi < 0) { toast("Не найдены столбцы с кодами станций: в заголовке должны быть слова «станция» и «код»"); return; }
+  const headers = aoa[hi].map(cellStr);
+  const rows = aoa.slice(hi + 1).filter(r => r.some(v => cellStr(v)));
+  let generated = "";
+  for (const r of aoa.slice(0, hi)) for (const v of r) { const m = cellStr(v).match(/сформирован[:\s]*(.+)/i); if (m) generated = m[1]; }
+  const rank = c => { const k = WG_CODE_ORDER.findIndex(x => c.label.toLowerCase().startsWith(x)); return k < 0 ? 99 : k; };
+  const codeCols = headers.map((h, idx) => ({ h, idx })).filter(c => isCodeHeader(c.h)).map(c => {
+    const label = c.h.replace(/\(код\)/ig, "").replace(/^код\s+/i, "").replace(/^станци[яи]\s*/i, "").trim() || c.h;
+    const nameH = c.h.replace(/\s*\(код\)/i, "").replace(/^код\s+станции/i, "Станция").trim().toLowerCase();
+    const nameIdx = headers.findIndex((x, j) => j !== c.idx && x.toLowerCase() === nameH);
+    let filled = 0, matched = 0;
+    for (const r of rows) { const v = r[c.idx]; if (cellStr(v)) { filled++; const s = resolveCode(v); if (s && s.has) matched++; } }
+    return { ...c, label: label[0].toUpperCase() + label.slice(1), nameIdx, filled, matched };
+  }).sort((a, b) => rank(a) - rank(b));
+  const wagonIdx = headers.findIndex(h => /^(№|номер)\s*вагона$/i.test(h));
+  const cats = [];
+  headers.forEach((h, idx) => {
+    if (!h || idx === wagonIdx || codeCols.some(c => c.idx === idx) || /дата|время|код/i.test(h)) return;
+    const vals = new Set(); let filled = 0;
+    for (const r of rows) { const v = cellStr(r[idx]); if (v) { filled++; vals.add(v); if (vals.size > 300) return; } }
+    if (vals.size >= 2 && !(vals.size === filled && rows.length > 20)) cats.push({ idx, h });
+  });
+  const shown = WG_PREFERRED.map(h => cats.find(c => c.h === h)).filter(Boolean).slice(0, 4).map(c => c.idx);
+  W = { loaded: true, name, generated, headers, rows, codeCols, active: codeCols[0].idx, wagonIdx, cats, shown,
+    filters: new Map(), num: "", view: W.view || "circles" };
+  renderWagonPanel();
+  aggregate();
+  switchTab("wagons");
+  applyWagons(true);
+  toast(`Загружено вагонов: ${fmt(rows.length)}`);
+}
+function clearReport() {
+  W = { loaded: false, view: W.view };
+  $("wgLoaded").hidden = true; $("wgEmpty").hidden = false; $("wgBadge").textContent = "";
+  if (map.getSource("wg")) map.getSource("wg").setData(emptyFC());
+  applyModeStyling(); renderLegend(); updateLabels();
+  if (state.selected) selectStation(state.selected, { fly: false, push: false });
+}
+
+const activeCol = () => W.codeCols.find(c => c.idx === W.active);
+function wagonRows() {
+  return W.rows.filter(r => {
+    if (W.num && !cellStr(r[W.wagonIdx]).includes(W.num)) return false;
+    for (const [idx, set] of W.filters) if (set.size && !set.has(cellStr(r[idx]) || "—")) return false;
+    return true;
+  });
+}
+function aggregate() {
+  const rows = wagonRows(), col = activeCol();
+  const by = new Map(), miss = new Map(); let empty = 0;
+  for (const r of rows) {
+    const raw = cellStr(r[col.idx]);
+    if (!raw) { empty++; continue; }
+    const s = resolveCode(raw);
+    if (!s) {
+      const o = miss.get(raw) || { code: raw, name: col.nameIdx >= 0 ? cellStr(r[col.nameIdx]) : "", n: 0 };
+      o.n++; miss.set(raw, o); continue;
+    }
+    let o = by.get(s.i); if (!o) by.set(s.i, o = { s, n: 0, rows: [] });
+    o.n++; o.rows.push(r);
+  }
+  W.agg = { rows, by, miss, empty };
+}
+function wagonFeatures() {
+  if (!W.loaded || state.tab !== "wagons") return emptyFC();
+  const list = [...W.agg.by.values()].filter(o => o.s.has);
+  const max = list.reduce((m, o) => Math.max(m, o.n), 1);
+  return { type: "FeatureCollection", features: list.map(o => ({ type: "Feature", id: o.s.i,
+    geometry: { type: "Point", coordinates: [o.s.lon, o.s.lat] },
+    properties: { i: o.s.i, n: o.n, w: o.n / max, r: 4 + 26 * Math.sqrt(o.n / max) } })) };
+}
+function addWagonLayers() {
+  map.addSource("wg", { type: "geojson", data: W.loaded ? wagonFeatures() : emptyFC() });
+  map.addLayer({ id: "wg-heat", type: "heatmap", source: "wg", layout: { visibility: W.view === "heat" ? "visible" : "none" }, paint: {
+    "heatmap-weight": ["get", "w"],
+    "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 3, 1.2, 10, 3],
+    "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 3, 22, 10, 45],
+    "heatmap-opacity": 0.85,
+    "heatmap-color": ["interpolate", ["linear"], ["heatmap-density"], 0, "rgba(254,237,160,0)", 0.15, "#fed976",
+      0.35, "#feb24c", 0.55, "#fd8d3c", 0.75, "#f03b20", 1, "#bd0026"] } }, "sel-pt");
+  map.addLayer({ id: "wg-circle", type: "circle", source: "wg",
+    layout: { visibility: W.view === "circles" ? "visible" : "none", "circle-sort-key": ["-", 0, ["get", "n"]] }, paint: {
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, ["*", ["get", "r"], 0.75], 8, ["get", "r"]],
+      "circle-color": WG_COLOR, "circle-opacity": 0.6,
+      "circle-stroke-color": ["case", ["boolean", ["feature-state", "hover"], false], "#7c2d12", "#fff"],
+      "circle-stroke-width": ["case", ["boolean", ["feature-state", "hover"], false], 2.5, 1.2] } }, "sel-pt");
+}
+function applyModeStyling() {
+  if (!map.getLayer("st")) return;
+  const w = state.tab === "wagons" && W.loaded;
+  map.setPaintProperty("st", "circle-opacity", w ? 0.25 : ["case", ["==", ["get", "e"], 1], 0.6, 0.92]);
+  for (const id of ["wg-heat", "wg-circle"]) if (map.getLayer(id))
+    map.setLayoutProperty(id, "visibility", w && (W.view === "heat") === (id === "wg-heat") ? "visible" : "none");
+}
+function applyWagons(fit) {
+  aggregate();
+  if (map.getSource("wg")) map.getSource("wg").setData(wagonFeatures());
+  renderWagonStats(); renderLegend(); updateLabels();
+  if (state.selected && $("panel").classList.contains("show-detail")) selectStation(state.selected, { fly: false, push: false, keepScroll: true });
+  if (fit) fitWagons();
+}
+function fitWagons() {
+  const pts = [...W.agg.by.values()].filter(o => o.s.has).map(o => [o.s.lon, o.s.lat]);
+  if (!pts.length) return;
+  const b = pts.reduce((b, p) => b.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
+  const pad = mapPadding();
+  map.fitBounds(b, { padding: { left: pad.left + 60, right: 80, top: 80, bottom: pad.bottom + 60 }, maxZoom: 9, duration: 900 });
+}
+
+function switchTab(t) {
+  state.tab = t;
+  $("panel").classList.toggle("tab-wagons", t === "wagons");
+  document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
+  if (W.loaded && map.getSource("wg")) map.getSource("wg").setData(wagonFeatures());
+  if ($("panel").classList.contains("show-detail")) closeDetail();
+  applyModeStyling(); renderLegend(); updateLabels();
+}
+document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => switchTab(b.dataset.tab)));
+
+/* панель вагонов */
+function renderWagonPanel() {
+  $("wgEmpty").hidden = true; $("wgLoaded").hidden = false;
+  $("wgFile").textContent = W.name;
+  $("wgFileMeta").textContent = `${fmt(W.rows.length)} вагонов · ${W.headers.filter(Boolean).length} столбцов` + (W.generated ? ` · сформирован ${W.generated}` : "");
+  $("wgNum").value = ""; $("wgNum").hidden = W.wagonIdx < 0;
+  $("wgCols").innerHTML = W.codeCols.map(c =>
+    `<button class="chip wg" role="radio" data-col="${c.idx}" aria-pressed="${c.idx === W.active}" title="${esc(c.h)}">${esc(c.label)}<span class="cnt mono">${fmt(c.filled)}</span></button>`).join("");
+  renderWagonDropdowns();
+}
+function renderWagonDropdowns() {
+  const box = $("wgDropdowns"); box.innerHTML = "";
+  for (const idx of W.shown) box.appendChild(wagonDropdown(idx));
+  const rest = W.cats.filter(c => !W.shown.includes(c.idx)).sort((a, b) => a.h.localeCompare(b.h, "ru"));
+  $("wgAddFilter").innerHTML = `<option value="">＋ Фильтр по другому столбцу…</option>` + rest.map(c => `<option value="${c.idx}">${esc(c.h)}</option>`).join("");
+  $("wgAddFilter").hidden = !rest.length;
+}
+function wagonDropdown(idx) {
+  const el = document.createElement("div"); el.className = "dd"; el.dataset.wg = idx;
+  el.innerHTML = `<button class="dd-btn" aria-haspopup="listbox" aria-expanded="false"><span class="lbl">${esc(W.headers[idx])}</span><span class="val">Все</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div class="dd-menu"><input type="search" placeholder="Найти…" aria-label="Поиск в списке"><div class="dd-list" role="listbox"></div>
+    <div class="dd-foot"><button class="link-btn" data-act="remove">Убрать фильтр</button><button class="link-btn" data-act="close">Готово</button></div></div>`;
+  const btn = el.querySelector(".dd-btn"), list = el.querySelector(".dd-list"), inp = el.querySelector("input");
+  const sel = () => W.filters.get(idx) || new Set();
+  const render = () => {
+    const keep = W.filters.get(idx); W.filters.delete(idx);
+    const cnt = new Map(); for (const r of wagonRows()) { const v = cellStr(r[idx]) || "—"; cnt.set(v, (cnt.get(v) || 0) + 1); }
+    if (keep) { W.filters.set(idx, keep); keep.forEach(v => cnt.has(v) || cnt.set(v, 0)); }
+    const f = norm(inp.value);
+    list.innerHTML = [...cnt.keys()].sort((a, b) => cnt.get(b) - cnt.get(a) || a.localeCompare(b, "ru")).filter(v => !f || norm(v).includes(f)).slice(0, 300)
+      .map(v => `<label class="dd-item"><input type="checkbox" value="${esc(v)}" ${sel().has(v) ? "checked" : ""}><span class="t">${esc(v)}</span><span class="c mono">${fmt(cnt.get(v))}</span></label>`).join("")
+      || '<div class="empty" style="padding:12px">Ничего не найдено</div>';
+  };
+  el.renderLabel = () => { const s = sel(); el.querySelector(".val").textContent = !s.size ? "Все" : s.size === 1 ? [...s][0] : `Выбрано: ${s.size}`; };
+  btn.addEventListener("click", () => {
+    const open = !el.classList.contains("open");
+    document.querySelectorAll(".dd.open").forEach(x => x.classList.remove("open"));
+    if (open) { el.classList.add("open"); btn.setAttribute("aria-expanded", "true"); render(); inp.focus(); }
+  });
+  inp.addEventListener("input", render);
+  list.addEventListener("change", e => {
+    const s = W.filters.get(idx) || new Set(); e.target.checked ? s.add(e.target.value) : s.delete(e.target.value);
+    W.filters.set(idx, s); el.renderLabel(); applyWagons();
+  });
+  el.querySelector('[data-act="remove"]').addEventListener("click", () => {
+    W.filters.delete(idx); W.shown = W.shown.filter(x => x !== idx); renderWagonDropdowns(); applyWagons();
+  });
+  el.querySelector('[data-act="close"]').addEventListener("click", () => el.classList.remove("open"));
+  el.renderLabel();
+  return el;
+}
+function renderWagonStats() {
+  const a = W.agg, col = activeCol();
+  const onMap = [...a.by.values()].filter(o => o.s.has);
+  const noCoord = [...a.by.values()].filter(o => !o.s.has);
+  const offMap = a.empty + [...a.miss.values()].reduce((x, o) => x + o.n, 0) + noCoord.reduce((x, o) => x + o.n, 0);
+  $("wgBadge").textContent = fmt(a.rows.length);
+  $("wkRows").textContent = fmt(a.rows.length);
+  $("wkSt").textContent = fmt(onMap.length);
+  $("wkMiss").textContent = fmt(offMap);
+  $("wgColHint").textContent = `«${col.h}»: заполнен у ${fmt(col.filled)} из ${fmt(W.rows.length)}, на карте ${fmt(col.matched)}`;
+  document.querySelectorAll("#wgCols .chip").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.col === W.active)));
+  const top = onMap.concat(noCoord).sort((x, y) => y.n - x.n).slice(0, 15), max = top[0]?.n || 1;
+  $("wgTop").innerHTML = top.map((o, k) => `<li data-i="${o.s.i}"><span class="rk mono">${k + 1}</span>
+    <div class="tn"><div class="nm">${esc(o.s.name)}${o.s.has ? "" : ' <span class="badge">нет коорд.</span>'}</div><div class="bar"><i style="width:${(o.n / max * 100).toFixed(1)}%"></i></div></div>
+    <b class="mono">${fmt(o.n)}</b></li>`).join("") || '<div class="empty">Нет вагонов по фильтру</div>';
+  const miss = [...a.miss.values()].sort((x, y) => y.n - x.n).map(o =>
+    `<li title="Кода нет в справочнике ЕСР"><span class="mono">${esc(o.code)}</span><span class="n">${esc(o.name || "нет в справочнике")}</span><b class="mono">${fmt(o.n)}</b></li>`)
+    .concat(noCoord.sort((x, y) => y.n - x.n).map(o =>
+      `<li data-i="${o.s.i}" title="Станция есть в справочнике, но без координат"><span class="mono">${o.s.esr}</span><span class="n">${esc(o.s.name)} · без координат</span><b class="mono">${fmt(o.n)}</b></li>`));
+  if (a.empty) miss.push(`<li><span class="n">Столбец не заполнен</span><b class="mono">${fmt(a.empty)}</b></li>`);
+  $("wgMiss").innerHTML = miss.join("");
+  $("wgMissSec").hidden = !miss.length;
+  document.querySelectorAll("#wgDropdowns .dd").forEach(el => el.renderLabel && el.renderLabel());
+}
+
+/* блок вагонов в карточке станции */
+function wagonSection(s) {
+  if (!W.loaded) return "";
+  const col = activeCol(), o = W.agg.by.get(s.i);
+  const rows = wagonRows();
+  const per = W.codeCols.map(c => [c, rows.reduce((n, r) => n + (resolveCode(r[c.idx]) === s ? 1 : 0), 0)]).filter(([, n]) => n);
+  if (!o && !per.length) return "";
+  const lc = WG_LIST_COLS.map(h => W.headers.indexOf(h)).filter(i => i >= 0).slice(0, 3);
+  const brIdx = W.shown[0] ?? lc[0];
+  let bars = "";
+  if (o && brIdx !== undefined) {
+    const cnt = new Map(); o.rows.forEach(r => { const v = cellStr(r[brIdx]) || "—"; cnt.set(v, (cnt.get(v) || 0) + 1); });
+    bars = `<div class="mini-bars">${[...cnt].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([v, n]) =>
+      `<div><span>${esc(v)}</span><b class="mono">${fmt(n)}</b></div>`).join("")}</div>`;
+  }
+  return `<div class="section">
+    <div class="section-title">Вагоны из отчёта</div>
+    <div class="chips" style="margin-bottom:8px">${per.map(([c, n]) =>
+      `<button class="chip wg" data-wcol="${c.idx}" aria-pressed="${c.idx === W.active}" title="${esc(c.h)}">${esc(c.label)}<span class="cnt mono">${fmt(n)}</span></button>`).join("")}</div>
+    ${o ? `<p class="hint" style="margin:0 0 6px">По столбцу «${esc(col.h)}»: <b>${fmt(o.n)}</b> ваг.${brIdx !== undefined ? " · " + esc(W.headers[brIdx]) + ":" : ""}</p>${bars}
+    <div class="wtable-wrap"><table class="wtable"><thead><tr>${W.wagonIdx >= 0 ? "<th>№ вагона</th>" : ""}${lc.map(i => `<th>${esc(W.headers[i])}</th>`).join("")}</tr></thead>
+      <tbody>${o.rows.slice(0, 300).map(r => `<tr>${W.wagonIdx >= 0 ? `<td class="mono">${esc(cellStr(r[W.wagonIdx]))}</td>` : ""}${lc.map(i => `<td>${esc(cellStr(r[i]))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+    ${o.rows.length > 300 ? `<p class="hint">Показаны первые 300 из ${fmt(o.rows.length)}</p>` : ""}
+    <button class="btn" style="margin-top:10px" data-wexport="${s.i}">Выгрузить вагоны станции (CSV)</button>`
+    : `<p class="hint" style="margin:0">По столбцу «${esc(col.h)}» вагонов нет — выберите другой столбец выше.</p>`}
+  </div>`;
+}
+
+/* выгрузка */
+function toCSV(header, rows) {
+  const q = v => { const s = String(v ?? ""); return /[;"\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  return "﻿" + [header, ...rows].map(r => r.map(q).join(";")).join("\r\n");
+}
+function exportWagonSummary() {
+  const col = activeCol(), a = W.agg;
+  const rows = [...a.by.values()].sort((x, y) => y.n - x.n).map(o => [o.s.esr, o.s.name, o.s.lat ?? "", o.s.lon ?? "", o.s.railway, o.s.region, o.n]);
+  for (const o of a.miss.values()) rows.push([o.code, o.name, "", "", "", "нет в справочнике ЕСР", o.n]);
+  download(`wagons_by_station_${new Date().toISOString().slice(0, 10)}.csv`, new Blob([toCSV(
+    ["Код ЕСР", "Станция", "Широта", "Долгота", "Дорога", "Регион", "Вагонов (" + col.h + ")"], rows)], { type: "text/csv;charset=utf-8" }));
+}
+function exportStationWagons(i) {
+  const o = W.agg.by.get(i); if (!o) return;
+  download(`wagons_${o.s.esr}.csv`, new Blob([toCSV(W.headers, o.rows)], { type: "text/csv;charset=utf-8" }));
+}
+
+/* события панели вагонов */
+$("wgPick").addEventListener("click", () => $("wgInput").click());
+$("wgReplace").addEventListener("click", () => $("wgInput").click());
+$("wgInput").addEventListener("change", e => { loadReport(e.target.files[0]); e.target.value = ""; });
+$("wgClear").addEventListener("click", clearReport);
+$("wgCols").addEventListener("click", e => { const b = e.target.closest("[data-col]"); if (b) { W.active = +b.dataset.col; applyWagons(true); } });
+$("wgNum").addEventListener("input", e => { W.num = e.target.value.replace(/\D/g, ""); applyWagons(); });
+$("wgAddFilter").addEventListener("change", e => {
+  const idx = +e.target.value; if (!e.target.value) return;
+  W.shown.push(idx); renderWagonDropdowns();
+  document.querySelector(`[data-wg="${idx}"] .dd-btn`)?.click();
+});
+$("wgReset").addEventListener("click", () => { W.filters.clear(); W.num = ""; $("wgNum").value = ""; renderWagonDropdowns(); applyWagons(); });
+$("wgView").addEventListener("click", e => {
+  const b = e.target.closest("[data-v]"); if (!b) return;
+  W.view = b.dataset.v; store.set("wgView", W.view);
+  document.querySelectorAll("#wgView button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  applyModeStyling(); renderLegend(); updateLabels();
+});
+$("wgFit").addEventListener("click", fitWagons);
+$("wgTop").addEventListener("click", e => { const li = e.target.closest("[data-i]"); if (li) selectStation(S[+li.dataset.i]); });
+$("wgMiss").addEventListener("click", e => { const li = e.target.closest("[data-i]"); if (li) selectStation(S[+li.dataset.i]); });
+$("wgExport").addEventListener("click", exportWagonSummary);
+W.view = store.get("wgView") === "heat" ? "heat" : "circles";
+document.querySelectorAll("#wgView button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === W.view)));
+
+/* перетаскивание файла на страницу */
+let dragDepth = 0;
+const hasFiles = e => [...(e.dataTransfer?.types || [])].includes("Files");
+addEventListener("dragenter", e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; $("dropOverlay").classList.add("show"); });
+addEventListener("dragover", e => { if (hasFiles(e)) e.preventDefault(); });
+addEventListener("dragleave", e => { if (!hasFiles(e)) return; if (--dragDepth <= 0) { dragDepth = 0; $("dropOverlay").classList.remove("show"); } });
+addEventListener("drop", e => {
+  if (!hasFiles(e)) return; e.preventDefault(); dragDepth = 0; $("dropOverlay").classList.remove("show");
+  loadReport(e.dataTransfer.files[0]);
+});
+
+/* наведение на кружки вагонов */
+let wgHover = null;
+map.on("mousemove", "wg-circle", e => {
+  const f = e.features[0]; if (!f) return;
+  map.getCanvas().style.cursor = "pointer";
+  if (wgHover !== null) map.setFeatureState({ source: "wg", id: wgHover }, { hover: false });
+  wgHover = f.id; map.setFeatureState({ source: "wg", id: wgHover }, { hover: true });
+  const s = S[f.properties.i];
+  tip.setLngLat([s.lon, s.lat]).setHTML(`<div class="tip"><b>${esc(s.name)}</b> <span class="mono">${s.esr}</span><br><b class="mono">${fmt(f.properties.n)}</b> <span>ваг. · ${esc(activeCol().label.toLowerCase())}</span></div>`).addTo(map);
+});
+map.on("mouseleave", "wg-circle", () => {
+  map.getCanvas().style.cursor = "";
+  if (wgHover !== null) map.setFeatureState({ source: "wg", id: wgHover }, { hover: false });
+  wgHover = null; tip.remove();
+});
 
 /* ================= запуск ================= */
 function fromHash() {
