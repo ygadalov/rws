@@ -223,10 +223,10 @@ button { cursor: pointer; }
 .panel.show-detail .wagons { display: none !important; }
 .drop { margin: 14px; padding: 26px 18px; border: 1.5px dashed var(--line-strong); border-radius: 14px; text-align: center; color: var(--muted); }
 .drop.over { border-color: #f97316; background: rgba(249,115,22,.06); }
-.drop svg { width: 34px; height: 34px; color: #f97316; margin-bottom: 8px; }
+.drop > svg { width: 34px; height: 34px; color: #f97316; margin-bottom: 8px; }
 .drop b { display: block; color: var(--text); font-size: 15px; margin-bottom: 4px; }
 .drop p { margin: 4px 0 14px; font-size: 12.5px; }
-.btn { height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--panel-solid); font-weight: 550; display: inline-flex; align-items: center; gap: 8px; }
+.btn { height: 36px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--panel-solid); font-weight: 550; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .btn:hover { border-color: var(--accent); color: var(--accent); }
 .btn.primary { background: #f97316; border-color: #f97316; color: #fff; }
 .btn.primary:hover { filter: brightness(1.06); color: #fff; }
@@ -355,9 +355,10 @@ button { cursor: pointer; }
         <div class="drop" id="wgDrop">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
           <b>Загрузите отчёт по вагонам</b>
-          <p>Excel (.xlsx, .xls) или CSV. Нужны столбцы, в названии которых есть «станция» и «код», например «Станция операции (код)» или «Код станции отстоя». Файл обрабатывается только в браузере и никуда не отправляется.</p>
-          <button class="btn primary" id="wgPick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>Выбрать файл</button>
-          <p style="margin:10px 0 0">или перетащите его на карту</p>
+          <p>Excel (.xlsx, .xls) или CSV: отчёт по дислокации или любая таблица, где есть станция — код ЕСР или название. Например, «№ вагона; код станции» или «станция; количество». Файл обрабатывается только в браузере и никуда не отправляется.</p>
+          <button class="btn primary" id="wgPick">Выбрать файл</button>
+          <p style="margin:10px 0 0">или перетащите его на карту, или скопируйте ячейки в Excel и нажмите <b style="display:inline;font-size:inherit">Ctrl+V</b></p>
+          <button class="link-btn" id="wgTemplate" style="margin-top:6px">Скачать шаблон CSV</button>
         </div>
       </div>
       <div id="wgLoaded" hidden>
@@ -373,6 +374,11 @@ button { cursor: pointer; }
           <div class="section-title">Станция на карте</div>
           <div class="chips" id="wgCols" role="radiogroup" aria-label="Столбец с кодом станции"></div>
           <p class="hint" id="wgColHint"></p>
+          <select class="field" id="wgOtherCol" style="margin-top:8px" aria-label="Другой столбец как станция"></select>
+          <div id="wgQtyBox" style="margin-top:8px" hidden>
+            <div class="section-title" style="margin:6px 0">Считать вагоны</div>
+            <select class="field" id="wgQty" aria-label="Как считать вагоны"></select>
+          </div>
         </div>
         <div class="section">
           <div class="kpis">
@@ -1292,38 +1298,123 @@ async function loadReport(file) {
   } catch (e) { console.error(e); toast("Не удалось прочитать файл: " + (e.message || e)); }
 }
 
+// названия станций → станция (только однозначные; при тёзках — если все в пределах 5 км)
+const BY_NAME = (() => {
+  const m = new Map();
+  for (const s of S) {
+    if (s.virt) continue;
+    for (const k of new Set([norm(s.name), norm(s.name.replace(/\s*\([^)]*\)\s*$/, "")), norm(s.exname)])) {
+      if (!k) continue;
+      const a = m.get(k); a ? a.push(s) : m.set(k, [s]);
+    }
+  }
+  return m;
+})();
+const nameCache = new Map();
+function resolveName(raw) {
+  const k = norm(raw); if (!k || /^\d+$/.test(k)) return null;
+  if (nameCache.has(k)) return nameCache.get(k);
+  const c = BY_NAME.get(k) || [], wc = c.filter(s => s.has);
+  let s = c.length === 1 ? c[0] : null;
+  if (!s && wc.length && wc.every(o => distKm(o, wc[0]) < 5)) s = wc[0];
+  nameCache.set(k, s);
+  return s;
+}
+// ячейка из цифр — код ЕСР, иначе название станции (в одном столбце может быть и то и другое)
+const resolveCell = (col, v) => /^\s*\d[\d\s]*$/.test(cellStr(v)) ? resolveCode(v) : resolveName(v);
+const isWagonNo = v => /^\d{8}$/.test(cellStr(v));
+const isNumber = v => /^-?\d+([.,]\d+)?$/.test(cellStr(v).replace(/\s/g, ""));
+const toNumber = v => parseFloat(cellStr(v).replace(/\s/g, "").replace(",", ".")) || 0;
+
+// доля значений столбца, подходящих под проверку (по выборке до 400 непустых)
+function share(rows, idx, test) {
+  let n = 0, ok = 0;
+  for (const r of rows) { const v = cellStr(r[idx]); if (!v) continue; n++; if (test(v)) ok++; if (n >= 400) break; }
+  return n ? ok / n : 0;
+}
+function profileColumn(rows, idx) {
+  return {
+    code: share(rows, idx, v => /^\d{5,6}$/.test(v.replace(/\s/g, "")) && !!resolveCode(v)),
+    code4: share(rows, idx, v => /^\d{4,6}$/.test(v.replace(/\s/g, "")) && !!resolveCode(v)),
+    name: share(rows, idx, v => !!resolveName(v)),
+    wagon: share(rows, idx, isWagonNo),
+    num: share(rows, idx, isNumber),
+  };
+}
+function stationColumn(headers, rows, idx, kind) {
+  const h = headers[idx];
+  const label = isCodeHeader(h) ? (h.replace(/\(код\)/ig, "").replace(/^код\s+/i, "").replace(/^станци[яи]\s*/i, "").trim() || h) : h;
+  const nameH = h.replace(/\s*\(код\)/i, "").replace(/^код\s+станции/i, "Станция").trim().toLowerCase();
+  const nameIdx = kind === "code" ? headers.findIndex((x, j) => j !== idx && x.toLowerCase() === nameH) : -1;
+  const col = { h, idx, kind, label: label[0].toUpperCase() + label.slice(1), nameIdx, filled: 0, matched: 0 };
+  for (const r of rows) { const v = r[idx]; if (cellStr(v)) { col.filled++; const s = resolveCell(col, v); if (s && s.has) col.matched++; } }
+  return col;
+}
+
+// Универсальный разбор: дислокация с «Станция … (код)», таблица «вагон; станция» (код или название),
+// таблица без заголовков, сводка «станция; количество».
 function setReport(name, aoa) {
-  const hi = aoa.findIndex((r, i) => i < 50 && r.filter(v => cellStr(v)).length >= 3 && r.some(v => isCodeHeader(cellStr(v))));
-  if (hi < 0) { toast("Не найдены столбцы с кодами станций: в заголовке должны быть слова «станция» и «код»"); return; }
-  const headers = aoa[hi].map(cellStr);
-  const rows = aoa.slice(hi + 1).filter(r => r.some(v => cellStr(v)));
+  aoa = aoa.filter(r => r.some(v => cellStr(v)));
+  if (!aoa.length) { toast("Файл пустой"); return; }
+  const width = Math.max(...aoa.slice(0, 200).map(r => r.length));
+  const textRow = r => { const c = r.map(cellStr).filter(Boolean); return c.length >= 1 && c.filter(v => !isNumber(v)).length >= Math.max(1, c.length * 0.6); };
+  // строка заголовков: явная «станция … код»; иначе первая «текстовая» строка, за которой идут данные
+  let hi = aoa.findIndex((r, i) => i < 50 && r.filter(v => cellStr(v)).length >= 2 && r.some(v => isCodeHeader(cellStr(v))));
+  if (hi < 0) hi = aoa.findIndex((r, i) => i < 30 && r.filter(v => cellStr(v)).length >= Math.min(2, width) && textRow(r) && aoa[i + 1] && !textRow(aoa[i + 1]));
+  if (hi < 0 && textRow(aoa[0]) && aoa.length > 1) hi = 0;
+  const headerless = hi < 0 || (hi === 0 && aoa[0].map(cellStr).filter(Boolean).every(v => resolveName(v) || isNumber(v)) && aoa[0].some(v => resolveCode(v) || resolveName(v)));
+  let headers, rows;
+  if (headerless) { headers = Array.from({ length: width }, (_, j) => `Столбец ${j + 1}`); rows = aoa; hi = -1; }
+  else { headers = Array.from({ length: width }, (_, j) => cellStr(aoa[hi][j]) || `Столбец ${j + 1}`); rows = aoa.slice(hi + 1); }
   let generated = "";
-  for (const r of aoa.slice(0, hi)) for (const v of r) { const m = cellStr(v).match(/сформирован[:\s]*(.+)/i); if (m) generated = m[1]; }
-  const rank = c => { const k = WG_CODE_ORDER.findIndex(x => c.label.toLowerCase().startsWith(x)); return k < 0 ? 99 : k; };
-  const codeCols = headers.map((h, idx) => ({ h, idx })).filter(c => isCodeHeader(c.h)).map(c => {
-    const label = c.h.replace(/\(код\)/ig, "").replace(/^код\s+/i, "").replace(/^станци[яи]\s*/i, "").trim() || c.h;
-    const nameH = c.h.replace(/\s*\(код\)/i, "").replace(/^код\s+станции/i, "Станция").trim().toLowerCase();
-    const nameIdx = headers.findIndex((x, j) => j !== c.idx && x.toLowerCase() === nameH);
-    let filled = 0, matched = 0;
-    for (const r of rows) { const v = r[c.idx]; if (cellStr(v)) { filled++; const s = resolveCode(v); if (s && s.has) matched++; } }
-    return { ...c, label: label[0].toUpperCase() + label.slice(1), nameIdx, filled, matched };
-  }).sort((a, b) => rank(a) - rank(b));
-  const wagonIdx = headers.findIndex(h => /^(№|номер)\s*вагона$/i.test(h));
+  for (const r of aoa.slice(0, Math.max(hi, 0))) for (const v of r) { const m = cellStr(v).match(/сформирован[:\s]*(.+)/i); if (m) generated = m[1]; }
+
+  const prof = headers.map((_, idx) => profileColumn(rows, idx));
+  const wagonHeader = h => /^(№|номер)\s*(вагона|ваг\.?)$|^вагон(ы)?$|^№\s*ваг/i.test(h);
+  let wagonIdx = headers.findIndex(wagonHeader);
+  if (wagonIdx < 0) wagonIdx = prof.findIndex(p => p.wagon >= 0.8);
+  const stCols = [];
+  const explicit = headers.some(isCodeHeader);
+  const hinted = h => /станц|пункт|^ст\.?(\s|$)|esr|еср/i.test(h);
+  const excluded = h => /год|пробег|дата|время|вес|кол|сумм|стран|дорог|регион|нод|депо|груз|тип|род|состоян|модел|завод/i.test(h);
+  headers.forEach((h, idx) => {
+    if (idx === wagonIdx) return;
+    if (explicit) { if (isCodeHeader(h)) stCols.push(stationColumn(headers, rows, idx, "code")); return; }
+    if (excluded(h) && !hinted(h)) return;
+    const p = prof[idx];
+    // заголовок похож на станцию — достаточно 30% распознанных значений (тёзки, опечатки); иначе 60%
+    const sc = hinted(h) ? Math.max(p.code4, p.code) + p.name : p.code + p.name;
+    if (sc >= (hinted(h) ? 0.3 : 0.6)) stCols.push(stationColumn(headers, rows, idx, p.name > p.code4 ? "name" : "code"));
+  });
+  // названия рядом с кодами («Станция операции» при «Станция операции (код)») не дублируем
+  const codeCols = stCols.filter(c => c.kind === "code" || !stCols.some(o => o.nameIdx === c.idx));
+  if (!codeCols.length) {
+    toast("Не найден столбец со станцией: нужен код ЕСР (5–6 цифр) или название станции");
+    return;
+  }
+  const rank = c => { const k = WG_CODE_ORDER.findIndex(x => c.label.toLowerCase().startsWith(x)); return k < 0 ? 50 + (c.kind === "name" ? 1 : 0) : k; };
+  codeCols.sort((a, b) => rank(a) - rank(b) || b.matched - a.matched);
+  // числовые столбцы — кандидаты в «количество вагонов» (для сводных таблиц «станция; кол-во»)
+  const qtyCols = headers.map((h, idx) => ({ h, idx })).filter(c => c.idx !== wagonIdx && !codeCols.some(o => o.idx === c.idx)
+    && prof[c.idx].num >= 0.9 && prof[c.idx].wagon < 0.5);
+  const qtyAuto = wagonIdx < 0 ? qtyCols.find(c => /кол|количеств|шт|ваг|qty|count/i.test(c.h)) : null;
   const cats = [];
   headers.forEach((h, idx) => {
-    if (!h || idx === wagonIdx || codeCols.some(c => c.idx === idx) || /дата|время|код/i.test(h)) return;
+    if (idx === wagonIdx || codeCols.some(c => c.idx === idx) || /дата|время|код/i.test(h) || prof[idx].num >= 0.9) return;
     const vals = new Set(); let filled = 0;
     for (const r of rows) { const v = cellStr(r[idx]); if (v) { filled++; vals.add(v); if (vals.size > 300) return; } }
     if (vals.size >= 2 && !(vals.size === filled && rows.length > 20)) cats.push({ idx, h });
   });
-  const shown = WG_PREFERRED.map(h => cats.find(c => c.h === h)).filter(Boolean).slice(0, 4).map(c => c.idx);
+  const shown = WG_PREFERRED.map(h => cats.find(c => c.h === h)).filter(Boolean)
+    .concat(cats.filter(c => !WG_PREFERRED.includes(c.h))).slice(0, 4).map(c => c.idx);
   W = { loaded: true, name, generated, headers, rows, codeCols, active: codeCols[0].idx, wagonIdx, cats, shown,
-    filters: new Map(), num: "", view: W.view || "circles" };
+    qtyCols, qty: qtyAuto ? qtyAuto.idx : -1, headerless, filters: new Map(), num: "", view: W.view || "circles" };
   renderWagonPanel();
   aggregate();
   switchTab("wagons");
   applyWagons(true);
-  toast(`Загружено вагонов: ${fmt(rows.length)}`);
+  const total = W.qty >= 0 ? rows.reduce((a, r) => a + toNumber(r[W.qty]), 0) : rows.length;
+  toast(`Загружено: ${fmt(rows.length)} строк${W.qty >= 0 ? ", вагонов " + fmt(total) : ""}`);
 }
 function clearReport() {
   W = { loaded: false, view: W.view };
@@ -1346,14 +1437,17 @@ function aggregate() {
   const by = new Map(), miss = new Map(); let empty = 0;
   for (const r of rows) {
     const raw = cellStr(r[col.idx]);
-    if (!raw) { empty++; continue; }
-    const s = resolveCode(raw);
+    const w = W.qty >= 0 ? toNumber(r[W.qty]) : 1;
+    if (!raw) { empty += w; continue; }
+    const s = resolveCell(col, raw);
     if (!s) {
-      const o = miss.get(raw) || { code: raw, name: col.nameIdx >= 0 ? cellStr(r[col.nameIdx]) : "", n: 0 };
-      o.n++; miss.set(raw, o); continue;
+      const amb = (BY_NAME.get(norm(raw)) || []).length;
+      const o = miss.get(raw) || { code: raw, name: col.nameIdx >= 0 ? cellStr(r[col.nameIdx])
+        : amb > 1 ? `несколько станций с таким названием (${amb}) — укажите код ЕСР` : /^\s*\d/.test(raw) ? "" : "не найдена в справочнике", n: 0 };
+      o.n += w; miss.set(raw, o); continue;
     }
     let o = by.get(s.i); if (!o) by.set(s.i, o = { s, n: 0, rows: [] });
-    o.n++; o.rows.push(r);
+    o.n += w; o.rows.push(r);
   }
   W.agg = { rows, by, miss, empty };
 }
@@ -1417,10 +1511,17 @@ document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () =>
 function renderWagonPanel() {
   $("wgEmpty").hidden = true; $("wgLoaded").hidden = false;
   $("wgFile").textContent = W.name;
-  $("wgFileMeta").textContent = `${fmt(W.rows.length)} вагонов · ${W.headers.filter(Boolean).length} столбцов` + (W.generated ? ` · сформирован ${W.generated}` : "");
+  $("wgFileMeta").textContent = `${fmt(W.rows.length)} строк · ${W.headers.length} столбцов` + (W.headerless ? " · без заголовков" : "")
+    + (W.generated ? ` · сформирован ${W.generated}` : "");
   $("wgNum").value = ""; $("wgNum").hidden = W.wagonIdx < 0;
   $("wgCols").innerHTML = W.codeCols.map(c =>
-    `<button class="chip wg" role="radio" data-col="${c.idx}" aria-pressed="${c.idx === W.active}" title="${esc(c.h)}">${esc(c.label)}<span class="cnt mono">${fmt(c.filled)}</span></button>`).join("");
+    `<button class="chip wg" role="radio" data-col="${c.idx}" aria-pressed="${c.idx === W.active}" title="${esc(c.h)} · ${c.kind === "name" ? "по названию" : "по коду"}">${esc(c.label)}<span class="cnt mono">${fmt(c.filled)}</span></button>`).join("");
+  const other = W.headers.map((h, idx) => ({ h, idx })).filter(c => c.idx !== W.wagonIdx && !W.codeCols.some(o => o.idx === c.idx));
+  $("wgOtherCol").innerHTML = `<option value="">＋ Взять станцию из другого столбца…</option>` + other.map(c => `<option value="${c.idx}">${esc(c.h)}</option>`).join("");
+  $("wgOtherCol").hidden = !other.length;
+  $("wgQtyBox").hidden = !W.qtyCols.length;
+  $("wgQty").innerHTML = `<option value="-1">1 строка = 1 вагон</option>` + W.qtyCols.map(c =>
+    `<option value="${c.idx}" ${c.idx === W.qty ? "selected" : ""}>Сумма по столбцу «${esc(c.h)}»</option>`).join("");
   renderWagonDropdowns();
 }
 function renderWagonDropdowns() {
@@ -1470,11 +1571,12 @@ function renderWagonStats() {
   const onMap = [...a.by.values()].filter(o => o.s.has);
   const noCoord = [...a.by.values()].filter(o => !o.s.has);
   const offMap = a.empty + [...a.miss.values()].reduce((x, o) => x + o.n, 0) + noCoord.reduce((x, o) => x + o.n, 0);
-  $("wgBadge").textContent = fmt(a.rows.length);
-  $("wkRows").textContent = fmt(a.rows.length);
+  const total = W.qty >= 0 ? a.rows.reduce((x, r) => x + toNumber(r[W.qty]), 0) : a.rows.length;
+  $("wgBadge").textContent = fmt(total);
+  $("wkRows").textContent = fmt(total);
   $("wkSt").textContent = fmt(onMap.length);
   $("wkMiss").textContent = fmt(offMap);
-  $("wgColHint").textContent = `«${col.h}»: заполнен у ${fmt(col.filled)} из ${fmt(W.rows.length)}, на карте ${fmt(col.matched)}`;
+  $("wgColHint").textContent = `«${col.h}» (${col.kind === "name" ? "по названию" : "по коду ЕСР"}): заполнен у ${fmt(col.filled)} из ${fmt(W.rows.length)} строк, на карте ${fmt(col.matched)}`;
   document.querySelectorAll("#wgCols .chip").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.col === W.active)));
   const top = onMap.concat(noCoord).sort((x, y) => y.n - x.n).slice(0, 15), max = top[0]?.n || 1;
   $("wgTop").innerHTML = top.map((o, k) => `<li data-i="${o.s.i}"><span class="rk mono">${k + 1}</span>
@@ -1495,9 +1597,10 @@ function wagonSection(s) {
   if (!W.loaded) return "";
   const col = activeCol(), o = W.agg.by.get(s.i);
   const rows = wagonRows();
-  const per = W.codeCols.map(c => [c, rows.reduce((n, r) => n + (resolveCode(r[c.idx]) === s ? 1 : 0), 0)]).filter(([, n]) => n);
+  const per = W.codeCols.map(c => [c, rows.reduce((n, r) => n + (resolveCell(c, r[c.idx]) === s ? (W.qty >= 0 ? toNumber(r[W.qty]) : 1) : 0), 0)]).filter(([, n]) => n);
   if (!o && !per.length) return "";
-  const lc = WG_LIST_COLS.map(h => W.headers.indexOf(h)).filter(i => i >= 0).slice(0, 3);
+  let lc = WG_LIST_COLS.map(h => W.headers.indexOf(h)).filter(i => i >= 0).slice(0, 3);
+  if (!lc.length) lc = W.headers.map((_, i) => i).filter(i => i !== W.wagonIdx && i !== W.active).slice(0, 3);
   const brIdx = W.shown[0] ?? lc[0];
   let bars = "";
   if (o && brIdx !== undefined) {
@@ -1541,6 +1644,25 @@ $("wgReplace").addEventListener("click", () => $("wgInput").click());
 $("wgInput").addEventListener("change", e => { loadReport(e.target.files[0]); e.target.value = ""; });
 $("wgClear").addEventListener("click", clearReport);
 $("wgCols").addEventListener("click", e => { const b = e.target.closest("[data-col]"); if (b) { W.active = +b.dataset.col; applyWagons(true); } });
+$("wgOtherCol").addEventListener("change", e => {
+  if (!e.target.value) return;
+  const idx = +e.target.value, p = profileColumn(W.rows, idx);
+  const col = stationColumn(W.headers, W.rows, idx, p.name > p.code ? "name" : "code");
+  W.codeCols.push(col); W.active = idx; W.filters.delete(idx); W.shown = W.shown.filter(x => x !== idx);
+  renderWagonPanel(); applyWagons(true);
+  if (!col.matched) toast("В этом столбце не найдено ни кодов ЕСР, ни названий станций");
+});
+$("wgQty").addEventListener("change", e => { W.qty = +e.target.value; applyWagons(); });
+$("wgTemplate").addEventListener("click", () => download("шаблон_вагоны_станции.csv", new Blob([toCSV(
+  ["№ вагона", "Код станции", "Станция"], [["53347787", "648400", "Круглое Поле"], ["58776618", "780904", "Звезда"]])], { type: "text/csv;charset=utf-8" })));
+// вставка из Excel: Ctrl+V на вкладке «Вагоны» (ячейки приходят как текст с табуляцией)
+document.addEventListener("paste", e => {
+  if (state.tab !== "wagons" || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "")) return;
+  const text = e.clipboardData?.getData("text/plain") || "";
+  if (!text.trim()) return;
+  e.preventDefault();
+  setReport("Вставка из буфера обмена", parseCSV(text));
+});
 $("wgNum").addEventListener("input", e => { W.num = e.target.value.replace(/\D/g, ""); applyWagons(); });
 $("wgAddFilter").addEventListener("change", e => {
   const idx = +e.target.value; if (!e.target.value) return;
