@@ -1,0 +1,1052 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Станции 1520</title>
+<meta name="description" content="Карта железнодорожных станций пространства 1520 с кодами ЕСР">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+:root {
+  --bg: #f4f5f7; --panel: rgba(255,255,255,.94); --panel-solid: #fff; --line: #e3e6ea; --line-strong: #cfd4da;
+  --text: #15181d; --muted: #646b75; --faint: #8c939c; --accent: #2457d6; --accent-soft: #e8eefc;
+  --hover: #f1f3f6; --shadow: 0 8px 32px rgba(16,24,40,.14), 0 1px 3px rgba(16,24,40,.08);
+  --danger: #d92d4b; --ok: #16804f; --radius: 14px; --label-halo: #fff;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1115; --panel: rgba(24,27,33,.94); --panel-solid: #181b21; --line: #2a2f37; --line-strong: #3a414b;
+    --text: #e9ecf1; --muted: #a0a8b3; --faint: #77808b; --accent: #6d9bff; --accent-soft: #1d2a47;
+    --hover: #222731; --shadow: 0 8px 32px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4); --label-halo: #0f1115;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1115; --panel: rgba(24,27,33,.94); --panel-solid: #181b21; --line: #2a2f37; --line-strong: #3a414b;
+  --text: #e9ecf1; --muted: #a0a8b3; --faint: #77808b; --accent: #6d9bff; --accent-soft: #1d2a47;
+  --hover: #222731; --shadow: 0 8px 32px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4); --label-halo: #0f1115;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font: 14px/1.45 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+#map { position: fixed; inset: 0; }
+.mono { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+/* ---------- панель ---------- */
+.panel { position: fixed; z-index: 5; top: 12px; left: 12px; bottom: 12px; width: 384px; display: flex; flex-direction: column;
+  background: var(--panel); backdrop-filter: blur(14px) saturate(1.3); -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.panel-head { padding: 14px 14px 10px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.brand-logo { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; color: #fff; flex: none; }
+.brand h1 { font-size: 15px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
+.brand p { margin: 0; font-size: 12px; color: var(--muted); }
+.brand .spacer { flex: 1; }
+.icon-btn { width: 34px; height: 34px; border-radius: 10px; border: 1px solid transparent; background: transparent; display: grid; place-items: center; color: var(--muted); }
+.icon-btn:hover { background: var(--hover); color: var(--text); }
+.icon-btn svg { width: 18px; height: 18px; }
+
+.search { position: relative; }
+.search input { width: 100%; height: 42px; padding: 0 70px 0 38px; border-radius: 11px; border: 1px solid var(--line-strong);
+  background: var(--panel-solid); outline: none; transition: border-color .15s, box-shadow .15s; }
+.search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.search .s-icon { position: absolute; left: 12px; top: 12px; width: 18px; height: 18px; color: var(--faint); pointer-events: none; }
+.search .kbd { position: absolute; right: 10px; top: 10px; font-size: 11px; color: var(--faint); border: 1px solid var(--line-strong); border-radius: 6px; padding: 1px 6px; }
+.search .clear { position: absolute; right: 6px; top: 5px; display: none; }
+.search.has-text .clear { display: grid; } .search.has-text .kbd { display: none; }
+
+.panel-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.section { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.section:last-child { border-bottom: 0; }
+.section-title { display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); margin-bottom: 8px; }
+.link-btn { border: 0; background: none; color: var(--accent); font-size: 12px; padding: 0; text-transform: none; letter-spacing: 0; font-weight: 500; }
+
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.kpi { background: var(--hover); border-radius: 10px; padding: 8px 10px; }
+.kpi b { display: block; font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
+.kpi span { font-size: 11px; color: var(--muted); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--panel-solid); font-size: 13px; white-space: nowrap; }
+.chip:hover { border-color: var(--faint); }
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.chip .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.chip .cnt { color: var(--faint); font-size: 12px; }
+.chip[aria-pressed="true"] .cnt { color: inherit; opacity: .75; }
+
+.dd { position: relative; }
+.dd-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--panel-solid); text-align: left; }
+.dd-btn .lbl { color: var(--muted); font-size: 12px; flex: none; }
+.dd-btn .val { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dd-btn svg { width: 14px; height: 14px; color: var(--faint); flex: none; }
+.dd-menu { position: absolute; z-index: 20; left: 0; right: 0; top: 40px; background: var(--panel-solid); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: var(--shadow); padding: 6px; display: none; }
+.dd.open .dd-menu { display: block; }
+.dd-menu input[type=search] { width: 100%; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); padding: 0 10px; margin-bottom: 6px; outline: none; }
+.dd-list { max-height: 260px; overflow-y: auto; }
+.dd-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.dd-item:hover { background: var(--hover); }
+.dd-item input { accent-color: var(--accent); margin: 0; }
+.dd-item .t { flex: 1; } .dd-item .c { color: var(--faint); font-size: 12px; }
+.dd-foot { display: flex; justify-content: space-between; padding: 6px 4px 2px; border-top: 1px solid var(--line); margin-top: 6px; }
+.filters-grid { display: grid; gap: 8px; }
+
+.switch-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; font-size: 13px; }
+.switch { position: relative; width: 34px; height: 20px; flex: none; }
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.switch span { position: absolute; inset: 0; background: var(--line-strong); border-radius: 999px; transition: .15s; }
+.switch span::after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: .15s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+.switch input:checked + span { background: var(--accent); }
+.switch input:checked + span::after { transform: translateX(14px); }
+.switch input:focus-visible + span { box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.results { list-style: none; margin: 0; padding: 4px 6px; }
+.res { display: flex; gap: 10px; align-items: flex-start; padding: 8px; border-radius: 10px; cursor: pointer; }
+.res:hover, .res.active { background: var(--hover); }
+.res .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex: none; }
+.res .main { flex: 1; min-width: 0; }
+.res .nm { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.res .nm mark { background: none; color: var(--accent); font-weight: 650; }
+.res .sub { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.res .code { font-size: 12px; color: var(--muted); flex: none; }
+.empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+.badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px; background: var(--hover); color: var(--muted); }
+
+/* ---------- карточка станции ---------- */
+.detail { display: none; }
+.panel.show-detail .detail { display: block; }
+.panel.show-detail .browse { display: none; }
+.d-top { display: flex; align-items: center; gap: 6px; padding: 10px 10px 0; }
+.d-head { padding: 6px 14px 12px; }
+.d-head h2 { margin: 0 0 4px; font-size: 20px; font-weight: 680; letter-spacing: -.015em; line-height: 1.25; }
+.d-head .sub { color: var(--muted); font-size: 13px; }
+.codes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.code-pill { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--panel-solid); font-size: 12.5px; }
+.code-pill small { color: var(--faint); font-size: 11px; }
+.code-pill:hover { border-color: var(--accent); }
+.actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 0 14px 12px; }
+.act { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-solid); font-size: 11.5px; color: var(--muted); text-decoration: none; }
+.act:hover { color: var(--accent); border-color: var(--accent); }
+.act svg { width: 18px; height: 18px; }
+.kv { display: grid; grid-template-columns: 128px 1fr; gap: 6px 10px; font-size: 13px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; overflow-wrap: anywhere; }
+.qbox { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border-radius: 10px; background: var(--hover); font-size: 13px; }
+.qbox .dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 4px; flex: none; }
+.qbox .note { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.near { list-style: none; margin: 0; padding: 0; }
+.near li { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.near li:hover { background: var(--hover); }
+.near .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.near .n { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.near .d { color: var(--faint); font-size: 12px; }
+
+/* ---------- плавающие элементы над картой ---------- */
+.toolbar { position: fixed; z-index: 4; top: 12px; right: 12px; display: flex; gap: 8px; }
+.tb-btn { height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); backdrop-filter: blur(14px); box-shadow: var(--shadow); font-weight: 550; }
+.tb-btn:hover { border-color: var(--line-strong); }
+.tb-btn svg { width: 18px; height: 18px; color: var(--muted); }
+.tb-btn.icon { width: 40px; padding: 0; justify-content: center; }
+.popover { position: fixed; z-index: 30; right: 12px; top: 60px; width: 320px; max-height: calc(100vh - 80px); overflow-y: auto; background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px; display: none; }
+.popover.open { display: block; }
+.popover h3 { margin: 2px 2px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); font-weight: 600; }
+.bm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.bm { border: 1.5px solid var(--line); border-radius: 10px; background: none; padding: 4px 4px 6px; font-size: 12px; text-align: center; }
+.bm .sw { height: 42px; border-radius: 7px; margin-bottom: 5px; }
+.bm[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.ov-list { display: grid; gap: 4px; }
+.ov { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.ov:hover { background: var(--hover); }
+.ov input { accent-color: var(--accent); margin: 0; }
+.ov small { display: block; color: var(--faint); font-size: 11.5px; }
+.menu-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 8px; border: 0; border-radius: 8px; background: none; text-align: left; font-size: 13px; }
+.menu-item:hover { background: var(--hover); }
+.menu-item svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.menu-item small { display: block; color: var(--faint); font-size: 11.5px; }
+.menu-sep { height: 1px; background: var(--line); margin: 6px 0; }
+
+.legend { position: fixed; z-index: 4; right: 12px; bottom: 34px; width: 248px; background: var(--panel); backdrop-filter: blur(14px); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 10px 12px; font-size: 12.5px; }
+.legend select { width: 100%; height: 32px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--panel-solid); padding: 0 8px; margin-bottom: 8px; }
+.legend-items { max-height: 200px; overflow-y: auto; display: grid; gap: 3px; }
+.legend-item { display: flex; align-items: center; gap: 8px; }
+.legend-item .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.legend-item .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legend-item .c { color: var(--faint); }
+.legend .collapse { position: absolute; right: 6px; top: 6px; width: 26px; height: 26px; }
+.legend.min .legend-items, .legend.min select { display: none; }
+.legend-title { font-weight: 600; margin: 0 0 6px; font-size: 12px; }
+
+.st-label { pointer-events: none; font-size: 12px; font-weight: 550; color: var(--text); white-space: nowrap;
+  text-shadow: 0 0 2px var(--label-halo), 0 0 2px var(--label-halo), 0 0 3px var(--label-halo); }
+.maplibregl-popup-content { background: var(--panel-solid); color: var(--text); border-radius: 10px; padding: 7px 10px; box-shadow: var(--shadow); font: 12.5px/1.35 Inter, system-ui, sans-serif; }
+.maplibregl-popup-tip { border-top-color: var(--panel-solid) !important; border-bottom-color: var(--panel-solid) !important; }
+.tip b { font-weight: 600; } .tip span { color: var(--muted); }
+.maplibregl-ctrl-group { border-radius: 12px !important; box-shadow: var(--shadow) !important; background: var(--panel) !important; }
+.maplibregl-ctrl-group button + button { border-top-color: var(--line) !important; }
+:root[data-theme="dark"] .maplibregl-ctrl button .maplibregl-ctrl-icon { filter: invert(1); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .maplibregl-ctrl button .maplibregl-ctrl-icon { filter: invert(1); } }
+.maplibregl-ctrl-attrib { background: var(--panel) !important; color: var(--muted); }
+.maplibregl-ctrl-attrib a { color: var(--muted); }
+.maplibregl-ctrl-top-right { top: 56px; }
+
+.toast { position: fixed; z-index: 50; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px); opacity: 0; background: var(--text); color: var(--bg); padding: 9px 16px; border-radius: 10px; font-size: 13px; font-weight: 500; transition: .2s; pointer-events: none; box-shadow: var(--shadow); }
+.toast.show { opacity: 1; transform: translateX(-50%); }
+.loading { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: var(--bg); color: var(--muted); transition: opacity .3s; }
+.loading.hide { opacity: 0; pointer-events: none; }
+.sheet-handle { display: none; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.modal-bg { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.35); display: none; align-items: center; justify-content: center; padding: 16px; }
+.modal-bg.open { display: flex; }
+.modal { width: min(560px, 100%); max-height: 85vh; overflow-y: auto; background: var(--panel-solid); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; font-size: 13.5px; }
+.modal h2 { margin: 0 0 10px; font-size: 18px; }
+.modal table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; }
+.modal td { padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.modal p { color: var(--muted); }
+
+/* ---------- телефон: панель — нижняя шторка ---------- */
+@media (max-width: 720px) {
+  .panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 46vh; border-radius: 18px 18px 0 0; transition: height .25s ease; padding-bottom: env(safe-area-inset-bottom); }
+  .panel.collapsed { height: 152px; }
+  .panel.expanded { height: 88vh; }
+  .sheet-handle { display: block; width: 100%; height: 22px; border: 0; background: none; padding: 0; flex: none; }
+  .sheet-handle::before { content: ""; display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--line-strong); margin: 8px auto 0; }
+  .panel-head { padding-top: 2px; }
+  .brand { margin-bottom: 8px; } .brand p { display: none; }
+  .legend { display: none; }
+  .toolbar { top: 10px; right: 10px; left: 10px; justify-content: flex-end; }
+  .tb-btn .txt { display: none; } .tb-btn { width: 40px; padding: 0; justify-content: center; }
+  .popover { left: 10px; right: 10px; width: auto; top: 58px; }
+  .maplibregl-ctrl-top-right { top: 54px; }
+  .maplibregl-ctrl-bottom-right { bottom: 46vh; }
+}
+</style>
+</head>
+<body>
+<div id="map" role="application" aria-label="Карта станций"></div>
+<div class="loading" id="loading">Загрузка данных…</div>
+
+<aside class="panel" id="panel" aria-label="Поиск и фильтры">
+  <button class="sheet-handle" id="sheetHandle" aria-label="Развернуть или свернуть панель"></button>
+  <div class="panel-head">
+    <div class="brand">
+      <div class="brand-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="13" rx="3"/><path d="M5 10h14M9 20l-2 2M15 20l2 2M8.5 13.5h.01M15.5 13.5h.01"/></svg>
+      </div>
+      <div><h1>Станции 1520</h1><p id="subtitle">Коды ЕСР и координаты</p></div>
+      <div class="spacer"></div>
+      <button class="icon-btn" id="infoBtn" title="О данных" aria-label="О данных">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+      </button>
+    </div>
+    <div class="search" id="searchBox">
+      <svg class="s-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Название, код ЕСР или Экспресс" aria-label="Поиск станции" aria-controls="results">
+      <span class="kbd">/</span>
+      <button class="icon-btn clear" id="qClear" aria-label="Очистить поиск"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+  </div>
+
+  <div class="panel-body" id="panelBody">
+    <div class="browse">
+      <div id="searchResults" hidden>
+        <ul class="results" id="results" role="listbox"></ul>
+      </div>
+      <div id="browseMain">
+        <div class="section">
+          <div class="kpis">
+            <div class="kpi"><b class="mono" id="kTotal">—</b><span>по фильтру</span></div>
+            <div class="kpi"><b class="mono" id="kMap">—</b><span>на карте</span></div>
+            <div class="kpi"><b class="mono" id="kTariff">—</b><span>в ТР №4</span></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Точность координат <button class="link-btn" id="qInfo">что это?</button></div>
+          <div class="chips" id="qualityChips"></div>
+        </div>
+        <div class="section">
+          <div class="section-title">Фильтры <button class="link-btn" id="resetFilters">Сбросить</button></div>
+          <div class="filters-grid" id="dropdowns"></div>
+        </div>
+        <div class="section">
+          <div class="section-title">Операции (ТР №4)</div>
+          <label class="switch-row">В действующем тарифном списке <span class="switch"><input type="checkbox" id="fTariff"><span></span></span></label>
+          <label class="switch-row">Пассажирские операции <span class="switch"><input type="checkbox" id="fPass"><span></span></span></label>
+          <label class="switch-row">Грузовые операции <span class="switch"><input type="checkbox" id="fFreight"><span></span></span></label>
+          <label class="switch-row">Скрыть условные пункты и узлы <span class="switch"><input type="checkbox" id="fVirt" checked><span></span></span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail" id="detail" aria-live="polite"></div>
+  </div>
+</aside>
+
+<div class="toolbar">
+  <button class="tb-btn" id="layersBtn" aria-haspopup="true" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg><span class="txt">Слои</span>
+  </button>
+  <button class="tb-btn" id="exportBtn" aria-haspopup="true" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span class="txt">Выгрузить</span>
+  </button>
+  <button class="tb-btn icon" id="themeBtn" title="Тема" aria-label="Переключить тему">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+  </button>
+</div>
+
+<div class="popover" id="layersPop" role="dialog" aria-label="Слои карты">
+  <h3>Подложка</h3>
+  <div class="bm-grid" id="basemaps"></div>
+  <h3>Железнодорожный слой · OpenRailwayMap</h3>
+  <div class="ov-list" id="overlays"></div>
+</div>
+
+<div class="popover" id="exportPop" role="dialog" aria-label="Выгрузка данных">
+  <h3>Весь справочник</h3>
+  <button class="menu-item" data-export="csv-all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg><span>CSV — все коды ЕСР<small id="exAllCnt"></small></span></button>
+  <button class="menu-item" data-export="xlsx-all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8l8 8M16 8l-8 8"/></svg><span>Excel — все коды ЕСР<small>XLSX, подгружается библиотека SheetJS</small></span></button>
+  <div class="menu-sep"></div>
+  <h3>По текущему фильтру</h3>
+  <button class="menu-item" data-export="csv-filtered"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 8v6l-4-2v-4z"/></svg><span>CSV — отфильтрованные<small id="exFiltCnt"></small></span></button>
+  <button class="menu-item" data-export="xlsx-filtered"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 8v6l-4-2v-4z"/></svg><span>Excel — отфильтрованные</span></button>
+  <button class="menu-item" data-export="geojson-filtered"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/></svg><span>GeoJSON — точки для ГИС<small>QGIS, ArcGIS, kepler.gl</small></span></button>
+</div>
+
+<div class="legend" id="legend">
+  <button class="icon-btn collapse" id="legendToggle" aria-label="Свернуть легенду"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+  <p class="legend-title">Раскраска точек</p>
+  <select id="colorBy" aria-label="Раскраска точек">
+    <option value="q">Точность координат</option>
+    <option value="type">Тип пункта</option>
+    <option value="ops">Операции (ТР №4)</option>
+    <option value="railway">Железная дорога</option>
+    <option value="country">Страна</option>
+  </select>
+  <div class="legend-items" id="legendItems"></div>
+</div>
+
+<div class="modal-bg" id="infoModal" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+  <div class="modal">
+    <h2 id="infoTitle">О данных</h2>
+    <p>Единый справочник станций с кодами ЕСР собран из справочника ЕСР и OpenStreetMap (osm2esr). Дополнительно использованы ТР №4 (тарифный список станций на 30.12.2023), АСУ «Экспресс» и перекодировка станций Крыма.</p>
+    <table id="qTable"></table>
+    <p>Подложки: OpenFreeMap, CARTO, Esri World Imagery, OpenStreetMap; ж/д слой — OpenRailwayMap (CC-BY-SA). Данные карты © участники OpenStreetMap.</p>
+    <p id="builtAt"></p>
+    <button class="tb-btn" id="infoClose" style="box-shadow:none">Закрыть</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+"use strict";
+const RAW = /*__DATA__*/null;
+// настройки интерфейса; в приватном режиме localStorage может быть недоступен
+const store = {
+  get: k => { try { return localStorage.getItem("st1520." + k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem("st1520." + k, v); } catch {} },
+};
+
+/* ================= данные ================= */
+const QUALITY = {
+  A: { label: "A — подтверждено", color: "#2463eb", hint: "Точка OSM подтверждена: привязка, название и соседи по коду сходятся" },
+  B: { label: "B — вероятно", color: "#0ea5b7", hint: "Пройдены 2 из 3 проверок или выбрано из дублей с уверенным отрывом" },
+  C: { label: "C — сомнительно", color: "#e11d48", hint: "Неподтверждённая привязка, другое название или неоднозначные дубли" },
+  D: { label: "D — по связанному коду", color: "#f59e0b", hint: "Координаты основного кода станции, второго кода (Крым) или одноимённой станции" },
+  E: { label: "E — приблизительно", color: "#94a3b8", hint: "Интерполяция между соседними кодами или транзитный пункт; точность ±10 км и хуже" },
+};
+const PASS_OPS = { "П": "билеты на все поезда, багаж", "Б": "билеты на все поезда, без багажа", "О": "пригородные и местные поезда", "Х": "операции не производятся", "К": "контрейлерные отправки" };
+const TYPE_COLORS = { "станция": "#2463eb", "остановочный пункт": "#16a34a", "разъезд": "#f59e0b", "обгонный пункт": "#db2777", "блок-пост": "#7c3aed", "путевой пост": "#9333ea", "пост": "#a855f7", "условный пункт": "#64748b" };
+const OPS_CLASSES = [
+  ["both", "Пассажирские и грузовые", "#7c3aed"], ["pass", "Только пассажирские", "#16a34a"],
+  ["freight", "Только грузовые", "#ea580c"], ["none", "Без операций (Х)", "#64748b"], ["out", "Нет в ТР №4", "#cbd5e1"],
+];
+
+function decode(raw) {
+  const n = raw.columns[0].length, out = new Array(n);
+  const F = raw.fields, K = raw.kinds;
+  for (let i = 0; i < n; i++) {
+    const o = { i };
+    for (let f = 0; f < F.length; f++) {
+      let v = raw.columns[f][i];
+      if (K[f] === "d") v = raw.dicts[F[f]][v];
+      else if (K[f] === "b") v = v === 1;
+      o[F[f]] = v;
+    }
+    o.has = o.lat !== null && o.lon !== null;
+    o.ops = !o.tariff ? "out" : (o.pops && "ПБО".includes(o.pops)) ? (o.fops ? "both" : "pass") : (o.fops ? "freight" : "none");
+    o.key = norm(o.name) + " " + norm(o.exname) + " " + norm(o.former) + " " + norm(o.osmname);
+    out[i] = o;
+  }
+  return out;
+}
+function norm(s) { return (s || "").toLowerCase().replace(/ё/g, "е").replace(/[^0-9a-zа-я]+/g, " ").trim(); }
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = n => n.toLocaleString("ru-RU");
+const $ = id => document.getElementById(id);
+
+const S = decode(RAW);
+const BY_ESR = new Map(S.map(s => [s.esr, s]));
+
+/* ================= состояние ================= */
+const state = {
+  quality: new Set(Object.keys(QUALITY)),
+  sets: { country: new Set(), railway: new Set(), region: new Set(), type: new Set() },
+  tariff: false, pass: false, freight: false, hideVirt: true,
+  colorBy: "q", selected: null,
+};
+let filtered = S;
+
+function passes(s, skip) {
+  if (state.hideVirt && s.virt) return false;
+  if (state.tariff && !s.tariff) return false;
+  if (state.pass && !(s.ops === "both" || s.ops === "pass")) return false;
+  if (state.freight && !(s.ops === "both" || s.ops === "freight")) return false;
+  for (const k in state.sets) if (k !== skip && state.sets[k].size && !state.sets[k].has(s[k] || "—")) return false;
+  if (skip !== "q" && s.has && !state.quality.has(s.q)) return false;
+  return true;
+}
+
+/* ================= цвета ================= */
+const hashColor = (() => {
+  const cache = new Map();
+  return key => {
+    if (!cache.has(key)) {
+      const h = (cache.size * 137.508) % 360;
+      cache.set(key, `hsl(${h.toFixed(0)} 62% 48%)`);
+    }
+    return cache.get(key);
+  };
+})();
+// стабильный порядок цветов для дорог/стран — по убыванию числа станций
+for (const k of ["railway", "country"]) {
+  const cnt = {};
+  S.forEach(s => cnt[s[k] || "—"] = (cnt[s[k] || "—"] || 0) + 1);
+  Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]).forEach(v => hashColor(k + v));
+}
+function colorOf(s, by = state.colorBy) {
+  if (by === "q") return QUALITY[s.q]?.color || "#999";
+  if (by === "type") return TYPE_COLORS[s.type] || "#94a3b8";
+  if (by === "ops") return OPS_CLASSES.find(c => c[0] === s.ops)[2];
+  return hashColor(by + (s[by] || "—"));
+}
+const Q_ORDER = { A: 5, B: 4, D: 3, C: 2, E: 1 };
+
+/* ================= карта ================= */
+const OFM = "https://tiles.openfreemap.org/styles/";
+const BASEMAPS = {
+  positron: { label: "Светлая", url: OFM + "positron", sw: "linear-gradient(135deg,#f2f2ef,#dfe6ea)" },
+  liberty: { label: "Подробная", url: OFM + "liberty", sw: "linear-gradient(135deg,#e9e4d8,#b9d7a8 55%,#9cc3e6)" },
+  dark: { label: "Тёмная", url: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json", sw: "linear-gradient(135deg,#1b1f27,#2f3642)" },
+  satellite: { label: "Спутник", raster: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr: "Esri, Maxar, Earthstar Geographics", sw: "linear-gradient(135deg,#3d5a3a,#7b6f4f 60%,#2f4a5c)" },
+  osm: { label: "OSM", raster: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", attr: "© участники OpenStreetMap", sw: "linear-gradient(135deg,#f2efe9,#aad3df 50%,#cdebb0)" },
+  none: { label: "Без подложки", sw: "repeating-linear-gradient(45deg,var(--hover) 0 6px,var(--panel-solid) 6px 12px)" },
+};
+const ORM = "https://{s}.tiles.openrailwaymap.org/";
+const OVERLAYS = {
+  off: { label: "Выключен" },
+  standard: { label: "Инфраструктура", hint: "пути, станции, стрелки, сигналы" },
+  maxspeed: { label: "Максимальная скорость", hint: "допустимые скорости на участках" },
+  electrification: { label: "Электрификация", hint: "род тока и напряжение" },
+  gauge: { label: "Ширина колеи", hint: "1520 / 1435 / узкая колея" },
+};
+const darkPref = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+let basemap = store.get("basemap") || (darkPref() ? "dark" : "positron");
+let overlay = store.get("overlay") || "off";
+if (!BASEMAPS[basemap]) basemap = "positron";
+if (!OVERLAYS[overlay]) overlay = "off";
+
+function blankStyle() {
+  return { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": darkPref() ? "#0f1115" : "#eef0f2" } }] };
+}
+function rasterStyle(b) {
+  return { version: 8, sources: { base: { type: "raster", tiles: [b.raster], tileSize: 256, maxzoom: 19, attribution: b.attr } },
+    layers: [{ id: "base", type: "raster", source: "base" }] };
+}
+async function loadStyle(key) {
+  const b = BASEMAPS[key];
+  if (key === "none") return blankStyle();
+  if (b.raster) return rasterStyle(b);
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 8000);
+    const r = await fetch(b.url, { signal: ctl.signal });
+    clearTimeout(t);
+    if (!r.ok) throw new Error(r.status);
+    return await r.json();
+  } catch (e) {
+    toast("Подложка «" + b.label + "» недоступна — показана пустая");
+    return blankStyle();
+  }
+}
+
+const map = new maplibregl.Map({
+  container: "map", style: blankStyle(), bounds: [[19, 36], [146, 70]],
+  fitBoundsOptions: { padding: { left: innerWidth > 720 ? 410 : 20, right: 40, top: 40, bottom: innerWidth > 720 ? 40 : 200 } },
+  attributionControl: false, maxPitch: 0, dragRotate: false, hash: false,
+});
+map.touchZoomRotate.disableRotation();
+map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: "Справочник: ЕСР, OSM, ТР №4" }), "bottom-right");
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: false } }), "top-right");
+map.addControl(new maplibregl.FullscreenControl(), "top-right");
+map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
+
+function stationFeatures() {
+  const feats = [];
+  for (const s of filtered) {
+    if (!s.has) continue;
+    feats.push({ type: "Feature", id: s.i, geometry: { type: "Point", coordinates: [s.lon, s.lat] },
+      properties: { i: s.i, c: colorOf(s), k: Q_ORDER[s.q] || 0, e: s.q === "E" ? 1 : 0 } });
+  }
+  return { type: "FeatureCollection", features: feats };
+}
+
+function addStationLayers() {
+  const dark = basemap === "dark" || basemap === "satellite";
+  if (overlay !== "off") {
+    map.addSource("orm", { type: "raster", tiles: ["a", "b", "c"].map(s => ORM.replace("{s}", s) + overlay + "/{z}/{x}/{y}.png"),
+      tileSize: 256, maxzoom: 19, attribution: '<a href="https://www.openrailwaymap.org/">OpenRailwayMap</a>' });
+    map.addLayer({ id: "orm", type: "raster", source: "orm", paint: { "raster-opacity": 0.85 } });
+  }
+  map.addSource("st", { type: "geojson", data: stationFeatures() });
+  map.addSource("sel", { type: "geojson", data: emptyFC() });
+  map.addLayer({ id: "sel-prec", type: "fill", source: "sel", filter: ["==", ["geometry-type"], "Polygon"],
+    paint: { "fill-color": "#2463eb", "fill-opacity": 0.08 } });
+  map.addLayer({ id: "sel-prec-line", type: "line", source: "sel", filter: ["==", ["geometry-type"], "Polygon"],
+    paint: { "line-color": "#2463eb", "line-width": 1.5, "line-dasharray": [2, 2] } });
+  map.addLayer({ id: "st", type: "circle", source: "st", layout: { "circle-sort-key": ["get", "k"] }, paint: {
+    "circle-color": ["get", "c"],
+    "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 1.7, 6, 2.6, 9, 4, 12, 6, 15, 8],
+    "circle-opacity": ["case", ["==", ["get", "e"], 1], 0.6, 0.92],
+    "circle-stroke-width": ["interpolate", ["linear"], ["zoom"],
+      5, ["case", ["boolean", ["feature-state", "hover"], false], 2.5, 0],
+      8, ["case", ["boolean", ["feature-state", "hover"], false], 2.5, 1]],
+    "circle-stroke-color": ["case", ["boolean", ["feature-state", "hover"], false], dark ? "#fff" : "#111", dark ? "rgba(0,0,0,.6)" : "rgba(255,255,255,.9)"],
+  } });
+  map.addLayer({ id: "sel-pt", type: "circle", source: "sel", filter: ["==", ["geometry-type"], "Point"], paint: {
+    "circle-radius": 9, "circle-color": "rgba(0,0,0,0)", "circle-stroke-width": 3, "circle-stroke-color": "#2463eb" } });
+  if (state.selected) drawSelection(state.selected);
+}
+const emptyFC = () => ({ type: "FeatureCollection", features: [] });
+
+async function setBasemap(key) {
+  basemap = key; store.set("basemap", key);
+  const style = await loadStyle(key);
+  map.setStyle(style, { diff: false });
+  map.once("style.load", addStationLayers);
+  renderLayersPop();
+}
+function setOverlay(key) {
+  overlay = key; store.set("overlay", key);
+  if (map.getLayer("orm")) map.removeLayer("orm");
+  if (map.getSource("orm")) map.removeSource("orm");
+  if (key !== "off") {
+    map.addSource("orm", { type: "raster", tiles: ["a", "b", "c"].map(s => ORM.replace("{s}", s) + key + "/{z}/{x}/{y}.png"),
+      tileSize: 256, maxzoom: 19, attribution: '<a href="https://www.openrailwaymap.org/">OpenRailwayMap</a>' });
+    map.addLayer({ id: "orm", type: "raster", source: "orm", paint: { "raster-opacity": 0.85 } }, "sel-prec");
+  }
+  renderLayersPop();
+}
+
+/* наведение и клик */
+let hoverId = null;
+const tip = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 10, maxWidth: "280px" });
+map.on("mousemove", "st", e => {
+  const f = e.features[0]; if (!f) return;
+  map.getCanvas().style.cursor = "pointer";
+  if (hoverId !== null) map.setFeatureState({ source: "st", id: hoverId }, { hover: false });
+  hoverId = f.id; map.setFeatureState({ source: "st", id: hoverId }, { hover: true });
+  const s = S[f.properties.i];
+  tip.setLngLat([s.lon, s.lat]).setHTML(`<div class="tip"><b>${esc(s.name)}</b><br><span class="mono">${s.esr}</span> <span>· ${esc(s.type || "")}</span></div>`).addTo(map);
+});
+map.on("mouseleave", "st", () => {
+  map.getCanvas().style.cursor = "";
+  if (hoverId !== null) map.setFeatureState({ source: "st", id: hoverId }, { hover: false });
+  hoverId = null; tip.remove();
+});
+map.on("click", e => {
+  const pad = 6, p = e.point;
+  const fs = map.getLayer("st") ? map.queryRenderedFeatures([[p.x - pad, p.y - pad], [p.x + pad, p.y + pad]], { layers: ["st"] }) : [];
+  if (!fs.length) return;
+  let best = fs[0], bd = Infinity;
+  for (const f of fs) { const q = map.project(f.geometry.coordinates); const d = (q.x - p.x) ** 2 + (q.y - p.y) ** 2; if (d < bd) { bd = d; best = f; } }
+  selectStation(S[best.properties.i], { fly: false });
+});
+
+/* подписи станций (DOM, чтобы кириллица не зависела от шрифтов подложки) */
+let labelMarkers = [];
+function updateLabels() {
+  labelMarkers.forEach(m => m.remove()); labelMarkers = [];
+  if (!map.getLayer("st") || map.getZoom() < 10.5) return;
+  const fs = map.queryRenderedFeatures({ layers: ["st"] });
+  fs.sort((a, b) => b.properties.k - a.properties.k);
+  // занятые панелью и легендой области — подписи там не нужны
+  const boxes = ["panel", "legend"].map(id => $(id).getBoundingClientRect()).filter(r => r.width)
+    .map(r => [r.left, r.top, r.right, r.bottom]), seen = new Set();
+  for (const f of fs) {
+    const s = S[f.properties.i];
+    if (seen.has(s.i)) continue; seen.add(s.i);
+    const p = map.project([s.lon, s.lat]);
+    const w = s.name.length * 6.6 + 10, box = [p.x + 6, p.y - 9, p.x + 6 + w, p.y + 9];
+    if (boxes.some(b => !(box[2] < b[0] || box[0] > b[2] || box[3] < b[1] || box[1] > b[3]))) continue;
+    boxes.push(box);
+    const el = document.createElement("div"); el.className = "st-label"; el.textContent = s.name;
+    labelMarkers.push(new maplibregl.Marker({ element: el, anchor: "left", offset: [9, 0] }).setLngLat([s.lon, s.lat]).addTo(map));
+    if (labelMarkers.length >= 250) break;
+  }
+}
+map.on("moveend", updateLabels);
+
+/* ================= фильтры ================= */
+function applyFilters() {
+  filtered = S.filter(s => passes(s));
+  if (map.getSource("st")) map.getSource("st").setData(stationFeatures());
+  const onMap = filtered.reduce((a, s) => a + (s.has ? 1 : 0), 0);
+  $("kTotal").textContent = fmt(filtered.length);
+  $("kMap").textContent = fmt(onMap);
+  $("kTariff").textContent = fmt(filtered.reduce((a, s) => a + (s.tariff ? 1 : 0), 0));
+  $("exFiltCnt").textContent = fmt(filtered.length) + " записей";
+  renderQualityChips(); renderLegend(); renderDropdownLabels();
+  if (!$("q").value) $("searchResults").hidden = true;
+  else runSearch();
+  setTimeout(updateLabels, 50);
+}
+
+function renderQualityChips() {
+  const cnt = {}; S.forEach(s => { if (s.has && passes(s, "q")) cnt[s.q] = (cnt[s.q] || 0) + 1; });
+  $("qualityChips").innerHTML = Object.entries(QUALITY).map(([k, v]) =>
+    `<button class="chip" data-q="${k}" aria-pressed="${state.quality.has(k)}" title="${esc(v.hint)}"><span class="dot" style="background:${v.color}"></span>${k}<span class="cnt mono">${fmt(cnt[k] || 0)}</span></button>`).join("");
+}
+$("qualityChips").addEventListener("click", e => {
+  const b = e.target.closest("[data-q]"); if (!b) return;
+  const k = b.dataset.q;
+  state.quality.has(k) ? state.quality.delete(k) : state.quality.add(k);
+  applyFilters();
+});
+
+const DD = [
+  { key: "country", label: "Страна", search: false },
+  { key: "railway", label: "Дорога", search: true },
+  { key: "region", label: "Регион", search: true },
+  { key: "type", label: "Тип пункта", search: false },
+];
+function buildDropdowns() {
+  $("dropdowns").innerHTML = DD.map(d => `
+    <div class="dd" data-dd="${d.key}">
+      <button class="dd-btn" aria-haspopup="listbox" aria-expanded="false"><span class="lbl">${d.label}</span><span class="val">Все</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div class="dd-menu">${d.search ? '<input type="search" placeholder="Найти…" aria-label="Поиск в списке">' : ""}
+        <div class="dd-list" role="listbox"></div>
+        <div class="dd-foot"><button class="link-btn" data-act="clear">Очистить</button><button class="link-btn" data-act="close">Готово</button></div>
+      </div>
+    </div>`).join("");
+  document.querySelectorAll(".dd").forEach(dd => {
+    const key = dd.dataset.dd;
+    const btn = dd.querySelector(".dd-btn"), list = dd.querySelector(".dd-list"), inp = dd.querySelector("input[type=search]");
+    const render = () => {
+      const cnt = {}; S.forEach(s => { if (passes(s, key)) { const v = s[key] || "—"; cnt[v] = (cnt[v] || 0) + 1; } });
+      state.sets[key].forEach(v => cnt[v] = cnt[v] || 0);
+      const f = norm(inp?.value || "");
+      list.innerHTML = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || a.localeCompare(b, "ru"))
+        .filter(v => !f || norm(v).includes(f))
+        .map(v => `<label class="dd-item"><input type="checkbox" value="${esc(v)}" ${state.sets[key].has(v) ? "checked" : ""}><span class="t">${esc(v)}</span><span class="c mono">${fmt(cnt[v])}</span></label>`).join("")
+        || '<div class="empty" style="padding:12px">Ничего не найдено</div>';
+    };
+    btn.addEventListener("click", () => {
+      const open = !dd.classList.contains("open");
+      document.querySelectorAll(".dd.open").forEach(x => { x.classList.remove("open"); x.querySelector(".dd-btn").setAttribute("aria-expanded", "false"); });
+      if (open) { dd.classList.add("open"); btn.setAttribute("aria-expanded", "true"); render(); inp?.focus(); }
+    });
+    inp?.addEventListener("input", render);
+    list.addEventListener("change", e => {
+      const v = e.target.value;
+      e.target.checked ? state.sets[key].add(v) : state.sets[key].delete(v);
+      applyFilters();
+    });
+    dd.querySelector('[data-act="clear"]').addEventListener("click", () => { state.sets[key].clear(); applyFilters(); render(); });
+    dd.querySelector('[data-act="close"]').addEventListener("click", () => { dd.classList.remove("open"); btn.setAttribute("aria-expanded", "false"); });
+  });
+}
+function renderDropdownLabels() {
+  DD.forEach(d => {
+    const set = state.sets[d.key], el = document.querySelector(`[data-dd="${d.key}"] .val`);
+    el.textContent = !set.size ? "Все" : set.size === 1 ? [...set][0] : `Выбрано: ${set.size}`;
+  });
+}
+document.addEventListener("click", e => {
+  if (!e.target.closest(".dd")) document.querySelectorAll(".dd.open").forEach(x => x.classList.remove("open"));
+  if (!e.target.closest(".popover") && !e.target.closest("#layersBtn") && !e.target.closest("#exportBtn")) closePops();
+});
+[["fTariff", "tariff"], ["fPass", "pass"], ["fFreight", "freight"], ["fVirt", "hideVirt"]].forEach(([id, k]) =>
+  $(id).addEventListener("change", e => { state[k] = e.target.checked; applyFilters(); }));
+$("resetFilters").addEventListener("click", () => {
+  Object.values(state.sets).forEach(s => s.clear());
+  state.quality = new Set(Object.keys(QUALITY));
+  state.tariff = state.pass = state.freight = false; state.hideVirt = true;
+  $("fTariff").checked = $("fPass").checked = $("fFreight").checked = false; $("fVirt").checked = true;
+  applyFilters();
+});
+
+/* ================= легенда ================= */
+function renderLegend() {
+  const by = state.colorBy, cnt = new Map();
+  filtered.forEach(s => { if (!s.has) return; const k = by === "q" ? s.q : by === "ops" ? s.ops : (s[by] || "—"); cnt.set(k, (cnt.get(k) || 0) + 1); });
+  let items;
+  if (by === "q") items = Object.entries(QUALITY).map(([k, v]) => [v.label, v.color, cnt.get(k) || 0]);
+  else if (by === "ops") items = OPS_CLASSES.map(([k, l, c]) => [l, c, cnt.get(k) || 0]);
+  else if (by === "type") items = [...cnt.keys()].map(k => [k, TYPE_COLORS[k] || "#94a3b8", cnt.get(k)]);
+  else items = [...cnt.keys()].map(k => [k, hashColor(by + k), cnt.get(k)]);
+  if (by !== "q" && by !== "ops") items.sort((a, b) => b[2] - a[2]);
+  $("legendItems").innerHTML = items.map(([l, c, n]) =>
+    `<div class="legend-item"><span class="dot" style="background:${c}"></span><span class="t" title="${esc(l)}">${esc(l)}</span><span class="c mono">${fmt(n)}</span></div>`).join("");
+}
+$("colorBy").addEventListener("change", e => {
+  state.colorBy = e.target.value; store.set("colorBy", state.colorBy);
+  if (map.getSource("st")) map.getSource("st").setData(stationFeatures());
+  renderLegend();
+});
+$("legendToggle").addEventListener("click", () => $("legend").classList.toggle("min"));
+
+/* ================= поиск ================= */
+let activeIdx = -1, lastResults = [];
+function search(q) {
+  const raw = q.trim(); if (!raw) return [];
+  const digits = raw.replace(/\s/g, "");
+  const res = [];
+  if (/^\d{2,}$/.test(digits)) {
+    for (const s of S) {
+      let r = 0;
+      if (s.esr === digits || s.express === digits) r = 100;
+      else if (s.esr.startsWith(digits)) r = 80;
+      else if (s.express && s.express.startsWith(digits)) r = 60;
+      else if (s.crold === digits || s.crnew === digits || s.dup === digits) r = 50;
+      if (r) res.push([r + (s.has ? 1 : 0), s]);
+    }
+  }
+  const nq = norm(raw);
+  if (nq && res.length < 200) {
+    const words = nq.split(" ");
+    for (const s of S) {
+      const nn = norm(s.name);
+      let r = 0;
+      if (nn === nq) r = 95;
+      else if (nn.startsWith(nq)) r = 85;
+      else if (words.every(w => (" " + nn).includes(" " + w))) r = 70;
+      else if (words.every(w => s.key.includes(w))) r = 45;
+      if (r) res.push([r + (s.tariff ? 2 : 0) + (s.has ? 1 : 0) + (s.type === "станция" ? 1 : 0), s]);
+    }
+  }
+  const seen = new Set();
+  return res.sort((a, b) => b[0] - a[0] || a[1].name.length - b[1].name.length)
+    .filter(([, s]) => !seen.has(s.i) && seen.add(s.i)).slice(0, 60).map(x => x[1]);
+}
+function highlight(name, q) {
+  const nq = norm(q); if (!nq) return esc(name);
+  const lower = name.toLowerCase().replace(/ё/g, "е"); const i = lower.indexOf(nq.split(" ")[0]);
+  if (i < 0) return esc(name);
+  const L = nq.split(" ")[0].length;
+  return esc(name.slice(0, i)) + "<mark>" + esc(name.slice(i, i + L)) + "</mark>" + esc(name.slice(i + L));
+}
+function runSearch() {
+  const q = $("q").value;
+  $("searchBox").classList.toggle("has-text", !!q);
+  if (!q.trim()) { $("searchResults").hidden = true; $("browseMain").hidden = false; return; }
+  lastResults = search(q); activeIdx = lastResults.length ? 0 : -1;
+  $("searchResults").hidden = false; $("browseMain").hidden = true;
+  $("results").innerHTML = lastResults.length ? lastResults.map((s, j) => `
+    <li class="res${j === activeIdx ? " active" : ""}" role="option" data-i="${s.i}" id="r${j}">
+      <span class="dot" style="background:${s.has ? colorOf(s, "q") : "transparent"};${s.has ? "" : "border:1.5px dashed var(--faint)"}"></span>
+      <div class="main"><div class="nm">${highlight(s.name, q)}</div>
+        <div class="sub">${esc([s.type, s.railway || s.country, s.region].filter(Boolean).join(" · "))}${s.has ? "" : ' · <span class="badge">нет координат</span>'}</div></div>
+      <span class="code mono">${s.esr}</span></li>`).join("")
+    : `<div class="empty">Ничего не найдено.<br><small>Попробуйте часть названия или 6-значный код ЕСР</small></div>`;
+}
+$("q").addEventListener("input", () => { if ($("panel").classList.contains("show-detail")) closeDetail(false); runSearch(); });
+$("q").addEventListener("keydown", e => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault(); if (!lastResults.length) return;
+    activeIdx = (activeIdx + (e.key === "ArrowDown" ? 1 : -1) + lastResults.length) % lastResults.length;
+    document.querySelectorAll(".res").forEach((el, j) => el.classList.toggle("active", j === activeIdx));
+    $("r" + activeIdx)?.scrollIntoView({ block: "nearest" });
+  } else if (e.key === "Enter" && activeIdx >= 0) { selectStation(lastResults[activeIdx]); }
+  else if (e.key === "Escape") { $("q").value = ""; runSearch(); $("q").blur(); }
+});
+$("results").addEventListener("click", e => { const li = e.target.closest(".res"); if (li) selectStation(S[+li.dataset.i]); });
+$("qClear").addEventListener("click", () => { $("q").value = ""; runSearch(); $("q").focus(); });
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); $("q").focus(); $("q").select(); setSheet("expanded"); }
+  if (e.key === "Escape") { closePops(); $("infoModal").classList.remove("open"); if ($("panel").classList.contains("show-detail") && document.activeElement !== $("q")) closeDetail(); }
+});
+
+/* ================= карточка станции ================= */
+function distKm(a, b) {
+  const R = 6371, r = Math.PI / 180, dLa = (b.lat - a.lat) * r, dLo = (b.lon - a.lon) * r;
+  const h = Math.sin(dLa / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLo / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function nearest(s, n = 6) {
+  if (!s.has) return [];
+  const best = [];
+  for (const o of S) {
+    if (!o.has || o.i === s.i || Math.abs(o.lat - s.lat) > 1 || o.virt) continue;
+    const d = distKm(s, o);
+    if (best.length < n || d < best[best.length - 1][0]) { best.push([d, o]); best.sort((a, b) => a[0] - b[0]); if (best.length > n) best.pop(); }
+  }
+  return best;
+}
+function circlePoly(lon, lat, km) {
+  const pts = [], R = 6371;
+  for (let k = 0; k <= 64; k++) {
+    const t = k / 64 * 2 * Math.PI;
+    pts.push([lon + (km / R) * Math.sin(t) / Math.cos(lat * Math.PI / 180) * 180 / Math.PI, lat + (km / R) * Math.cos(t) * 180 / Math.PI]);
+  }
+  return { type: "Feature", geometry: { type: "Polygon", coordinates: [pts] }, properties: {} };
+}
+function drawSelection(s) {
+  const src = map.getSource("sel"); if (!src) return;
+  if (!s || !s.has) return src.setData(emptyFC());
+  const feats = [{ type: "Feature", geometry: { type: "Point", coordinates: [s.lon, s.lat] }, properties: {} }];
+  if (s.prec && s.prec >= 2) feats.unshift(circlePoly(s.lon, s.lat, s.prec));
+  src.setData({ type: "FeatureCollection", features: feats });
+}
+const ICON = {
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>',
+  link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/></svg>',
+  ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+  rail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3 5 21M16 3l3 18M6.5 8h11M5.8 14h12.4"/></svg>',
+};
+function row(k, v) { return v || v === 0 ? `<dt>${k}</dt><dd>${v}</dd>` : ""; }
+function stationLink(code) { const o = BY_ESR.get(code); return o ? `<a href="#esr=${code}" data-goto="${code}" class="mono">${code}</a> ${esc(o.name)}` : `<span class="mono">${code}</span>`; }
+
+function selectStation(s, { fly = true, push = true } = {}) {
+  state.selected = s;
+  const q = QUALITY[s.q];
+  const coords = s.has ? `${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}` : "";
+  const near = nearest(s);
+  const cityName = s.excity ? s.excity.replace(/^\d+\s*/, "") : "";
+  $("detail").innerHTML = `
+    <div class="d-top"><button class="icon-btn" id="dBack" aria-label="Назад к списку">${ICON.back}</button>
+      <span style="flex:1"></span>
+      ${s.tariff ? '<span class="badge" title="Станция есть в Тарифном руководстве №4">ТР №4</span>' : ""}
+      ${s.virt ? '<span class="badge">условный пункт</span>' : ""}</div>
+    <div class="d-head">
+      <h2>${esc(s.name)}</h2>
+      <div class="sub">${esc([s.type, s.railway && s.railway + " ж. д.", s.country].filter(Boolean).join(" · "))}</div>
+      <div class="codes">
+        <button class="code-pill" data-copy="${s.esr}" title="Скопировать"><small>ЕСР</small><b class="mono">${s.esr}</b></button>
+        ${s.express ? `<button class="code-pill" data-copy="${s.express}" title="Скопировать"><small>Экспресс</small><b class="mono">${s.express}</b></button>` : ""}
+        ${coords ? `<button class="code-pill" data-copy="${coords}" title="Скопировать координаты"><small>Коорд.</small><span class="mono">${coords}</span></button>` : ""}
+      </div>
+    </div>
+    <div class="actions">
+      <button class="act" data-act="share">${ICON.link}Ссылка</button>
+      ${s.has ? `<button class="act" data-act="zoom">${ICON.pin}Приблизить</button>
+      <a class="act" target="_blank" rel="noopener" href="https://yandex.ru/maps/?pt=${s.lon},${s.lat}&z=15&l=map">${ICON.ext}Яндекс</a>
+      <a class="act" target="_blank" rel="noopener" href="https://www.openrailwaymap.org/?lat=${s.lat}&lon=${s.lon}&zoom=15">${ICON.rail}ORM</a>` : ""}
+    </div>
+    <div class="section">
+      <div class="section-title">Координаты</div>
+      ${s.has ? `<div class="qbox"><span class="dot" style="background:${q.color}"></span><div><b>${q.label}</b>${s.prec ? ` · точность ±${s.prec} км` : ""}
+        <div class="note">${esc(s.qnote || q.hint)}</div>
+        ${s.tconf ? '<div class="note" style="color:var(--danger)">Противоречит тарифным расстояниям ТР №4</div>' : ""}
+        ${s.osm ? `<div class="note"><a target="_blank" rel="noopener" href="https://www.openstreetmap.org/${s.osmtype || "node"}/${s.osm}">Объект OSM ${s.osm}</a>${s.osmname && s.osmname !== s.name ? " · «" + esc(s.osmname) + "»" : ""}</div>` : ""}</div></div>`
+      : `<div class="qbox"><span class="dot" style="border:1.5px dashed var(--faint)"></span><div><b>Координат нет</b><div class="note">Станция есть в справочнике ЕСР, но надёжно определить её положение не удалось</div></div></div>`}
+    </div>
+    <div class="section">
+      <div class="section-title">Справочник</div>
+      <dl class="kv">
+        ${row("Страна", esc(s.country))}${row("Регион", esc(s.region))}${row("Дорога", esc(s.railway))}${row("Отделение", esc(s.division))}
+        ${row("Тип пункта", esc(s.type))}${row("Код ЕСР (5 зн.)", `<span class="mono">${s.esr.slice(0, 5)}</span>`)}
+        ${row("Основной код", s.dup ? stationLink(s.dup) : "")}
+        ${row("Старый код (Крым)", s.crold ? stationLink(s.crold) : "")}${row("Новый код (Крым)", s.crnew ? stationLink(s.crnew) : "")}
+        ${row("Экспресс", s.exname ? esc(s.exname) + (cityName ? ` <span class="badge">${esc(cityName)}</span>` : "") : "")}
+        ${row("Бывшее название", esc(s.former))}
+        ${row("Достроено", s.inferred ? esc(s.inferred) + " — по соседним станциям" : "")}
+      </dl>
+    </div>
+    ${s.tariff ? `<div class="section">
+      <div class="section-title">Тарифное руководство №4</div>
+      <dl class="kv">
+        ${row("Владелец", esc(s.owner))}
+        ${row("Пассажирские", s.pops ? `<b>${esc(s.pops)}</b> — ${esc(PASS_OPS[s.pops] || "")}` : "не производятся")}
+        ${row("Грузовые (§)", s.fops ? `<span class="mono">${esc(s.fops)}</span>` : "не производятся")}
+        ${row("Транзитный пункт", s.transit ? `${esc(s.transit)}${s.transitkm !== null ? ` · ${s.transitkm} км` : ""}` : "")}
+        ${row("Комментарий", esc(s.comment))}
+      </dl></div>` : ""}
+    ${near.length ? `<div class="section"><div class="section-title">Рядом</div><ul class="near">
+      ${near.map(([d, o]) => `<li data-goto="${o.esr}"><span class="dot" style="background:${colorOf(o, "q")}"></span><span class="n">${esc(o.name)}</span><span class="d mono">${d < 1 ? Math.round(d * 1000) + " м" : d.toFixed(1) + " км"}</span></li>`).join("")}
+    </ul></div>` : ""}`;
+  $("panel").classList.add("show-detail");
+  $("panelBody").scrollTop = 0;
+  setSheet("mid");
+  drawSelection(s);
+  if (push) history.replaceState(null, "", "#esr=" + s.esr);
+  if (s.has && fly) {
+    const z = Math.max(map.getZoom(), s.prec && s.prec >= 10 ? 10 : 13);
+    map.flyTo({ center: [s.lon, s.lat], zoom: z, padding: mapPadding(), speed: 1.6, essential: true });
+  } else if (!s.has) toast("У этой станции нет координат");
+}
+function mapPadding() {
+  return innerWidth > 720 ? { left: 400, right: 0, top: 0, bottom: 0 } : { left: 0, right: 0, top: 0, bottom: innerHeight * 0.46 };
+}
+function closeDetail(clearHash = true) {
+  $("panel").classList.remove("show-detail");
+  state.selected = null; drawSelection(null);
+  if (clearHash) history.replaceState(null, "", location.pathname + location.search);
+}
+$("detail").addEventListener("click", e => {
+  if (e.target.closest("#dBack")) return closeDetail();
+  const cp = e.target.closest("[data-copy]"); if (cp) return copy(cp.dataset.copy);
+  const g = e.target.closest("[data-goto]"); if (g) { e.preventDefault(); return selectStation(BY_ESR.get(g.dataset.goto)); }
+  const a = e.target.closest("[data-act]"); if (!a) return;
+  if (a.dataset.act === "share") copy(location.href.split("#")[0] + "#esr=" + state.selected.esr, "Ссылка скопирована");
+  if (a.dataset.act === "zoom") map.flyTo({ center: [state.selected.lon, state.selected.lat], zoom: 15, padding: mapPadding() });
+});
+async function copy(text, msg = "Скопировано") {
+  try { await navigator.clipboard.writeText(text); toast(msg); }
+  catch { const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); toast(msg); }
+}
+
+/* ================= выгрузка ================= */
+const EXPORT_COLS = [
+  ["esr", "Код ЕСР"], ["name", "Название"], ["type", "Тип пункта"], ["lat", "Широта"], ["lon", "Долгота"],
+  ["q", "Качество координат"], ["prec", "Точность, км"], ["qsrc", "Источник координат"],
+  ["country", "Страна"], ["region", "Регион"], ["railway", "Железная дорога"], ["division", "Отделение"],
+  ["express", "Код Экспресс"], ["exname", "Название Экспресс"], ["dup", "Основной код"],
+  ["crold", "Старый код (Крым)"], ["crnew", "Новый код (Крым)"], ["tariff", "В ТР №4"], ["owner", "Владелец (ТР №4)"],
+  ["pops", "Пасс. операции"], ["fops", "Груз. операции (§)"], ["transit", "Транзитный пункт"], ["transitkm", "До транзитного пункта, км"],
+  ["former", "Бывшее название"], ["osm", "OSM id"],
+];
+function cell(s, k) {
+  const v = s[k];
+  if (v === null || v === undefined) return "";
+  if (typeof v === "boolean") return v ? "да" : "нет";
+  return v;
+}
+function download(name, blob) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function exportCSV(rows, name) {
+  const q = v => { const s = String(v); return /[;"\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const lines = [EXPORT_COLS.map(c => c[1]).join(";")];
+  for (const s of rows) lines.push(EXPORT_COLS.map(([k]) => q(cell(s, k))).join(";"));
+  download(name + ".csv", new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" }));
+}
+function exportGeoJSON(rows, name) {
+  const fc = { type: "FeatureCollection", features: rows.filter(s => s.has).map(s => ({ type: "Feature",
+    geometry: { type: "Point", coordinates: [s.lon, s.lat] },
+    properties: Object.fromEntries(EXPORT_COLS.filter(([k]) => k !== "lat" && k !== "lon").map(([k]) => [k, s[k] ?? null])) })) };
+  download(name + ".geojson", new Blob([JSON.stringify(fc)], { type: "application/geo+json" }));
+}
+async function exportXLSX(rows, name) {
+  toast("Готовлю Excel…");
+  if (!window.XLSX) await new Promise((ok, fail) => {
+    const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+    sc.onload = ok; sc.onerror = () => fail(new Error("SheetJS")); document.head.appendChild(sc);
+  }).catch(() => { toast("Не удалось загрузить SheetJS — используйте CSV"); throw new Error("no xlsx"); });
+  const aoa = [EXPORT_COLS.map(c => c[1]), ...rows.map(s => EXPORT_COLS.map(([k]) => cell(s, k)))];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = EXPORT_COLS.map(([k]) => ({ wch: k === "name" || k === "exname" ? 28 : k === "region" || k === "railway" ? 22 : 12 }));
+  ws["!autofilter"] = { ref: ws["!ref"] };
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Станции");
+  XLSX.writeFile(wb, name + ".xlsx");
+}
+$("exportPop").addEventListener("click", e => {
+  const b = e.target.closest("[data-export]"); if (!b) return;
+  const [fmtName, scope] = b.dataset.export.split("-");
+  const rows = scope === "all" ? S : filtered;
+  const name = `stations_esr_${scope === "all" ? "all" : "filtered"}_${RAW.built}`;
+  closePops();
+  if (fmtName === "csv") exportCSV(rows, name);
+  if (fmtName === "geojson") exportGeoJSON(rows, name);
+  if (fmtName === "xlsx") exportXLSX(rows, name).catch(() => {});
+});
+
+/* ================= всплывающие меню, тема, шторка ================= */
+function closePops() {
+  ["layersPop", "exportPop"].forEach(id => $(id).classList.remove("open"));
+  ["layersBtn", "exportBtn"].forEach(id => $(id).setAttribute("aria-expanded", "false"));
+}
+function togglePop(btn, pop) {
+  const open = !$(pop).classList.contains("open"); closePops();
+  if (open) { $(pop).classList.add("open"); $(btn).setAttribute("aria-expanded", "true"); }
+}
+$("layersBtn").addEventListener("click", () => togglePop("layersBtn", "layersPop"));
+$("exportBtn").addEventListener("click", () => togglePop("exportBtn", "exportPop"));
+function renderLayersPop() {
+  $("basemaps").innerHTML = Object.entries(BASEMAPS).map(([k, b]) =>
+    `<button class="bm" data-bm="${k}" aria-pressed="${k === basemap}"><div class="sw" style="background:${b.sw}"></div>${b.label}</button>`).join("");
+  $("overlays").innerHTML = Object.entries(OVERLAYS).map(([k, o]) =>
+    `<label class="ov"><input type="radio" name="ov" value="${k}" ${k === overlay ? "checked" : ""}><span>${o.label}${o.hint ? `<small>${o.hint}</small>` : ""}</span></label>`).join("");
+}
+$("basemaps").addEventListener("click", e => { const b = e.target.closest("[data-bm]"); if (b && b.dataset.bm !== basemap) setBasemap(b.dataset.bm); });
+$("overlays").addEventListener("change", e => setOverlay(e.target.value));
+
+const THEMES = ["auto", "light", "dark"];
+function applyTheme(t) {
+  if (t === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  $("themeBtn").title = "Тема: " + { auto: "как в системе", light: "светлая", dark: "тёмная" }[t];
+}
+let theme = store.get("theme") || "auto"; applyTheme(theme);
+$("themeBtn").addEventListener("click", () => {
+  theme = THEMES[(THEMES.indexOf(theme) + 1) % 3]; store.set("theme", theme); applyTheme(theme);
+  const want = darkPref() ? "dark" : "positron";
+  if ((basemap === "dark" || basemap === "positron") && basemap !== want) setBasemap(want);
+  toast($("themeBtn").title);
+});
+
+function setSheet(mode) {
+  if (innerWidth > 720) return;
+  $("panel").classList.remove("collapsed", "expanded");
+  if (mode === "collapsed" || mode === "expanded") $("panel").classList.add(mode);
+}
+$("sheetHandle").addEventListener("click", () => {
+  const p = $("panel");
+  if (p.classList.contains("collapsed")) setSheet("mid");
+  else if (p.classList.contains("expanded")) setSheet("collapsed");
+  else setSheet("expanded");
+});
+$("q").addEventListener("focus", () => setSheet("expanded"));
+
+let toastT;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2400); }
+
+/* о данных */
+$("infoBtn").addEventListener("click", () => $("infoModal").classList.add("open"));
+$("qInfo").addEventListener("click", () => $("infoModal").classList.add("open"));
+$("infoClose").addEventListener("click", () => $("infoModal").classList.remove("open"));
+$("infoModal").addEventListener("click", e => { if (e.target === $("infoModal")) $("infoModal").classList.remove("open"); });
+$("qTable").innerHTML = Object.entries(QUALITY).map(([k, v]) =>
+  `<tr><td style="white-space:nowrap"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${v.color};margin-right:6px"></span><b>${v.label}</b></td><td>${v.hint}</td></tr>`).join("");
+$("builtAt").textContent = "Сборка данных: " + RAW.built + " · станций в справочнике: " + fmt(S.length);
+
+/* ================= запуск ================= */
+function fromHash() {
+  const m = location.hash.match(/esr=(\d{6})/);
+  const s = m && BY_ESR.get(m[1]);
+  if (s) selectStation(s, { push: false });
+}
+window.addEventListener("hashchange", fromHash);
+
+state.colorBy = store.get("colorBy") || "q"; $("colorBy").value = state.colorBy;
+$("exAllCnt").textContent = fmt(S.length) + " записей";
+$("subtitle").textContent = fmt(S.length) + " кодов ЕСР · " + fmt(S.filter(s => s.has).length) + " на карте";
+buildDropdowns(); renderLayersPop();
+filtered = S.filter(s => passes(s));
+map.once("load", async () => {
+  map.setStyle(await loadStyle(basemap), { diff: false });
+  map.once("style.load", () => { addStationLayers(); applyFilters(); fromHash(); $("loading").classList.add("hide"); });
+});
+</script>
+</body>
+</html>
