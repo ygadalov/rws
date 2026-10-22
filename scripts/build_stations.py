@@ -54,7 +54,7 @@ QUALITY = {
     "B": "B — вероятно",
     "C": "C — сомнительно, проверить",
     "D": "D — по связанному коду / одноимённой станции",
-    "E": "E — оценка по соседним кодам",
+    "E": "E — приблизительная оценка",
     "": "нет координат",
 }
 
@@ -448,6 +448,8 @@ def infer_admin(st):
 def infer_type(st):
     t = st["type"].copy()
     src = pd.Series("ЕСР", index=st.index)
+    m = (t == "") & (st["tr4_point_type"] != "")
+    t[m], src[m] = st.loc[m, "tr4_point_type"], "ТР №4"
     m = (t == "") & (st["osm_railway"] == "station")
     t[m], src[m] = "станция", "OSM"
     m = (t == "") & (st["osm_railway"] == "halt")
@@ -461,13 +463,18 @@ def infer_type(st):
 # ---------------------------------------------------------------- outputs
 
 COLUMNS = [
-    "esr", "esr5", "esr_check_ok", "invalid_esr_src", "dup_esr", "express", "has_express",
+    "esr", "esr5", "esr_check_ok", "invalid_esr_src", "dup_esr", "esr_crimea_old", "esr_crimea_new",
+    "express", "has_express", "express_name", "express_railway", "express_city",
     "name", "name_clean", "name_note", "type", "type_source",
     "is_km_name", "is_virtual", "is_export", "is_transship", "is_narrow_gauge", "is_foreign",
     "country", "country_iso", "country_src", "country_iso_conflict", "region", "region_iso",
-    "railway", "division", "admin_inferred", "source_file",
+    "railway", "railway_from_tr4", "division", "admin_inferred", "source_file",
+    "in_tariff_list", "tr4_list", "tr4_name", "tr4_former_name", "tr4_point_type", "tr4_owner",
+    "tr4_pass_ops", "tr4_pass_ops_label", "tr4_passenger_open", "tr4_freight_paragraphs", "tr4_freight_open",
+    "tr4_transit", "tr4_transit_nearest", "tr4_transit_nearest_km", "tr4_comment",
     "lat", "lon", "has_coords", "coord_quality", "coord_quality_label", "coord_source",
     "coord_precision_km", "coord_note", "geo_country_mismatch",
+    "transit_checks", "transit_violations", "transit_conflict",
     "osm_id", "osm_type", "osm_url", "osm_status", "osm_railway", "osm_name", "osm_alt_name", "osm_old_name",
     "osm_official_name", "osm_name_sim", "nbr_dist_km", "osm_candidates", "osm_places",
     "osm_spread_km", "choice_margin",
@@ -476,7 +483,10 @@ COLUMNS = [
 RU_HEADERS = {
     "esr": "Код ЕСР", "esr5": "Код ЕСР (5 зн.)", "esr_check_ok": "Контр. цифра верна",
     "invalid_esr_src": "Признак invalid_esr", "dup_esr": "Основной код станции (dup_esr)",
+    "esr_crimea_old": "Старый код (Крым, УЗ)", "esr_crimea_new": "Новый код (Крым)",
     "express": "Код Экспресс-3", "has_express": "Есть код Экспресс",
+    "express_name": "Название в АСУ Экспресс", "express_railway": "Дорога (Экспресс)",
+    "express_city": "Городской код Экспресс",
     "name": "Название", "name_clean": "Название (очищ.)", "name_note": "Пометка в названии",
     "type": "Тип пункта", "type_source": "Источник типа",
     "is_km_name": "Название-километр", "is_virtual": "Условный пункт/узел",
@@ -484,11 +494,21 @@ RU_HEADERS = {
     "is_foreign": "Иностранная станция", "country": "Страна", "country_iso": "ISO страны",
     "country_src": "Страна (исходная)", "country_iso_conflict": "Страна ≠ ISO региона",
     "region": "Регион", "region_iso": "ISO 3166-2 региона", "railway": "Железная дорога",
-    "division": "Отделение/РЖУ", "admin_inferred": "Достроено по соседям", "source_file": "Источник (регион)",
+    "railway_from_tr4": "Дорога взята из ТР №4", "division": "Отделение/РЖУ",
+    "in_tariff_list": "Есть в тарифном списке ТР №4", "tr4_list": "Список ТР №4",
+    "tr4_name": "Название (ТР №4)", "tr4_former_name": "Бывшее название (ТР №4)",
+    "tr4_point_type": "Тип пункта (ТР №4)", "tr4_owner": "Владелец/дорога (ТР №4)",
+    "tr4_pass_ops": "Пасс. операции (код)", "tr4_pass_ops_label": "Пасс. операции",
+    "tr4_passenger_open": "Открыта для пассажиров", "tr4_freight_paragraphs": "Грузовые операции (параграфы)",
+    "tr4_freight_open": "Открыта для грузовых операций", "tr4_transit": "Транзитные пункты (ТР №4)",
+    "tr4_transit_nearest": "Ближайший транзитный пункт", "tr4_transit_nearest_km": "До транзитного пункта, км (тариф)",
+    "tr4_comment": "Комментарий ТР №4", "admin_inferred": "Достроено по соседям", "source_file": "Источник (регион)",
     "lat": "Широта", "lon": "Долгота", "has_coords": "Есть координаты",
     "coord_quality": "Качество коорд.", "coord_quality_label": "Качество коорд. (описание)",
     "coord_source": "Источник коорд.", "coord_precision_km": "Точность, км", "coord_note": "Комментарий к коорд.",
     "geo_country_mismatch": "Точка среди станций другой страны",
+    "transit_checks": "Проверок по транзитным пунктам", "transit_violations": "Нарушений тарифных расстояний",
+    "transit_conflict": "Противоречит тарифным расстояниям",
     "osm_id": "OSM id", "osm_type": "OSM тип объекта", "osm_url": "Ссылка OSM", "osm_status": "OSM статус привязки",
     "osm_railway": "OSM railway", "osm_name": "OSM название", "osm_alt_name": "OSM alt_name",
     "osm_old_name": "OSM old_name", "osm_official_name": "OSM official_name",
@@ -543,6 +563,7 @@ def write_outputs(st, cand, interp_check):
 
 
 GEO_PROPS = ["esr", "name", "type", "country", "region", "railway", "division", "express",
+             "in_tariff_list", "tr4_owner", "tr4_pass_ops", "tr4_freight_open", "transit_conflict",
              "coord_quality", "coord_source", "coord_precision_km", "osm_id",
              "is_virtual", "is_export", "is_transship", "is_narrow_gauge", "admin_inferred"]
 
@@ -563,6 +584,9 @@ def build_summary(st):
     byr = st.assign(railway=st.railway.replace("", "(не указана)")).groupby("railway").agg(
         Кодов=("esr", "size"), С_координатами=("has_coords", "sum")).reset_index().rename(
         columns={"railway": "Железная дорога"}).sort_values("Кодов", ascending=False)
+    ops = st[st.in_tariff_list].groupby(["tr4_pass_ops_label", "tr4_freight_open"]).size().rename(
+        "Кодов").reset_index().rename(columns={"tr4_pass_ops_label": "Пассажирские операции",
+                                               "tr4_freight_open": "Грузовые операции"})
     legend = pd.DataFrame({"Качество": list(QUALITY.values()), "Как получено": [
         "одна точка OSM, привязка подтверждена, название совпадает, рядом с соседними кодами",
         "выполнены 2 из 3 проверок или выбрано из нескольких мест с уверенным отрывом",
@@ -571,7 +595,7 @@ def build_summary(st):
         "линейная интерполяция между соседними по коду пунктами (приблизительно)",
         "нет данных",
     ]})
-    return {"Сводка по качеству": q, "По странам": byc, "По типам": byt, "По дорогам": byr,
+    return {"Сводка по качеству": q, "Операции ТР4": ops, "По странам": byc, "По типам": byt, "По дорогам": byr,
             "Легенда": legend}
 
 
@@ -590,9 +614,24 @@ def main():
                 "osm_official_name"]:
         st[col] = st[col].fillna("")
 
+    import extra_sources as xs
+
     st = fill_from_dup_links(st)
+    st, n_crimea = xs.merge_crimea(st)
     st, n_name = fill_by_name(st, anchors)
     st, n_interp = fill_by_interpolation(st)
+
+    st = xs.merge_tariff(st, xs.load_tariff())
+    st["has_coords_tmp"] = st["coord_quality"] != ""
+    st = xs.check_transit(st)
+    # оценки E, противоречащие тарифным расстояниям до всех транзитных пунктов, снимаем
+    drop = (st.coord_quality == "E") & st.transit_conflict
+    st.loc[drop, ["lat", "lon", "coord_precision_km"]] = np.nan
+    st.loc[drop, ["coord_quality", "coord_source", "coord_note"]] = ""
+    st, n_transit = xs.fill_by_transit(st)
+    st["has_coords_tmp"] = st["coord_quality"] != ""
+    st = xs.check_transit(st)
+    st = xs.merge_express(st)
     st = flag_outliers(st)
     st = infer_admin(st)
     st = infer_type(st)
@@ -608,7 +647,10 @@ def main():
     print(f"Кодов ЕСР: {len(st)}; строк OSM: {len(osm)} ({osm.esr.nunique()} кодов)")
     print(summary["Сводка по качеству"].to_string(index=False))
     print(interp_check.to_string(index=False))
-    print(f"по одноимённым: {n_name}, интерполяцией: {n_interp}")
+    print(f"Крым (старый↔новый код): {n_crimea}, по одноимённым: {n_name}, интерполяцией: {n_interp}, "
+          f"снято E по тарифу: {drop.sum()}, по транзитному пункту: {n_transit}")
+    print(f"в тарифном списке ТР №4: {st.in_tariff_list.sum()}; противоречат тарифу: "
+          + st[st.transit_conflict].groupby("coord_quality").size().to_dict().__repr__())
     print(f"точек среди станций другой страны: {st.geo_country_mismatch.sum()}")
     print(f"атрибуты достроены по соседям: {(st.admin_inferred != '').sum()}")
 
