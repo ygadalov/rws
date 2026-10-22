@@ -463,17 +463,17 @@ def infer_type(st):
 # ---------------------------------------------------------------- outputs
 
 COLUMNS = [
-    "esr", "esr5", "esr_check_ok", "invalid_esr_src", "dup_esr", "esr_crimea_old", "esr_crimea_new",
+    "esr", "esr5", "esr_check_ok", "invalid_esr_src", "is_new_tr4", "dup_esr", "esr_crimea_old", "esr_crimea_new",
     "express", "has_express", "express_name", "express_railway", "express_city",
     "name", "name_clean", "name_note", "type", "type_source",
     "is_km_name", "is_virtual", "is_export", "is_transship", "is_narrow_gauge", "is_foreign",
     "country", "country_iso", "country_src", "country_iso_conflict", "region", "region_iso",
     "railway", "railway_from_tr4", "division", "admin_inferred", "source_file",
-    "in_tariff_list", "tr4_list", "tr4_name", "tr4_former_name", "tr4_point_type", "tr4_owner",
+    "in_tariff_list", "tr4_date", "tr4_excluded", "tr4_list", "tr4_sections", "tr4_port", "tr4_name", "tr4_former_name", "tr4_point_type", "tr4_owner",
     "tr4_pass_ops", "tr4_pass_ops_label", "tr4_passenger_open", "tr4_freight_paragraphs", "tr4_freight_open",
     "tr4_transit", "tr4_transit_nearest", "tr4_transit_nearest_km", "tr4_comment",
     "lat", "lon", "has_coords", "coord_quality", "coord_quality_label", "coord_source",
-    "coord_precision_km", "coord_note", "geo_country_mismatch",
+    "coord_precision_km", "coord_note", "geo_country_mismatch", "section_conflict",
     "transit_checks", "transit_violations", "transit_conflict",
     "osm_id", "osm_type", "osm_url", "osm_status", "osm_railway", "osm_name", "osm_alt_name", "osm_old_name",
     "osm_official_name", "osm_name_sim", "nbr_dist_km", "osm_candidates", "osm_places",
@@ -482,7 +482,7 @@ COLUMNS = [
 
 RU_HEADERS = {
     "esr": "Код ЕСР", "esr5": "Код ЕСР (5 зн.)", "esr_check_ok": "Контр. цифра верна",
-    "invalid_esr_src": "Признак invalid_esr", "dup_esr": "Основной код станции (dup_esr)",
+    "invalid_esr_src": "Признак invalid_esr", "is_new_tr4": "Новый код (нет в ЕСР, есть в ТР №4 2026)", "dup_esr": "Основной код станции (dup_esr)",
     "esr_crimea_old": "Старый код (Крым, УЗ)", "esr_crimea_new": "Новый код (Крым)",
     "express": "Код Экспресс-3", "has_express": "Есть код Экспресс",
     "express_name": "Название в АСУ Экспресс", "express_railway": "Дорога (Экспресс)",
@@ -495,7 +495,9 @@ RU_HEADERS = {
     "country_src": "Страна (исходная)", "country_iso_conflict": "Страна ≠ ISO региона",
     "region": "Регион", "region_iso": "ISO 3166-2 региона", "railway": "Железная дорога",
     "railway_from_tr4": "Дорога взята из ТР №4", "division": "Отделение/РЖУ",
-    "in_tariff_list": "Есть в тарифном списке ТР №4", "tr4_list": "Список ТР №4",
+    "in_tariff_list": "Действует по ТР №4 на 21.10.2026", "tr4_date": "Дата ТР №4",
+    "tr4_excluded": "Был в ТР №4 2023, исключён к 2026", "tr4_sections": "Тарифные участки (Книга 1)",
+    "tr4_port": "Порт перевалки", "tr4_list": "Список ТР №4",
     "tr4_name": "Название (ТР №4)", "tr4_former_name": "Бывшее название (ТР №4)",
     "tr4_point_type": "Тип пункта (ТР №4)", "tr4_owner": "Владелец/дорога (ТР №4)",
     "tr4_pass_ops": "Пасс. операции (код)", "tr4_pass_ops_label": "Пасс. операции",
@@ -507,6 +509,7 @@ RU_HEADERS = {
     "coord_quality": "Качество коорд.", "coord_quality_label": "Качество коорд. (описание)",
     "coord_source": "Источник коорд.", "coord_precision_km": "Точность, км", "coord_note": "Комментарий к коорд.",
     "geo_country_mismatch": "Точка среди станций другой страны",
+    "section_conflict": "Противоречит расстояниям участка ТР №4",
     "transit_checks": "Проверок по транзитным пунктам", "transit_violations": "Нарушений тарифных расстояний",
     "transit_conflict": "Противоречит тарифным расстояниям",
     "osm_id": "OSM id", "osm_type": "OSM тип объекта", "osm_url": "Ссылка OSM", "osm_status": "OSM статус привязки",
@@ -516,6 +519,14 @@ RU_HEADERS = {
     "osm_candidates": "Кандидатов OSM", "osm_places": "Разных мест OSM",
     "osm_spread_km": "Разброс кандидатов, км", "choice_margin": "Отрыв лучшего кандидата",
 }
+
+
+def write_tr4_extras(st, tr):
+    """Участки с координатами станций (для линий на карте) и города из Книги 2."""
+    pos = st.set_index("esr")[["lat", "lon", "coord_quality"]]
+    sec = tr["sections"].join(pos, on="esr")
+    sec.to_csv(OUT / "tr4_sections.csv", sep=";", index=False, encoding="utf-8-sig")
+    tr["cities"].to_csv(OUT / "tr4_cities.csv", sep=";", index=False, encoding="utf-8-sig")
 
 
 def write_outputs(st, cand, interp_check):
@@ -592,7 +603,7 @@ def build_summary(st):
         "выполнены 2 из 3 проверок или выбрано из нескольких мест с уверенным отрывом",
         "неподтверждённая привязка / другое название / далеко от соседей / неоднозначные дубли",
         "координаты кода-дубля (dup_esr) или одноимённой станции рядом с соседями по коду",
-        "линейная интерполяция между соседними по коду пунктами (приблизительно)",
+        "положение на тарифном участке между соседями (Книга 1 ТР №4) или интерполяция по соседним кодам",
         "нет данных",
     ]})
     return {"Сводка по качеству": q, "Операции ТР4": ops, "По странам": byc, "По типам": byt, "По дорогам": byr,
@@ -602,8 +613,15 @@ def build_summary(st):
 # ---------------------------------------------------------------- main
 
 def main():
+    import extra_sources as xs
+    import tr4_2026 as t26
+
     ref, osm = load()
+    tr = t26.load()
+    new_rows = t26.new_ref_rows(ref, tr)
+    ref = pd.concat([ref, new_rows], ignore_index=True)
     st = enrich_ref(ref)
+    st["is_new_tr4"] = st["source_file"] == "tr4_2026"
     cand, anchors = score_candidates(st, osm)
     chosen = choose(cand)
     st = st.merge(chosen, on="esr", how="left")
@@ -614,14 +632,23 @@ def main():
                 "osm_official_name"]:
         st[col] = st[col].fillna("")
 
-    import extra_sources as xs
-
+    sec = tr["sections"]
     st = fill_from_dup_links(st)
     st, n_crimea = xs.merge_crimea(st)
+    st, n_sec_bad = t26.check_sections(st, sec)
+    st, n_recoded = t26.fill_by_recoded_name(st)
+    n_sec_name = 0
+    for _ in range(6):  # перекодированные участки целиком: каждый проход даёт новые якоря соседям
+        st, n = t26.fill_by_section_name(st, sec)
+        n_sec_name += n
+        if not n:
+            break
     st, n_name = fill_by_name(st, anchors)
+    st, sec_cnt = t26.apply_sections(st, sec)
+    st, _ = t26.check_sections(st, sec)  # повторно — с учётом новых якорей
     st, n_interp = fill_by_interpolation(st)
 
-    st = xs.merge_tariff(st, xs.load_tariff())
+    st = xs.merge_tariff(st, xs.load_tariff_all(tr))
     st["has_coords_tmp"] = st["coord_quality"] != ""
     st = xs.check_transit(st)
     # оценки E, противоречащие тарифным расстояниям до всех транзитных пунктов, снимаем
@@ -641,12 +668,21 @@ def main():
         st[col] = st[col].astype("Int64")
     st["coord_quality_label"] = st["coord_quality"].map(QUALITY)
     st["osm_url"] = np.where(st.osm_id != "", "https://www.openstreetmap.org/" + st.osm_type + "/" + st.osm_id, "")
-    interp_check = validate_interpolation(st)
+    sec_text = t26.station_sections(sec)
+    st["tr4_sections"] = st["esr"].map(sec_text).fillna("")
+    st["tr4_port"] = st["esr"].map(tr["ports"]).fillna("")
+    interp_check = pd.concat([
+        validate_interpolation(st).assign(Метод="по соседним кодам ЕСР"),
+        t26.validate_sections(st, sec).assign(Метод="по участкам ТР №4 (Книга 1)")], ignore_index=True)
     summary = write_outputs(st, cand, interp_check)
+    write_tr4_extras(st, tr)
 
     print(f"Кодов ЕСР: {len(st)}; строк OSM: {len(osm)} ({osm.esr.nunique()} кодов)")
     print(summary["Сводка по качеству"].to_string(index=False))
     print(interp_check.to_string(index=False))
+    print(f"новых кодов из ТР №4 2026: {len(new_rows)}, из них с координатами: "
+          f"{(st.is_new_tr4 & (st.coord_quality != '')).sum()}")
+    print(f"новые коды по старой нумерации: {n_recoded}; участки: понижено до C {n_sec_bad}, одноимённые по участку {n_sec_name}, {sec_cnt}")
     print(f"Крым (старый↔новый код): {n_crimea}, по одноимённым: {n_name}, интерполяцией: {n_interp}, "
           f"снято E по тарифу: {drop.sum()}, по транзитному пункту: {n_transit}")
     print(f"в тарифном списке ТР №4: {st.in_tariff_list.sum()}; противоречат тарифу: "

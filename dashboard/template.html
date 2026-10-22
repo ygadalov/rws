@@ -427,6 +427,8 @@ button { cursor: pointer; }
 <div class="popover" id="layersPop" role="dialog" aria-label="Слои карты">
   <h3>Подложка</h3>
   <div class="bm-grid" id="basemaps"></div>
+  <h3>Схема сети</h3>
+  <label class="switch-row" style="padding:2px 4px 12px">Тарифные участки ТР №4 <span class="switch"><input type="checkbox" id="linesToggle"><span></span></span></label>
   <h3>Железнодорожный слой · OpenRailwayMap</h3>
   <div class="ov-list" id="overlays"></div>
 </div>
@@ -458,7 +460,7 @@ button { cursor: pointer; }
 <div class="modal-bg" id="infoModal" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
   <div class="modal">
     <h2 id="infoTitle">О данных</h2>
-    <p>Единый справочник станций с кодами ЕСР собран из справочника ЕСР и OpenStreetMap (osm2esr). Дополнительно использованы ТР №4 (тарифный список станций на 30.12.2023), АСУ «Экспресс» и перекодировка станций Крыма.</p>
+    <p>Единый справочник станций с кодами ЕСР собран из справочника ЕСР и OpenStreetMap (osm2esr). Дополнительно использованы Тарифное руководство №4 на 21.10.2026 (Книга 1 — тарифные участки и расстояния, Книга 2 — списки станций, города и порты) и на 30.12.2023, АСУ «Экспресс» и перекодировка станций Крыма.</p>
     <table id="qTable"></table>
     <p>Подложки: OpenFreeMap, CARTO, Esri World Imagery, OpenStreetMap; ж/д слой — OpenRailwayMap (CC-BY-SA). Данные карты © участники OpenStreetMap.</p>
     <p id="builtAt"></p>
@@ -483,7 +485,7 @@ const QUALITY = {
   B: { label: "B — вероятно", color: "#0ea5b7", hint: "Пройдены 2 из 3 проверок или выбрано из дублей с уверенным отрывом" },
   C: { label: "C — сомнительно", color: "#e11d48", hint: "Неподтверждённая привязка, другое название или неоднозначные дубли" },
   D: { label: "D — по связанному коду", color: "#f59e0b", hint: "Координаты основного кода станции, второго кода (Крым) или одноимённой станции" },
-  E: { label: "E — приблизительно", color: "#94a3b8", hint: "Интерполяция между соседними кодами или транзитный пункт; точность ±10 км и хуже" },
+  E: { label: "E — приблизительно", color: "#94a3b8", hint: "Положение на тарифном участке между соседями (обычно ±1–3 км) или интерполяция по соседним кодам (±10 км и хуже)" },
 };
 const PASS_OPS = { "П": "билеты на все поезда, багаж", "Б": "билеты на все поезда, без багажа", "О": "пригородные и местные поезда", "Х": "операции не производятся", "К": "контрейлерные отправки" };
 const TYPE_COLORS = { "станция": "#2463eb", "остановочный пункт": "#16a34a", "разъезд": "#f59e0b", "обгонный пункт": "#db2777", "блок-пост": "#7c3aed", "путевой пост": "#9333ea", "пост": "#a855f7", "условный пункт": "#64748b" };
@@ -583,6 +585,9 @@ const OVERLAYS = {
 const darkPref = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
 let basemap = store.get("basemap") || (darkPref() ? "dark" : "positron");
 let overlay = store.get("overlay") || "off";
+let showLines = store.get("lines") !== "0";
+const LINES_FC = { type: "FeatureCollection", features: (RAW.lines || []).map(([id, name, kind, parts], j) => ({
+  type: "Feature", id: j, geometry: { type: "MultiLineString", coordinates: parts }, properties: { id, name, k: kind } })) };
 if (!BASEMAPS[basemap]) basemap = "positron";
 if (!OVERLAYS[overlay]) overlay = "off";
 
@@ -639,6 +644,11 @@ function addStationLayers() {
       tileSize: 256, maxzoom: 19, attribution: '<a href="https://www.openrailwaymap.org/">OpenRailwayMap</a>' });
     map.addLayer({ id: "orm", type: "raster", source: "orm", paint: { "raster-opacity": 0.85 } });
   }
+  map.addSource("lines", { type: "geojson", data: LINES_FC });
+  map.addLayer({ id: "lines", type: "line", source: "lines", layout: { visibility: showLines ? "visible" : "none", "line-join": "round", "line-cap": "round" },
+    paint: { "line-color": ["case", ["boolean", ["feature-state", "hover"], false], "#f97316", dark ? "#8fa4c4" : "#5b6f8f"],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.6, 8, 1.6, 12, 3],
+      "line-opacity": ["match", ["get", "k"], "Основной тарифный участок", 0.75, 0.45] } });
   map.addSource("st", { type: "geojson", data: stationFeatures() });
   map.addSource("sel", { type: "geojson", data: emptyFC() });
   map.addLayer({ id: "sel-prec", type: "fill", source: "sel", filter: ["==", ["geometry-type"], "Polygon"],
@@ -705,6 +715,19 @@ map.on("click", e => {
   let best = fs[0], bd = Infinity;
   for (const f of fs) { const q = map.project(f.geometry.coordinates); const d = (q.x - p.x) ** 2 + (q.y - p.y) ** 2; if (d < bd) { bd = d; best = f; } }
   selectStation(S[best.properties.i], { fly: false });
+});
+
+let lineHover = null;
+map.on("mousemove", "lines", e => {
+  if (map.queryRenderedFeatures(e.point, { layers: ["st", ...(map.getLayer("wg-circle") ? ["wg-circle"] : [])] }).length) return;
+  const f = e.features[0]; if (!f) return;
+  if (lineHover !== null) map.setFeatureState({ source: "lines", id: lineHover }, { hover: false });
+  lineHover = f.id; map.setFeatureState({ source: "lines", id: lineHover }, { hover: true });
+  tip.setLngLat(e.lngLat).setHTML(`<div class="tip"><b>Участок ${esc(f.properties.id)}</b><br>${esc(f.properties.name)}<br><span>${esc(f.properties.k)}</span></div>`).addTo(map);
+});
+map.on("mouseleave", "lines", () => {
+  if (lineHover !== null) map.setFeatureState({ source: "lines", id: lineHover }, { hover: false });
+  lineHover = null; tip.remove();
 });
 
 /* подписи станций (DOM, чтобы кириллица не зависела от шрифтов подложки) */
@@ -895,9 +918,15 @@ function search(q) {
       if (r) res.push([r + (s.tariff ? 2 : 0) + (s.has ? 1 : 0) + (s.type === "станция" ? 1 : 0), s]);
     }
   }
+  if (nq.length >= 3) for (const [city, region, esr, km] of RAW.cities || []) {
+    const nc = norm(city);
+    if (!(nc === nq || nc.startsWith(nq))) continue;
+    const s = BY_ESR.get(esr); if (!s) continue;
+    res.push([nc === nq ? 96 : 84, { ...s, i: s.i, _city: { city, region, km } }]);
+  }
   const seen = new Set();
   return res.sort((a, b) => b[0] - a[0] || a[1].name.length - b[1].name.length)
-    .filter(([, s]) => !seen.has(s.i) && seen.add(s.i)).slice(0, 60).map(x => x[1]);
+    .filter(([, s]) => { const k = s._city ? "c" + s._city.city + s.i : s.i; return !seen.has(k) && seen.add(k); }).slice(0, 60).map(x => x[1]);
 }
 function highlight(name, q) {
   const nq = norm(q); if (!nq) return esc(name);
@@ -915,8 +944,10 @@ function runSearch() {
   $("results").innerHTML = lastResults.length ? lastResults.map((s, j) => `
     <li class="res${j === activeIdx ? " active" : ""}" role="option" data-i="${s.i}" id="r${j}">
       <span class="dot" style="background:${s.has ? colorOf(s, "q") : "transparent"};${s.has ? "" : "border:1.5px dashed var(--faint)"}"></span>
-      <div class="main"><div class="nm">${highlight(s.name, q)}</div>
-        <div class="sub">${esc([s.type, s.railway || s.country, s.region].filter(Boolean).join(" · "))}${s.has ? "" : ' · <span class="badge">нет координат</span>'}</div></div>
+      <div class="main">${s._city
+        ? `<div class="nm">${highlight(s._city.city, q)} <span class="badge">город</span></div><div class="sub">${esc(s._city.region)} → ст. ${esc(s.name)}, ${s._city.km} км</div>`
+        : `<div class="nm">${highlight(s.name, q)}</div>
+        <div class="sub">${esc([s.type, s.railway || s.country, s.region].filter(Boolean).join(" · "))}${s.has ? "" : ' · <span class="badge">нет координат</span>'}</div>`}</div>
       <span class="code mono">${s.esr}</span></li>`).join("")
     : `<div class="empty">Ничего не найдено.<br><small>Попробуйте часть названия или 6-значный код ЕСР</small></div>`;
 }
@@ -990,7 +1021,9 @@ function selectStation(s, { fly = true, push = true, keepScroll = false } = {}) 
     <div class="d-top"><button class="icon-btn" id="dBack" aria-label="Назад к списку">${ICON.back}</button>
       <span style="flex:1"></span>
       ${s.tariff ? '<span class="badge" title="Станция есть в Тарифном руководстве №4">ТР №4</span>' : ""}
-      ${s.virt ? '<span class="badge">условный пункт</span>' : ""}</div>
+      ${s.virt ? '<span class="badge">условный пункт</span>' : ""}
+      ${s.newcode ? '<span class="badge" title="Кода нет в справочнике ЕСР, он есть в ТР №4 на 21.10.2026">новый код</span>' : ""}
+      ${s.excluded ? '<span class="badge" title="Станция была в ТР №4 на 30.12.2023, но отсутствует на 21.10.2026">исключена из ТР №4</span>' : ""}</div>
     <div class="d-head">
       <h2>${esc(s.name)}</h2>
       <div class="sub">${esc([s.type, s.railway && s.railway + " ж. д.", s.country].filter(Boolean).join(" · "))}</div>
@@ -1028,14 +1061,19 @@ function selectStation(s, { fly = true, push = true, keepScroll = false } = {}) 
       </dl>
     </div>
     ${s.tariff ? `<div class="section">
-      <div class="section-title">Тарифное руководство №4</div>
+      <div class="section-title">Тарифное руководство №4 · на ${esc(s.tr4date || "")}</div>
       <dl class="kv">
         ${row("Владелец", esc(s.owner))}
         ${row("Пассажирские", s.pops ? `<b>${esc(s.pops)}</b> — ${esc(PASS_OPS[s.pops] || "")}` : "не производятся")}
         ${row("Грузовые (§)", s.fops ? `<span class="mono">${esc(s.fops)}</span>` : "не производятся")}
         ${row("Транзитный пункт", s.transit ? `${esc(s.transit)}${s.transitkm !== null ? ` · ${s.transitkm} км` : ""}` : "")}
+        ${row("Порт перевалки", esc(s.port))}
         ${row("Комментарий", esc(s.comment))}
-      </dl></div>` : ""}
+      </dl></div>` : s.excluded ? `<div class="section"><div class="section-title">Тарифное руководство №4</div>
+      <p class="hint" style="margin:0">Станция была в ТР №4 на 30.12.2023, в списке на 21.10.2026 её нет — вероятно, закрыта или переименована.</p></div>` : ""}
+    ${s.sections ? `<div class="section"><div class="section-title">Тарифные участки · Книга 1 ТР №4</div><ul class="near">
+      ${s.sections.split(" | ").map(t => `<li style="cursor:default"><span class="n" title="${esc(t)}">${esc(t)}</span></li>`).join("")}</ul>
+      ${s.sconf ? '<p class="hint" style="color:var(--danger)">Координаты противоречат расстояниям участка</p>' : ""}</div>` : ""}
     ${near.length ? `<div class="section"><div class="section-title">Рядом</div><ul class="near">
       ${near.map(([d, o]) => `<li data-goto="${o.esr}"><span class="dot" style="background:${colorOf(o, "q")}"></span><span class="n">${esc(o.name)}</span><span class="d mono">${d < 1 ? Math.round(d * 1000) + " м" : d.toFixed(1) + " км"}</span></li>`).join("")}
     </ul></div>` : ""}`;
@@ -1144,6 +1182,11 @@ function renderLayersPop() {
 }
 $("basemaps").addEventListener("click", e => { const b = e.target.closest("[data-bm]"); if (b && b.dataset.bm !== basemap) setBasemap(b.dataset.bm); });
 $("overlays").addEventListener("change", e => setOverlay(e.target.value));
+$("linesToggle").checked = showLines;
+$("linesToggle").addEventListener("change", e => {
+  showLines = e.target.checked; store.set("lines", showLines ? "1" : "0");
+  if (map.getLayer("lines")) map.setLayoutProperty("lines", "visibility", showLines ? "visible" : "none");
+});
 
 const THEMES = ["auto", "light", "dark"];
 function applyTheme(t) {

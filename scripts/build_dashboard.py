@@ -35,7 +35,43 @@ FIELDS = [
     ("is_virtual", "virt", "b"), ("is_export", "exp", "b"), ("is_transship", "trans", "b"),
     ("is_narrow_gauge", "narrow", "b"), ("transit_conflict", "tconf", "b"),
     ("admin_inferred", "inferred", "d"),
+    ("is_new_tr4", "newcode", "b"), ("tr4_date", "tr4date", "d"), ("tr4_excluded", "excluded", "b"),
+    ("tr4_sections", "sections", "s"), ("tr4_port", "port", "s"), ("section_conflict", "sconf", "b"),
 ]
+SECTIONS = ROOT / "data" / "output" / "tr4_sections.csv"
+CITIES = ROOT / "data" / "output" / "tr4_cities.csv"
+
+
+def section_lines():
+    """Линии тарифных участков: соседние станции с координатами, без явных скачков."""
+    import math
+    sec = pd.read_csv(SECTIONS, sep=";", dtype={"esr": str}, keep_default_na=False)
+    sec = sec[sec.coord_quality.isin(["A", "B", "D", "E"])]
+    out = []
+    for (sid, name, kind), d in sec.groupby(["sec", "sec_name", "sec_kind"], sort=False):
+        pts, parts = [], []
+        prev = None
+        for r in d.itertuples():
+            lat, lon = float(r.lat), float(r.lon)
+            if prev:
+                dist = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(lat - prev[0]) / 2) ** 2 + math.cos(
+                    math.radians(lat)) * math.cos(math.radians(prev[0])) * math.sin(math.radians(lon - prev[1]) / 2) ** 2))
+                if dist > (r.km - prev[2]) * 1.3 + 5:  # разрыв: не рисуем ложный отрезок
+                    if len(pts) > 1:
+                        parts.append(pts)
+                    pts = []
+            pts.append([round(lon, 4), round(lat, 4)])
+            prev = (lat, lon, r.km)
+        if len(pts) > 1:
+            parts.append(pts)
+        if parts:
+            out.append([sid, name, kind, parts])
+    return out
+
+
+def cities():
+    c = pd.read_csv(CITIES, sep=";", dtype={"esr": str}, keep_default_na=False)
+    return c[["city", "region", "esr", "km"]].values.tolist()
 
 
 def main():
@@ -61,6 +97,8 @@ def main():
         "kinds": [t for _, _, t in FIELDS],
         "dicts": dicts,
         "columns": cols,  # по колонкам — так JSON заметно меньше
+        "lines": section_lines(),
+        "cities": cities(),
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     html = TEMPLATE.read_text(encoding="utf-8").replace("/*__DATA__*/null", payload)

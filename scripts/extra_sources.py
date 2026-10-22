@@ -63,6 +63,36 @@ def load_tariff():
     return x
 
 
+def load_tariff_2026(tr):
+    """Книга 2 ТР №4 на 21.10.2026 в том же виде, что и load_tariff (2023)."""
+    x = tr["stations"].copy()
+    x["owner"] = x["railway"]
+    x["comment"] = ""
+    x["tr4_list"] = x["list"].map({"РП": "РП", "ОП": "ОП"})
+    former = x["name"].str.extract(r"\(\s*(?:б\.|бывш\.?)\s*([^()]*)\)")[0].fillna("").str.strip(" .")
+    x["former_name"] = former.where(former.str.len() >= 3, "")
+    ops = x["ops"].str.extract(r"^\s*([ПБОХК])?\s*([0-9НнH,\s]*)$")
+    x["pass_ops"] = ops[0].fillna("")
+    x["freight_paragraphs"] = ops[1].fillna("").str.replace(r"\s+", "", regex=True).str.upper().str.strip(",")
+    # «254905 Агрыз - 25км, 647523 Акбаш - 276км» — код транзитного пункта уже указан
+    tl = x["transit"].map(lambda t: [(m.group(1), m.group(2).strip(), int(m.group(3)))
+                                     for m in re.finditer(r"(\d{6})\s+(.*?)\s*-\s*(\d+)\s*км", t or "")])
+    x["transit_resolved"] = tl
+    x["transit_list"] = tl.map(lambda l: [(n, km) for _, n, km in l])
+    x["transit"] = tl.map(lambda l: ", ".join(f"{n}-{km}" for _, n, km in l))
+    x["tr4_date"] = "21.10.2026"
+    return x
+
+
+def load_tariff_all(tr):
+    """Действующий список (2026) + станции, которые были в ТР №4 на 30.12.2023, но исключены."""
+    new, old = load_tariff_2026(tr), load_tariff().assign(tr4_date="30.12.2023")
+    new["comment"] = new["esr"].map(old.set_index("esr")["comment"]).fillna("")
+    cols = ["esr", "name", "owner", "transit", "comment", "tr4_list", "point_type", "former_name", "pass_ops",
+            "freight_paragraphs", "transit_list", "transit_resolved", "tr4_date"]
+    return pd.concat([new[cols], old.loc[~old.esr.isin(new.esr), cols]], ignore_index=True)
+
+
 def parse_transit(s):
     res = []
     for part in re.split(r",\s*", s or ""):
@@ -94,7 +124,9 @@ def resolve_transit(x):
 def merge_tariff(st, x):
     x = x.set_index("esr")
     m = st["esr"].map
-    st["in_tariff_list"] = st["esr"].isin(x.index)
+    st["tr4_date"] = m(x["tr4_date"]).fillna("") if "tr4_date" in x else ""
+    st["in_tariff_list"] = st["tr4_date"] == "21.10.2026" if "tr4_date" in x else st["esr"].isin(x.index)
+    st["tr4_excluded"] = st["tr4_date"] == "30.12.2023"
     st["tr4_list"] = m(x["tr4_list"]).fillna("")
     st["tr4_name"] = m(x["name"]).fillna("")
     st["tr4_point_type"] = m(x["point_type"]).fillna("")
