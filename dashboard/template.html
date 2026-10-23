@@ -7,9 +7,12 @@
 <meta name="description" content="Карта железнодорожных станций пространства 1520 с кодами ЕСР">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
-<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<!-- шрифт необязателен: если Google Fonts недоступен, остаётся системный и страница не ждёт -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<!-- MapLibre GL 4.7.1 и SheetJS 0.18.5 встроены при сборке (dashboard/vendor): файл не зависит от CDN -->
+<style>/*__MAPLIBRE_CSS__*/</style>
+<script>/*__MAPLIBRE_JS__*/</script>
+<script>/*__XLSX_JS__*/</script>
 <style>
 :root {
   --bg: #f4f5f7; --panel: rgba(255,255,255,.94); --panel-solid: #fff; --line: #e3e6ea; --line-strong: #cfd4da;
@@ -221,6 +224,11 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .toast.show { opacity: 1; transform: translateX(-50%); }
 .loading { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: var(--bg); color: var(--muted); transition: opacity .3s; }
 .loading.hide { opacity: 0; pointer-events: none; }
+.load-box { max-width: 560px; padding: 0 20px; }
+.load-err { color: var(--text); background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; font-size: 14px; line-height: 1.5; }
+.load-err > b:first-child { display: block; font-size: 17px; margin-bottom: 6px; }
+.load-err p { color: var(--muted); margin: 8px 0 0; }
+.load-err code { font-size: 12.5px; background: var(--hover); padding: 1px 5px; border-radius: 5px; }
 .sheet-handle { display: none; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -317,7 +325,34 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 </head>
 <body>
 <div id="map" role="application" aria-label="Карта станций"></div>
-<div class="loading" id="loading">Загрузка данных…</div>
+<div class="loading" id="loading"><div class="load-box" id="loadBox">Загрузка данных…</div></div>
+<script>
+// Диагностика запуска: вместо вечной «Загрузки» — понятная причина. Отдельный скрипт, чтобы работал,
+// даже если основной упадёт.
+(function () {
+  var GPU_HINT = "<p>Карте нужен WebGL. В Chrome: <b>Настройки → Система → «Использовать графическое ускорение»</b> — включите и перезапустите браузер. " +
+    "Проверка: откройте адрес <b>chrome://gpu</b> — в строке «WebGL» должно быть «Hardware accelerated». " +
+    "При работе через удалённый рабочий стол или виртуальную машину WebGL часто недоступен — откройте файл на обычном ПК или в другом браузере.</p>";
+  window.startupError = function (title, html) {
+    var box = document.getElementById("loadBox"), wrap = document.getElementById("loading");
+    if (!box || wrap.classList.contains("hide") || box.classList.contains("load-err")) return;  // первое сообщение — самое точное
+    box.className = "load-box load-err";
+    box.innerHTML = "<b>" + title + "</b>" + (html || "");
+  };
+  window.GPU_HINT = GPU_HINT;
+  window.addEventListener("error", function (e) {
+    var m = String(e.message || "");
+    window.startupError("Не удалось запустить дашборд",
+      "<p>Ошибка: <code>" + m.replace(/</g, "&lt;") + "</code></p>" + (/webgl|context/i.test(m) ? GPU_HINT : "") +
+      "<p>Подробности — в консоли браузера (F12 → Console).</p>");
+  });
+  setTimeout(function () {
+    window.startupError("Загрузка затянулась",
+      "<p>Данные встроены в файл, поэтому обычно страница открывается за несколько секунд.</p>" + GPU_HINT +
+      "<p>Также помогает отключить расширения браузера для этого файла или открыть его в режиме инкогнито. Подробности — F12 → Console.</p>");
+  }, 25000);
+})();
+</script>
 
 <aside class="panel" id="panel" aria-label="Поиск и фильтры">
   <button class="sheet-handle" id="sheetHandle" aria-label="Развернуть или свернуть панель"></button>
@@ -655,6 +690,15 @@ async function loadStyle(key) {
   }
 }
 
+if (typeof maplibregl === "undefined") {
+  startupError("Не загрузилась библиотека карты", "<p>Файл собран без встроенной библиотеки MapLibre. Пересоберите его: <code>python3 scripts/build_dashboard.py</code>.</p>");
+  throw new Error("maplibregl is not defined");
+}
+const WEBGL_OK = (() => { try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; } })();
+if (!WEBGL_OK) {
+  startupError("Браузер не поддерживает WebGL", GPU_HINT);
+  throw new Error("WebGL недоступен");
+}
 const map = new maplibregl.Map({
   container: "map", style: blankStyle(), bounds: [[19, 36], [146, 70]],
   fitBoundsOptions: { padding: { left: innerWidth > 720 ? 410 : 20, right: 40, top: 40, bottom: innerWidth > 720 ? 40 : 200 } },

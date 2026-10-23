@@ -7,6 +7,7 @@
 Запуск (после build_stations.py): python3 scripts/build_dashboard.py
 """
 import json
+import re
 from datetime import date
 from pathlib import Path
 
@@ -69,6 +70,22 @@ def section_lines():
     return out
 
 
+VENDOR = ROOT / "dashboard" / "vendor"
+
+
+def vendor(name):
+    """Библиотека для встраивания в <script>/<style>: без ссылки на source map и без «</script»."""
+    text = (VENDOR / name).read_text(encoding="utf-8")
+    text = re.sub(r"\n?//# sourceMappingURL=\S+\s*$", "", text)
+    text = re.sub(r"\n?/\*# sourceMappingURL=\S+ \*/\s*$", "", text)
+    low = text.lower()
+    if name.endswith(".js"):  # внутри <script> опасны только «</script» и пара «<!--» + «<script»
+        assert "</script" not in low and not ("<!--" in low and "<script" in low), name
+    else:
+        assert "</style" not in low, name
+    return text
+
+
 def cities():
     c = pd.read_csv(CITIES, sep=";", dtype={"esr": str}, keep_default_na=False)
     return c[["city", "region", "esr", "km"]].values.tolist()
@@ -101,7 +118,10 @@ def main():
         "cities": cities(),
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-    html = TEMPLATE.read_text(encoding="utf-8").replace("/*__DATA__*/null", payload)
+    html = TEMPLATE.read_text(encoding="utf-8")
+    for key, name in (("MAPLIBRE_JS", "maplibre-gl.js"), ("MAPLIBRE_CSS", "maplibre-gl.css"), ("XLSX_JS", "xlsx.full.min.js")):
+        html = html.replace(f"/*__{key}__*/", vendor(name), 1)
+    html = html.replace("/*__DATA__*/null", payload)
     OUT.write_text(html, encoding="utf-8")
     print(f"{OUT.relative_to(ROOT)}: {len(st)} станций, {OUT.stat().st_size / 1e6:.1f} МБ")
 
