@@ -132,6 +132,8 @@ def main():
         # своя карта из файла PMTiles: стиль Protomaps (русские подписи) и встроенные шрифты Noto Sans
         "pmstyle": json.loads((VENDOR / "protomaps-style.json").read_text(encoding="utf-8")),
         "glyphs": glyphs(),
+        # контуры регионов для запретных зон (ограничения курсирования), см. scripts/build_region_shapes.py
+        "regionShapes": json.loads((VENDOR / "region-shapes.json").read_text(encoding="utf-8")),
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     html = TEMPLATE.read_text(encoding="utf-8")
