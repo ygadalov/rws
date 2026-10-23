@@ -43,12 +43,27 @@ button { cursor: pointer; }
 /* ---------- панель ---------- */
 .panel { position: fixed; z-index: 5; top: 12px; left: 12px; bottom: 12px; width: 384px; display: flex; flex-direction: column;
   background: var(--panel); backdrop-filter: blur(14px) saturate(1.3); -webkit-backdrop-filter: blur(14px) saturate(1.3);
-  border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  transition: transform .25s ease, opacity .2s ease, height .25s ease; }
+.panel.is-hidden { transform: translateX(calc(-100% - 24px)); opacity: 0; pointer-events: none; }
+.tb-btn.panel-show { position: fixed; z-index: 5; top: 12px; left: 12px; display: none; white-space: nowrap; }
+body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
+.legend-toggle { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12.5px; cursor: pointer; }
+.legend.min .legend-toggle { display: none; }
 .panel-head { padding: 14px 14px 10px; border-bottom: 1px solid var(--line); }
 .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .brand-logo { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; color: #fff; flex: none; }
 .brand h1 { font-size: 15px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
-.brand p { margin: 0; font-size: 12px; color: var(--muted); }
+.brand p { margin: 0; font-size: 12px; color: var(--muted); display: flex; align-items: center; }
+.info-inline { border: 0; background: none; padding: 0; margin-left: 5px; width: 18px; height: 18px; display: inline-grid; place-items: center; color: var(--faint); border-radius: 50%; vertical-align: middle; }
+.info-inline:hover { color: var(--accent); background: var(--accent-soft); }
+.info-inline svg { width: 15px; height: 15px; }
+.section-title .info-inline { margin-top: -2px; }
+.q-legend { display: grid; gap: 10px; margin: 4px 0 18px; font-size: 13px; }
+.q-row { display: grid; grid-template-columns: 10px 14px 1fr; align-items: baseline; gap: 8px; }
+.q-row span:last-child b { color: var(--text); font-weight: 600; }
+.q-row .dot { width: 10px; height: 10px; border-radius: 50%; }
+.q-row span:last-child { color: var(--muted); }
 .brand .spacer { flex: 1; }
 .icon-btn { width: 34px; height: 34px; border-radius: 10px; border: 1px solid transparent; background: transparent; display: grid; place-items: center; color: var(--muted); }
 .icon-btn:hover { background: var(--hover); color: var(--text); }
@@ -183,6 +198,12 @@ button { cursor: pointer; }
 .legend.min .legend-items, .legend.min select { display: none; }
 .legend-title { font-weight: 600; margin: 0 0 6px; font-size: 12px; }
 
+.prec-label { pointer-events: none; font-size: 11.5px; font-weight: 600; color: #1d4ed8; background: rgba(255,255,255,.88); padding: 1px 7px; border-radius: 999px; border: 1px dashed #2463eb; white-space: nowrap; }
+:root[data-theme="dark"] .prec-label { background: rgba(15,17,21,.85); color: #93b4ff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .prec-label { background: rgba(15,17,21,.85); color: #93b4ff; } }
+.prec-note { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.prec-note .ring { width: 16px; height: 16px; border-radius: 50%; border: 1.5px dashed #2463eb; background: rgba(36,99,235,.08); flex: none; }
+.prec-note .txt { flex: 1; }
 .st-label { pointer-events: none; font-size: 12px; font-weight: 550; color: var(--text); white-space: nowrap;
   text-shadow: 0 0 2px var(--label-halo), 0 0 2px var(--label-halo), 0 0 3px var(--label-halo); }
 .maplibregl-popup-content { background: var(--panel-solid); color: var(--text); border-radius: 10px; padding: 7px 10px; box-shadow: var(--shadow); font: 12.5px/1.35 Inter, system-ui, sans-serif; }
@@ -274,13 +295,17 @@ button { cursor: pointer; }
 
 /* ---------- телефон: панель — нижняя шторка ---------- */
 @media (max-width: 720px) {
-  .panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 46vh; border-radius: 18px 18px 0 0; transition: height .25s ease; padding-bottom: env(safe-area-inset-bottom); }
-  .panel.collapsed { height: 152px; }
+  .panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 46vh; border-radius: 18px 18px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .panel.is-hidden { transform: translateY(calc(100% + 12px)); }
+  .tb-btn.panel-show { top: auto; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: auto; padding: 0 18px; height: 44px; border-radius: 22px; }
+  body.panel-hidden .maplibregl-ctrl-bottom-right { bottom: 64px; }
+  body.sheet-collapsed:not(.panel-hidden) .maplibregl-ctrl-bottom-right { bottom: 172px; }
+  .panel.collapsed { height: 172px; }
   .panel.expanded { height: 88vh; }
   .sheet-handle { display: block; width: 100%; height: 22px; border: 0; background: none; padding: 0; flex: none; }
   .sheet-handle::before { content: ""; display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--line-strong); margin: 8px auto 0; }
   .panel-head { padding-top: 2px; }
-  .brand { margin-bottom: 8px; } .brand p { display: none; }
+  .brand { margin-bottom: 8px; }
   .legend { display: none; }
   .toolbar { top: 10px; right: 10px; left: 10px; justify-content: flex-end; }
   .tb-btn .txt { display: none; } .tb-btn { width: 40px; padding: 0; justify-content: center; }
@@ -301,11 +326,9 @@ button { cursor: pointer; }
       <div class="brand-logo" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="13" rx="3"/><path d="M5 10h14M9 20l-2 2M15 20l2 2M8.5 13.5h.01M15.5 13.5h.01"/></svg>
       </div>
-      <div><h1>Станции 1520</h1><p id="subtitle">Коды ЕСР и координаты</p></div>
+      <div><h1>Станции 1520</h1><p><span id="subtitle">Коды ЕСР и координаты</span><button class="info-inline" id="infoBtn" title="О данных" aria-label="О данных"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button></p></div>
       <div class="spacer"></div>
-      <button class="icon-btn" id="infoBtn" title="О данных" aria-label="О данных">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
-      </button>
+      <button class="icon-btn" id="panelHide" title="Скрыть панель" aria-label="Скрыть панель"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 10l-2 2 2 2"/></svg></button>
     </div>
     <div class="tabs" role="tablist" aria-label="Режим">
       <button class="tab" role="tab" data-tab="stations" aria-selected="true">Станции</button>
@@ -333,7 +356,7 @@ button { cursor: pointer; }
           </div>
         </div>
         <div class="section">
-          <div class="section-title">Точность координат <button class="link-btn" id="qInfo">что это?</button></div>
+          <div class="section-title"><span>Точность координат<button class="info-inline" id="qInfo" title="Что означают классы точности" aria-label="Что означают классы точности"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button></span></div>
           <div class="chips" id="qualityChips"></div>
         </div>
         <div class="section">
@@ -418,6 +441,9 @@ button { cursor: pointer; }
   </div>
 </aside>
 
+<button class="tb-btn panel-show" id="panelShow" aria-label="Показать панель поиска и фильтров">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Поиск и фильтры</span>
+</button>
 <div class="toolbar">
   <button class="tb-btn" id="layersBtn" aria-haspopup="true" aria-expanded="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg><span class="txt">Слои</span>
@@ -434,7 +460,8 @@ button { cursor: pointer; }
   <h3>Подложка</h3>
   <div class="bm-grid" id="basemaps"></div>
   <h3>Схема сети</h3>
-  <label class="switch-row" style="padding:2px 4px 12px">Тарифные участки ТР №4 <span class="switch"><input type="checkbox" id="linesToggle"><span></span></span></label>
+  <label class="switch-row" style="padding:2px 4px 4px">Тарифные участки ТР №4 <span class="switch"><input type="checkbox" id="linesToggle"><span></span></span></label>
+  <label class="switch-row" style="padding:2px 4px 12px">Зона погрешности выбранной станции <span class="switch"><input type="checkbox" id="precToggle"><span></span></span></label>
   <h3>Железнодорожный слой · OpenRailwayMap</h3>
   <div class="ov-list" id="overlays"></div>
 </div>
@@ -461,16 +488,23 @@ button { cursor: pointer; }
     <option value="country">Страна</option>
   </select>
   <div class="legend-items" id="legendItems"></div>
+  <label class="legend-toggle">Тарифные участки (линии) <span class="switch"><input type="checkbox" id="linesToggle2"><span></span></span></label>
 </div>
 
 <div class="modal-bg" id="infoModal" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
   <div class="modal">
     <h2 id="infoTitle">О данных</h2>
     <p>Единый справочник станций с кодами ЕСР собран из справочника ЕСР и OpenStreetMap (osm2esr). Дополнительно использованы Тарифное руководство №4 на 21.10.2026 (Книга 1 — тарифные участки и расстояния, Книга 2 — списки станций, города и порты) и на 30.12.2023, АСУ «Экспресс» и перекодировка станций Крыма.</p>
-    <table id="qTable"></table>
     <p>Подложки: OpenFreeMap, CARTO, Esri World Imagery, OpenStreetMap; ж/д слой — OpenRailwayMap (CC-BY-SA). Данные карты © участники OpenStreetMap.</p>
     <p id="builtAt"></p>
     <button class="tb-btn" id="infoClose" style="box-shadow:none">Закрыть</button>
+  </div>
+</div>
+<div class="modal-bg" id="qModal" role="dialog" aria-modal="true" aria-labelledby="qTitle">
+  <div class="modal" style="width:min(440px,100%)">
+    <h2 id="qTitle">Точность координат</h2>
+    <div class="q-legend" id="qLegend"></div>
+    <button class="tb-btn" id="qClose" style="box-shadow:none">Закрыть</button>
   </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
@@ -487,11 +521,11 @@ const store = {
 
 /* ================= данные ================= */
 const QUALITY = {
-  A: { label: "A — подтверждено", color: "#2463eb", hint: "Точка OSM подтверждена: привязка, название и соседи по коду сходятся" },
-  B: { label: "B — вероятно", color: "#0ea5b7", hint: "Пройдены 2 из 3 проверок или выбрано из дублей с уверенным отрывом" },
-  C: { label: "C — сомнительно", color: "#e11d48", hint: "Неподтверждённая привязка, другое название или неоднозначные дубли" },
-  D: { label: "D — по связанному коду", color: "#f59e0b", hint: "Координаты основного кода станции, второго кода (Крым) или одноимённой станции" },
-  E: { label: "E — приблизительно", color: "#94a3b8", hint: "Положение на тарифном участке между соседями (обычно ±1–3 км) или интерполяция по соседним кодам (±10 км и хуже)" },
+  A: { label: "A — подтверждено", short: "подтверждено: точка OSM, название и соседи сходятся", color: "#2463eb", hint: "Точка OSM подтверждена: привязка, название и соседи по коду сходятся" },
+  B: { label: "B — вероятно", short: "вероятно: пройдена часть проверок", color: "#0ea5b7", hint: "Пройдены 2 из 3 проверок или выбрано из дублей с уверенным отрывом" },
+  C: { label: "C — сомнительно", short: "сомнительно: стоит проверить", color: "#e11d48", hint: "Неподтверждённая привязка, другое название или неоднозначные дубли" },
+  D: { label: "D — по связанному коду", short: "по связанному коду или одноимённой станции", color: "#f59e0b", hint: "Координаты основного кода станции, второго кода (Крым) или одноимённой станции" },
+  E: { label: "E — приблизительно", short: "приблизительно: по участку ТР №4 или соседним кодам", color: "#94a3b8", hint: "Положение на тарифном участке между соседями (обычно ±1–3 км) или интерполяция по соседним кодам (±10 км и хуже)" },
 };
 const PASS_OPS = { "П": "билеты на все поезда, багаж", "Б": "билеты на все поезда, без багажа", "О": "пригородные и местные поезда", "Х": "операции не производятся", "К": "контрейлерные отправки" };
 const TYPE_COLORS = { "станция": "#2463eb", "остановочный пункт": "#16a34a", "разъезд": "#f59e0b", "обгонный пункт": "#db2777", "блок-пост": "#7c3aed", "путевой пост": "#9333ea", "пост": "#a855f7", "условный пункт": "#64748b" };
@@ -591,7 +625,7 @@ const OVERLAYS = {
 const darkPref = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
 let basemap = store.get("basemap") || (darkPref() ? "dark" : "positron");
 let overlay = store.get("overlay") || "off";
-let showLines = store.get("lines") !== "0";
+let showLines = store.get("lines") === "1";  // схема участков по умолчанию выключена
 const LINES_FC = { type: "FeatureCollection", features: (RAW.lines || []).map(([id, name, kind, parts], j) => ({
   type: "Feature", id: j, geometry: { type: "MultiLineString", coordinates: parts }, properties: { id, name, k: kind } })) };
 if (!BASEMAPS[basemap]) basemap = "positron";
@@ -717,7 +751,10 @@ map.on("click", e => {
   const wg = map.getLayer("wg-circle") && state.tab === "wagons" ? map.queryRenderedFeatures(p, { layers: ["wg-circle"] }) : [];
   if (wg.length) return selectStation(S[wg.sort((a, b) => a.properties.n - b.properties.n)[0].properties.i], { fly: false });
   const fs = map.getLayer("st") ? map.queryRenderedFeatures([[p.x - pad, p.y - pad], [p.x + pad, p.y + pad]], { layers: ["st"] }) : [];
-  if (!fs.length) return;
+  if (!fs.length) {
+    if (innerWidth <= 720 && !$("panel").classList.contains("show-detail") && !$("panel").classList.contains("is-hidden")) setSheet("collapsed");
+    return;
+  }
   let best = fs[0], bd = Infinity;
   for (const f of fs) { const q = map.project(f.geometry.coordinates); const d = (q.x - p.x) ** 2 + (q.y - p.y) ** 2; if (d < bd) { bd = d; best = f; } }
   selectStation(S[best.properties.i], { fly: false });
@@ -970,8 +1007,8 @@ $("q").addEventListener("keydown", e => {
 $("results").addEventListener("click", e => { const li = e.target.closest(".res"); if (li) selectStation(S[+li.dataset.i]); });
 $("qClear").addEventListener("click", () => { $("q").value = ""; runSearch(); $("q").focus(); });
 document.addEventListener("keydown", e => {
-  if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); $("q").focus(); $("q").select(); setSheet("expanded"); }
-  if (e.key === "Escape") { closePops(); $("infoModal").classList.remove("open"); if ($("panel").classList.contains("show-detail") && document.activeElement !== $("q")) closeDetail(); }
+  if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); setPanelHidden(false); $("q").focus(); $("q").select(); setSheet("expanded"); }
+  if (e.key === "Escape") { closePops(); $("infoModal").classList.remove("open"); $("qModal").classList.remove("open"); if ($("panel").classList.contains("show-detail") && document.activeElement !== $("q")) closeDetail(); }
 });
 
 /* ================= карточка станции ================= */
@@ -998,12 +1035,28 @@ function circlePoly(lon, lat, km) {
   }
   return { type: "Feature", geometry: { type: "Polygon", coordinates: [pts] }, properties: {} };
 }
+// зона погрешности: пунктирный круг радиусом «точность, км» и подпись «±N км» у его верхнего края
+let precMarker = null;
 function drawSelection(s) {
+  precMarker?.remove(); precMarker = null;
   const src = map.getSource("sel"); if (!src) return;
   if (!s || !s.has) return src.setData(emptyFC());
   const feats = [{ type: "Feature", geometry: { type: "Point", coordinates: [s.lon, s.lat] }, properties: {} }];
-  if (s.prec && s.prec >= 2) feats.unshift(circlePoly(s.lon, s.lat, s.prec));
+  if (s.prec && s.prec >= 2 && showPrec) {
+    feats.unshift(circlePoly(s.lon, s.lat, s.prec));
+    const el = document.createElement("div"); el.className = "prec-label"; el.textContent = `зона ±${fmtKm(s.prec)} км`;
+    precMarker = new maplibregl.Marker({ element: el, anchor: "bottom", offset: [0, -2] })
+      .setLngLat([s.lon, s.lat + s.prec / 6371 * 180 / Math.PI]).addTo(map);
+  }
   src.setData({ type: "FeatureCollection", features: feats });
+}
+const fmtKm = v => String(v).replace(".", ",");
+let showPrec = store.get("prec") !== "0";
+function setPrec(on) {
+  showPrec = on; store.set("prec", on ? "1" : "0");
+  $("precToggle").checked = on;
+  document.querySelectorAll(".prec-toggle-card").forEach(x => x.checked = on);
+  drawSelection(state.selected);
 }
 const ICON = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>',
@@ -1050,6 +1103,8 @@ function selectStation(s, { fly = true, push = true, keepScroll = false } = {}) 
       <div class="section-title">Координаты</div>
       ${s.has ? `<div class="qbox"><span class="dot" style="background:${q.color}"></span><div><b>${q.label}</b>${s.prec ? ` · точность ±${s.prec} км` : ""}
         <div class="note">${esc(s.qnote || q.hint)}</div>
+        ${s.prec && s.prec >= 2 ? `<div class="note prec-note"><span class="ring"></span><span class="txt">Пунктирный круг на карте — зона ±${fmtKm(s.prec)} км, в которой находится станция</span>
+          <label class="switch" title="Показывать зону на карте"><input type="checkbox" class="prec-toggle-card" aria-label="Показывать зону погрешности на карте" ${showPrec ? "checked" : ""}><span></span></label></div>` : ""}
         ${s.tconf ? '<div class="note" style="color:var(--danger)">Противоречит тарифным расстояниям ТР №4</div>' : ""}
         ${s.osm ? `<div class="note"><a target="_blank" rel="noopener" href="https://www.openstreetmap.org/${s.osmtype || "node"}/${s.osm}">Объект OSM ${s.osm}</a>${s.osmname && s.osmname !== s.name ? " · «" + esc(s.osmname) + "»" : ""}</div>` : ""}</div></div>`
       : `<div class="qbox"><span class="dot" style="border:1.5px dashed var(--faint)"></span><div><b>Координат нет</b><div class="note">Станция есть в справочнике ЕСР, но надёжно определить её положение не удалось</div></div></div>`}
@@ -1083,17 +1138,24 @@ function selectStation(s, { fly = true, push = true, keepScroll = false } = {}) 
     ${near.length ? `<div class="section"><div class="section-title">Рядом</div><ul class="near">
       ${near.map(([d, o]) => `<li data-goto="${o.esr}"><span class="dot" style="background:${colorOf(o, "q")}"></span><span class="n">${esc(o.name)}</span><span class="d mono">${d < 1 ? Math.round(d * 1000) + " м" : d.toFixed(1) + " км"}</span></li>`).join("")}
     </ul></div>` : ""}`;
+  if ($("panel").classList.contains("is-hidden")) setPanelHidden(false);
   $("panel").classList.add("show-detail");
   $("panelBody").scrollTop = keepScroll ? scroll : 0;
   setSheet("mid");
   drawSelection(s);
   if (push) history.replaceState(null, "", "#esr=" + s.esr);
-  if (s.has && fly) {
+  if (s.has && fly && s.prec >= 2 && showPrec) {
+    // зона погрешности должна целиком помещаться на экране вместе с подписью
+    const dLat = s.prec / 6371 * 180 / Math.PI, dLon = dLat / Math.cos(s.lat * Math.PI / 180), pad = mapPadding();
+    map.fitBounds([[s.lon - dLon, s.lat - dLat], [s.lon + dLon, s.lat + dLat]],
+      { padding: { left: pad.left + 50, right: 70, top: 70, bottom: pad.bottom + 50 }, maxZoom: 13, speed: 1.6, essential: true });
+  } else if (s.has && fly) {
     const z = Math.max(map.getZoom(), s.prec && s.prec >= 10 ? 10 : 13);
     map.flyTo({ center: [s.lon, s.lat], zoom: z, padding: mapPadding(), speed: 1.6, essential: true });
   } else if (!s.has) toast("У этой станции нет координат");
 }
 function mapPadding() {
+  if ($("panel").classList.contains("is-hidden")) return { left: 0, right: 0, top: 0, bottom: 0 };
   return innerWidth > 720 ? { left: 400, right: 0, top: 0, bottom: 0 } : { left: 0, right: 0, top: 0, bottom: innerHeight * 0.46 };
 }
 function closeDetail(clearHash = true) {
@@ -1101,6 +1163,7 @@ function closeDetail(clearHash = true) {
   state.selected = null; drawSelection(null);
   if (clearHash) history.replaceState(null, "", location.pathname + location.search);
 }
+$("detail").addEventListener("change", e => { if (e.target.classList.contains("prec-toggle-card")) setPrec(e.target.checked); });
 $("detail").addEventListener("click", e => {
   if (e.target.closest("#dBack")) return closeDetail();
   const cp = e.target.closest("[data-copy]"); if (cp) return copy(cp.dataset.copy);
@@ -1188,11 +1251,16 @@ function renderLayersPop() {
 }
 $("basemaps").addEventListener("click", e => { const b = e.target.closest("[data-bm]"); if (b && b.dataset.bm !== basemap) setBasemap(b.dataset.bm); });
 $("overlays").addEventListener("change", e => setOverlay(e.target.value));
-$("linesToggle").checked = showLines;
-$("linesToggle").addEventListener("change", e => {
-  showLines = e.target.checked; store.set("lines", showLines ? "1" : "0");
-  if (map.getLayer("lines")) map.setLayoutProperty("lines", "visibility", showLines ? "visible" : "none");
-});
+function setLines(on) {
+  showLines = on; store.set("lines", on ? "1" : "0");
+  $("linesToggle").checked = $("linesToggle2").checked = on;
+  if (map.getLayer("lines")) map.setLayoutProperty("lines", "visibility", on ? "visible" : "none");
+}
+$("linesToggle").checked = $("linesToggle2").checked = showLines;
+$("precToggle").checked = showPrec;
+$("precToggle").addEventListener("change", e => setPrec(e.target.checked));
+$("linesToggle").addEventListener("change", e => setLines(e.target.checked));
+$("linesToggle2").addEventListener("change", e => setLines(e.target.checked));
 
 const THEMES = ["auto", "light", "dark"];
 function applyTheme(t) {
@@ -1211,13 +1279,36 @@ function setSheet(mode) {
   if (innerWidth > 720) return;
   $("panel").classList.remove("collapsed", "expanded");
   if (mode === "collapsed" || mode === "expanded") $("panel").classList.add(mode);
+  document.body.classList.toggle("sheet-collapsed", mode === "collapsed");
 }
+const sheetState = () => { const p = $("panel"); return p.classList.contains("collapsed") ? "collapsed" : p.classList.contains("expanded") ? "expanded" : "mid"; };
 $("sheetHandle").addEventListener("click", () => {
-  const p = $("panel");
-  if (p.classList.contains("collapsed")) setSheet("mid");
-  else if (p.classList.contains("expanded")) setSheet("collapsed");
-  else setSheet("expanded");
+  const st = sheetState();
+  setSheet(st === "collapsed" ? "mid" : st === "expanded" ? "collapsed" : "expanded");
 });
+// скрыть / показать панель (на телефоне — шторку целиком)
+function setPanelHidden(h) {
+  $("panel").classList.toggle("is-hidden", h);
+  document.body.classList.toggle("panel-hidden", h);
+  store.set("panelHidden", h ? "1" : "0");
+  if (h) document.querySelectorAll(".dd.open").forEach(x => x.classList.remove("open"));
+  setTimeout(updateLabels, 300);
+}
+$("panelHide").addEventListener("click", () => setPanelHidden(true));
+$("panelShow").addEventListener("click", () => { setPanelHidden(false); setSheet("mid"); });
+// свайп по шапке шторки: вверх — развернуть, вниз — свернуть, из свёрнутой — спрятать
+let touchY = null;
+$("panel").addEventListener("touchstart", e => { touchY = e.target.closest(".sheet-handle, .panel-head") ? e.touches[0].clientY : null; }, { passive: true });
+$("panel").addEventListener("touchend", e => {
+  if (touchY === null || innerWidth > 720) return;
+  const dy = e.changedTouches[0].clientY - touchY; touchY = null;
+  if (Math.abs(dy) < 40) return;
+  const order = ["collapsed", "mid", "expanded"], k = order.indexOf(sheetState());
+  if (dy > 0) k === 0 ? setPanelHidden(true) : setSheet(order[k - 1]);
+  else setSheet(order[Math.min(k + 1, 2)]);
+});
+if (innerWidth <= 720) setSheet("collapsed");  // на телефоне карта важнее: стартуем со свёрнутой шторкой
+if (store.get("panelHidden") === "1") setPanelHidden(true);
 $("q").addEventListener("focus", () => setSheet("expanded"));
 
 let toastT;
@@ -1225,11 +1316,14 @@ function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add
 
 /* о данных */
 $("infoBtn").addEventListener("click", () => $("infoModal").classList.add("open"));
-$("qInfo").addEventListener("click", () => $("infoModal").classList.add("open"));
+$("qInfo").addEventListener("click", () => $("qModal").classList.add("open"));
+$("qClose").addEventListener("click", () => $("qModal").classList.remove("open"));
+$("qModal").addEventListener("click", e => { if (e.target === $("qModal")) $("qModal").classList.remove("open"); });
 $("infoClose").addEventListener("click", () => $("infoModal").classList.remove("open"));
 $("infoModal").addEventListener("click", e => { if (e.target === $("infoModal")) $("infoModal").classList.remove("open"); });
-$("qTable").innerHTML = Object.entries(QUALITY).map(([k, v]) =>
-  `<tr><td style="white-space:nowrap"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${v.color};margin-right:6px"></span><b>${v.label}</b></td><td>${v.hint}</td></tr>`).join("");
+// расшифровка букв и цветов точности под заголовком «Точность координат»
+$("qLegend").innerHTML = Object.entries(QUALITY).map(([k, v]) =>
+  `<div class="q-row"><span class="dot" style="background:${v.color}"></span><b>${k}</b><span><b>${esc(v.label.split(" — ")[1])}</b> — ${esc(v.hint)}</span></div>`).join("");
 $("builtAt").textContent = "Сборка данных: " + RAW.built + " · станций в справочнике: " + fmt(S.length);
 
 
