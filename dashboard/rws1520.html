@@ -256,6 +256,10 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .kpi { background: var(--hover); border-radius: 10px; padding: 8px 10px; }
 .kpi b { display: block; font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
 .kpi span { font-size: 11px; color: var(--muted); }
+.kpi-btn { border: 0; text-align: left; color: inherit; font: inherit; }
+.kpi-btn span { display: inline-flex; align-items: center; gap: 4px; }
+.kpi-btn svg { width: 12px; height: 12px; }
+.kpi-btn:hover { background: var(--accent-soft); } .kpi-btn:hover span { color: var(--accent); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--panel-solid); font-size: 13px; white-space: nowrap; }
@@ -570,7 +574,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
         <div class="section">
           <div class="kpis">
             <div class="kpi"><b class="mono" id="kTotal">—</b><span>по фильтру</span></div>
-            <div class="kpi"><b class="mono" id="kMap">—</b><span>на карте</span></div>
+            <button class="kpi kpi-btn" id="kMapBtn" title="Показать отобранные пункты на карте"><b class="mono" id="kMap">—</b><span>на карте <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></span></button>
             <div class="kpi"><b class="mono" id="kTariff">—</b><span>в ТР №4</span></div>
           </div>
         </div>
@@ -1282,6 +1286,17 @@ map.on("moveend", () => { updateLabels(); labelsPending = true; });
 map.on("idle", () => { if (labelsPending) { labelsPending = false; updateLabels(); } });
 
 /* ================= фильтры ================= */
+// после изменения фильтра карта сама показывает отобранные пункты; задержка — пока отмечают несколько значений
+let fitTimer = 0;
+const scheduleFit = fn => { clearTimeout(fitTimer); fitTimer = setTimeout(fn, 450); };
+function fitPoints(pts, maxZoom) {
+  if (!pts.length) return;
+  const b = pts.reduce((b, p) => b.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
+  const pad = mapPadding();
+  map.fitBounds(b, { padding: { left: pad.left + 60, right: 80, top: 80, bottom: pad.bottom + 60 }, maxZoom, duration: 900 });
+}
+const fitFiltered = () => fitPoints(filtered.filter(s => s.has).map(s => [s.lon, s.lat]), 11);
+$("kMapBtn").addEventListener("click", fitFiltered);
 function applyFilters() {
   filtered = S.filter(s => passes(s));
   if (map.getSource("st")) map.getSource("st").setData(stationFeatures());
@@ -1305,7 +1320,7 @@ $("qualityChips").addEventListener("click", e => {
   const b = e.target.closest("[data-q]"); if (!b) return;
   const k = b.dataset.q;
   state.quality.has(k) ? state.quality.delete(k) : state.quality.add(k);
-  applyFilters();
+  applyFilters(); scheduleFit(fitFiltered);
 });
 
 const DD = [
@@ -1345,9 +1360,9 @@ function buildDropdowns() {
     list.addEventListener("change", e => {
       const v = e.target.value;
       e.target.checked ? state.sets[key].add(v) : state.sets[key].delete(v);
-      applyFilters();
+      applyFilters(); scheduleFit(fitFiltered);
     });
-    dd.querySelector('[data-act="clear"]').addEventListener("click", () => { state.sets[key].clear(); applyFilters(); render(); });
+    dd.querySelector('[data-act="clear"]').addEventListener("click", () => { state.sets[key].clear(); applyFilters(); render(); scheduleFit(fitFiltered); });
     dd.querySelector('[data-act="close"]').addEventListener("click", () => { dd.classList.remove("open"); btn.setAttribute("aria-expanded", "false"); });
   });
 }
@@ -1362,13 +1377,13 @@ document.addEventListener("click", e => {
   if (!e.target.closest(".popover") && !e.target.closest("#layersBtn") && !e.target.closest("#exportBtn")) closePops();
 });
 [["fTariff", "tariff"], ["fPass", "pass"], ["fFreight", "freight"], ["fVirt", "hideVirt"]].forEach(([id, k]) =>
-  $(id).addEventListener("change", e => { state[k] = e.target.checked; applyFilters(); }));
+  $(id).addEventListener("change", e => { state[k] = e.target.checked; applyFilters(); scheduleFit(fitFiltered); }));
 $("resetFilters").addEventListener("click", () => {
   Object.values(state.sets).forEach(s => s.clear());
   state.quality = new Set(Object.keys(QUALITY));
   state.tariff = state.pass = state.freight = false; state.hideVirt = true;
   $("fTariff").checked = $("fPass").checked = $("fFreight").checked = false; $("fVirt").checked = true;
-  applyFilters();
+  applyFilters(); scheduleFit(fitFiltered);
 });
 
 /* ================= легенда ================= */
@@ -2062,13 +2077,7 @@ function applyWagons(fit) {
   if (state.selected && $("panel").classList.contains("show-detail")) selectStation(state.selected, { fly: false, push: false, keepScroll: true });
   if (fit) fitWagons();
 }
-function fitWagons() {
-  const pts = [...W.agg.by.values()].filter(o => o.s.has).map(o => [o.s.lon, o.s.lat]);
-  if (!pts.length) return;
-  const b = pts.reduce((b, p) => b.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
-  const pad = mapPadding();
-  map.fitBounds(b, { padding: { left: pad.left + 60, right: 80, top: 80, bottom: pad.bottom + 60 }, maxZoom: 9, duration: 900 });
-}
+const fitWagons = () => fitPoints([...W.agg.by.values()].filter(o => o.s.has).map(o => [o.s.lon, o.s.lat]), 9);
 
 function switchTab(t) {
   state.tab = t;
@@ -2130,10 +2139,10 @@ function wagonDropdown(idx) {
   inp.addEventListener("input", render);
   list.addEventListener("change", e => {
     const s = W.filters.get(idx) || new Set(); e.target.checked ? s.add(e.target.value) : s.delete(e.target.value);
-    W.filters.set(idx, s); el.renderLabel(); applyWagons();
+    W.filters.set(idx, s); el.renderLabel(); applyWagons(); scheduleFit(fitWagons);
   });
   el.querySelector('[data-act="remove"]').addEventListener("click", () => {
-    W.filters.delete(idx); W.shown = W.shown.filter(x => x !== idx); renderWagonDropdowns(); applyWagons();
+    W.filters.delete(idx); W.shown = W.shown.filter(x => x !== idx); renderWagonDropdowns(); applyWagons(); scheduleFit(fitWagons);
   });
   el.querySelector('[data-act="close"]').addEventListener("click", () => el.classList.remove("open"));
   el.renderLabel();
@@ -2236,13 +2245,13 @@ document.addEventListener("paste", e => {
   e.preventDefault();
   setReport("Вставка из буфера обмена", parseCSV(text));
 });
-$("wgNum").addEventListener("input", e => { W.num = e.target.value.replace(/\D/g, ""); applyWagons(); });
+$("wgNum").addEventListener("input", e => { W.num = e.target.value.replace(/\D/g, ""); applyWagons(); scheduleFit(fitWagons); });
 $("wgAddFilter").addEventListener("change", e => {
   const idx = +e.target.value; if (!e.target.value) return;
   W.shown.push(idx); renderWagonDropdowns();
   document.querySelector(`[data-wg="${idx}"] .dd-btn`)?.click();
 });
-$("wgReset").addEventListener("click", () => { W.filters.clear(); W.num = ""; $("wgNum").value = ""; renderWagonDropdowns(); applyWagons(); });
+$("wgReset").addEventListener("click", () => { W.filters.clear(); W.num = ""; $("wgNum").value = ""; renderWagonDropdowns(); applyWagons(); scheduleFit(fitWagons); });
 $("wgView").addEventListener("click", e => {
   const b = e.target.closest("[data-v]"); if (!b) return;
   W.view = b.dataset.v; store.set("wgView", W.view);
