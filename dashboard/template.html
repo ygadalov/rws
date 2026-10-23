@@ -13,6 +13,7 @@
 <style>/*__MAPLIBRE_CSS__*/</style>
 <script>/*__MAPLIBRE_JS__*/</script>
 <script>/*__XLSX_JS__*/</script>
+<script>/*__PMTILES_JS__*/</script>
 <style>
 :root {
   --bg: #f4f5f7; --panel: rgba(255,255,255,.94); --panel-solid: #fff; --line: #e3e6ea; --line-strong: #cfd4da;
@@ -62,6 +63,15 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .info-inline:hover { color: var(--accent); background: var(--accent-soft); }
 .info-inline svg { width: 15px; height: 15px; }
 .section-title .info-inline { margin-top: -2px; }
+.custom-map { display: grid; gap: 8px; margin-bottom: 14px; font-size: 12.5px; }
+.custom-map .btn { width: 100%; height: 34px; font-size: 13px; }
+.custom-map .btn svg { width: 16px; height: 16px; }
+.custom-map .row { display: flex; gap: 6px; }
+.custom-map .row .btn { flex: 1; }
+.custom-map .meta { color: var(--muted); }
+.custom-map .meta b { color: var(--text); overflow-wrap: anywhere; }
+.steps { padding-left: 20px; color: var(--muted); } .steps li { margin: 6px 0; }
+.modal code { font-size: 12px; background: var(--hover); padding: 1px 5px; border-radius: 5px; overflow-wrap: anywhere; }
 .q-legend { display: grid; gap: 10px; margin: 4px 0 18px; font-size: 13px; }
 .q-row { display: grid; grid-template-columns: 10px 14px 1fr; align-items: baseline; gap: 8px; }
 .q-row span:last-child b { color: var(--text); font-weight: 600; }
@@ -207,7 +217,10 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .prec-note { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .prec-note .ring { width: 16px; height: 16px; border-radius: 50%; border: 1.5px dashed #2463eb; background: rgba(36,99,235,.08); flex: none; }
 .prec-note .txt { flex: 1; }
-.ofl-place, .ofl-country, .ofl-sea { pointer-events: none; white-space: nowrap; text-shadow: 0 0 2px var(--label-halo), 0 0 2px var(--label-halo), 0 0 3px var(--label-halo); }
+.ofl-region { font-size: 11px; color: #9a8f7c; letter-spacing: .02em; }
+:root[data-theme="dark"] .ofl-region { color: #77808d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ofl-region { color: #77808d; } }
+.ofl-place, .ofl-country, .ofl-sea, .ofl-region { pointer-events: none; white-space: nowrap; text-shadow: 0 0 2px var(--label-halo), 0 0 2px var(--label-halo), 0 0 3px var(--label-halo); }
 .ofl-place { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text); }
 .ofl-place i { width: 6px; height: 6px; border-radius: 50%; background: #5b6472; box-shadow: 0 0 0 1.5px var(--label-halo); flex: none; }
 .ofl-place.cap1 { font-weight: 600; }
@@ -505,6 +518,9 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 <div class="popover" id="layersPop" role="dialog" aria-label="Слои карты">
   <h3>Подложка</h3>
   <div class="bm-grid" id="basemaps"></div>
+  <h3>Своя карта из файла</h3>
+  <div class="custom-map" id="customMap"></div>
+  <input type="file" id="pmInput" accept=".pmtiles" hidden>
   <h3>Схема сети</h3>
   <label class="switch-row" style="padding:2px 4px 4px">Тарифные участки ТР №4 <span class="switch"><input type="checkbox" id="linesToggle"><span></span></span></label>
   <label class="switch-row" style="padding:2px 4px 12px">Зона погрешности выбранной станции <span class="switch"><input type="checkbox" id="precToggle"><span></span></span></label>
@@ -544,6 +560,31 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
     <p>Подложки: OpenFreeMap, CARTO, Esri World Imagery, OpenStreetMap; ж/д слой — OpenRailwayMap (CC-BY-SA). Данные карты © участники OpenStreetMap. Офлайн-схема — Natural Earth (общественное достояние).</p>
     <p id="builtAt"></p>
     <button class="tb-btn" id="infoClose" style="box-shadow:none">Закрыть</button>
+  </div>
+</div>
+<div class="modal-bg" id="pmHelp" role="dialog" aria-modal="true" aria-labelledby="pmTitle">
+  <div class="modal">
+    <h2 id="pmTitle">Своя подробная карта без интернета</h2>
+    <p>Дашборд может показывать полноценную карту OpenStreetMap (улицы, деревни, дороги, подписи) из файла
+      <b>.pmtiles</b>, лежащего на вашем ПК или сетевом диске. Файл читается по частям — даже гигабайтный файл
+      открывается быстро, интернет и сервер не нужны.</p>
+    <p><b>Как получить файл (один раз, на ПК с интернетом):</b></p>
+    <ol class="steps">
+      <li>Скачайте утилиту <code>pmtiles</code> для своей системы: github.com/protomaps/go-pmtiles → Releases
+        (для Windows — архив <code>…Windows_x86_64.zip</code>, внутри <code>pmtiles.exe</code>).</li>
+      <li>Найдите свежую сборку карты мира на maps.protomaps.com/builds (файл вида <code>20261020.pmtiles</code>).</li>
+      <li>Вырежьте область сети 1520 командой:<br>
+        <code>pmtiles extract https://build.protomaps.com/20261020.pmtiles sng.pmtiles --bbox=19,35,180,78 --maxzoom=12</code><br>
+        Утилита скачивает только нужную часть. Чем больше <code>maxzoom</code>, тем подробнее и тяжелее файл:
+        ориентировочно 10 — сотни мегабайт (города и дороги), 12–13 — единицы гигабайт (улицы и деревни).</li>
+      <li>Положите <code>sng.pmtiles</code> на сетевой диск — один файл для всех.</li>
+      <li>В дашборде: «Слои» → «Открыть файл .pmtiles». В Chrome файл запоминается: при следующем открытии
+        достаточно нажать «Подключить снова».</li>
+    </ol>
+    <p>Подходят векторные сборки Protomaps (подписи по-русски, светлая и тёмная тема) и растровые .pmtiles.
+      Файл .mbtiles можно преобразовать: <code>pmtiles convert карта.mbtiles карта.pmtiles</code>.
+      Данные карты — © участники OpenStreetMap (ODbL).</p>
+    <button class="tb-btn" id="pmHelpClose" style="box-shadow:none">Закрыть</button>
   </div>
 </div>
 <div class="modal-bg" id="qModal" role="dialog" aria-modal="true" aria-labelledby="qTitle">
@@ -658,6 +699,7 @@ const BASEMAPS = {
   dark: { label: "Тёмная", url: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json", sw: "linear-gradient(135deg,#1b1f27,#2f3642)" },
   satellite: { label: "Спутник", raster: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr: "Esri, Maxar, Earthstar Geographics", sw: "linear-gradient(135deg,#3d5a3a,#7b6f4f 60%,#2f4a5c)" },
   osm: { label: "OSM", raster: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", attr: "© участники OpenStreetMap", sw: "linear-gradient(135deg,#f2efe9,#aad3df 50%,#cdebb0)" },
+  custom: { label: "Своя карта", custom: true, sw: "linear-gradient(135deg,#e8e2d4,#c9dfc0 45%,#f5f1e8 55%,#b9d3e6)" },
   offline: { label: "Схема (офлайн)", sw: "linear-gradient(160deg,#dbe6ee 0 38%,#f5f4ef 38% 100%)" },
 };
 const ORM = "https://{s}.tiles.openrailwaymap.org/";
@@ -696,8 +738,15 @@ function offlineStyle() {
     layers: [
       { id: "bg", type: "background", paint: { "background-color": water } },
       { id: "ofl-land", type: "fill", source: "ofl", filter: land, paint: { "fill-color": dk ? "#1a1e26" : "#f5f4ef" } },
+      { id: "ofl-urban", type: "fill", source: "ofw", filter: ["==", ["get", "k"], "urban"], paint: { "fill-color": dk ? "#23272f" : "#f0ebdf" } },
       { id: "ofl-lake", type: "fill", source: "ofw", filter: ["==", ["get", "k"], "lake"], paint: { "fill-color": water } },
       river(0), river(1),
+      { id: "ofl-region", type: "line", source: "ofw", minzoom: 3.5, filter: ["==", ["get", "k"], "region"],
+        paint: { "line-color": dk ? "#353d4a" : "#cfc8ba", "line-width": ["interpolate", ["linear"], ["zoom"], 4, 0.4, 8, 1.1], "line-dasharray": [4, 3] } },
+      ...[1, 2].map(t => ({ id: "ofl-road" + t, type: "line", source: "ofw", minzoom: t === 1 ? 4 : 6,
+        filter: ["all", ["==", ["get", "k"], "road"], ["==", ["get", "t"], t]], layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": dk ? "#5b4c36" : (t === 1 ? "#e3c38f" : "#ead8b8"),
+          "line-width": ["interpolate", ["linear"], ["zoom"], 4, t === 1 ? 0.6 : 0.4, 8, t === 1 ? 1.8 : 1.1, 12, t === 1 ? 3 : 2] } })),
       { id: "ofl-coast", type: "line", source: "ofl", filter: land, paint: { "line-color": dk ? "#2c3442" : "#b9c7d3", "line-width": 0.7 } },
       { id: "ofl-border", type: "line", source: "ofl", filter: ["==", ["get", "k"], "border"],
         paint: { "line-color": dk ? "#5a6475" : "#a39e93", "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.7, 8, 1.5], "line-dasharray": [3, 2] } },
@@ -711,6 +760,12 @@ function fallbackToOffline(label) {
 async function loadStyle(key) {
   const b = BASEMAPS[key];
   if (key === "offline") return offlineStyle();
+  if (key === "custom") {
+    const st = customStyle(); if (st) return st;
+    basemap = "offline"; store.set("basemap", "offline"); renderLayersPop();
+    if (PM.saved) toast("Своя карта не подключена — «Слои» → «Подключить снова»");
+    return offlineStyle();
+  }
   if (b.raster) return rasterStyle(b);
   try {
     const ctl = new AbortController();
@@ -724,10 +779,10 @@ async function loadStyle(key) {
   }
 }
 // стиль загрузился, но тайлы не грузятся (сайт заблокирован) — через 7 с переходим на офлайн-схему
-const OWN_SOURCES = new Set(["st", "sel", "wg", "lines", "orm", "ofl", "ofw"]);
+const OWN_SOURCES = new Set(["st", "sel", "wg", "lines", "orm", "ofl", "ofw", "protomaps", "custom"]);
 let tileWatch = null;
 function watchTiles(key) {
-  if (key === "offline") { tileWatch = null; return; }
+  if (key === "offline" || key === "custom") { tileWatch = null; return; }
   const w = tileWatch = { key, ok: 0, err: 0 };
   setTimeout(() => {
     if (tileWatch !== w || basemap !== key || w.ok || !w.err) return;
@@ -826,6 +881,102 @@ function setOverlay(key) {
 map.on("error", e => { if (tileWatch && e.sourceId && !OWN_SOURCES.has(e.sourceId)) tileWatch.err++; });
 map.on("data", e => { if (tileWatch && e.dataType === "source" && e.tile && !OWN_SOURCES.has(e.sourceId)) tileWatch.ok++; });
 
+/* ================= своя карта из файла PMTiles ================= */
+// Подробная карта OpenStreetMap (сборки Protomaps) с диска: файл читается кусками, интернет и сервер не нужны.
+const PM = { pm: null, kind: "", name: "", header: null, saved: null, v3: false };
+// старые сборки (схема v3) называют поля «pmap:kind» и т.п. — переименовываем поля в стиле
+// (и в выражениях ["get","kind"], и в старой форме фильтров ["==","kind",…])
+const V3_FIELDS = /\["(get|has|!has|==|!=|in|!in|<|<=|>|>=)","(kind|kind_detail|min_zoom|population_rank|script|pgf:name|level|link)"/g;
+const pmProtocol = window.pmtiles ? new pmtiles.Protocol() : null;
+if (pmProtocol) maplibregl.addProtocol("pmtiles", pmProtocol.tile);
+// шрифты подписей встроены (Noto Sans, SIL OFL); недостающее начертание или диапазон — обычным начертанием
+const glyphCache = new Map();
+maplibregl.addProtocol("glyph", async params => {
+  const m = decodeURIComponent(params.url).match(/^glyph:\/\/(.+)\/(\d+-\d+)$/), fonts = RAW.glyphs || {};
+  const range = m ? m[2] : "", stack = m ? m[1].split(",").map(f => f.trim()) : [];
+  const font = stack.find(f => fonts[f]?.[range]) || (fonts["Noto Sans Regular"]?.[range] ? "Noto Sans Regular" : null);
+  if (!font) return { data: new ArrayBuffer(0) };
+  if (!glyphCache.has(font + range)) glyphCache.set(font + range, Uint8Array.from(atob(fonts[font][range]), c => c.charCodeAt(0)).buffer);
+  return { data: glyphCache.get(font + range).slice(0) };
+});
+function customStyle() {
+  if (!PM.pm) return null;
+  const url = "pmtiles://" + PM.pm.source.getKey(), attribution = '© участники OpenStreetMap · <a href="https://protomaps.com">Protomaps</a>';
+  if (PM.kind === "raster") return { version: 8, sources: { custom: { type: "raster", url, tileSize: 256, attribution } },
+    layers: [{ id: "custom", type: "raster", source: "custom" }] };
+  return { version: 8, glyphs: "glyph://{fontstack}/{range}", sources: { protomaps: { type: "vector", url, attribution } },
+    layers: PM.v3 ? JSON.parse(JSON.stringify(RAW.pmstyle[darkPref() ? "dark" : "light"]).replace(V3_FIELDS, '["$1","pmap:$2"'))
+      : RAW.pmstyle[darkPref() ? "dark" : "light"] };
+}
+async function openPmtiles(file, handle) {
+  if (!pmProtocol) return toast("Библиотека PMTiles не встроена — пересоберите файл");
+  try {
+    const p = new pmtiles.PMTiles(new pmtiles.FileSource(file)), h = await p.getHeader();
+    let kind, v3 = false;
+    if (h.tileType === 1) {
+      const vl = (await p.getMetadata().catch(() => ({}))).vector_layers || [], ids = vl.map(l => l.id);
+      v3 = vl.some(l => l.fields && "pmap:kind" in l.fields);
+      if (!ids.includes("earth") && !ids.includes("water"))
+        throw new Error("векторная схема не Protomaps (слои: " + ids.slice(0, 6).join(", ") + ")");
+      kind = "vector";
+    } else if ([2, 3, 4].includes(h.tileType)) kind = "raster";
+    else throw new Error("неизвестный тип тайлов");
+    pmProtocol.add(p);
+    Object.assign(PM, { pm: p, kind, name: file.name, header: h, v3 });
+    if (handle) { kvSet("pmHandle", handle); PM.saved = handle; }
+    await setBasemap("custom");
+    const c = map.getCenter();
+    if (c.lng < h.minLon || c.lng > h.maxLon || c.lat < h.minLat || c.lat > h.maxLat) fitCustom();
+    toast(`Подключена карта «${file.name}»`);
+  } catch (e) { console.error(e); toast("Не удалось открыть карту: " + (e.message || e)); }
+}
+function fitCustom() {
+  const h = PM.header; if (!h) return;
+  map.fitBounds([[h.minLon, h.minLat], [h.maxLon, h.maxLat]], { padding: 40, maxZoom: h.maxZoom });
+}
+async function pickPmtiles() {
+  if (window.showOpenFilePicker) {
+    try {
+      const [h] = await showOpenFilePicker({ types: [{ description: "Карта PMTiles", accept: { "application/octet-stream": [".pmtiles"] } }] });
+      return openPmtiles(await h.getFile(), h);
+    } catch (e) { if (e.name === "AbortError") return; }
+  }
+  $("pmInput").click();
+}
+async function reconnectPmtiles() {
+  const h = PM.saved; if (!h) return;
+  try {
+    if ((await h.queryPermission({ mode: "read" })) !== "granted" && (await h.requestPermission({ mode: "read" })) !== "granted") return;
+    openPmtiles(await h.getFile(), h);
+  } catch (e) { toast("Файл карты недоступен: " + (e.message || e)); }
+}
+function renderCustomMap() {
+  const box = $("customMap"); if (!box) return;
+  const ic = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3z"/><path d="M9 4v13M15 7v13"/></svg>';
+  box.innerHTML = PM.pm
+    ? `<div class="meta"><b>${esc(PM.name)}</b> · ${PM.kind === "vector" ? "векторная, подписи по-русски" : "растровая"} · до масштаба ${PM.header.maxZoom}</div>
+       <div class="row"><button class="btn" data-pm="fit">Показать область</button><button class="btn" data-pm="open">Другой файл…</button></div>`
+    : `${PM.saved ? `<button class="btn primary" data-pm="again">${ic}Подключить снова: ${esc(PM.saved.name)}</button>` : ""}
+       <button class="btn" data-pm="open">${ic}Открыть файл .pmtiles…</button>
+       <button class="link-btn" data-pm="help" style="text-align:left">Подробная карта без интернета — как получить файл?</button>`;
+}
+$("customMap").addEventListener("click", e => {
+  const a = e.target.closest("[data-pm]")?.dataset.pm; if (!a) return;
+  if (a === "open") pickPmtiles();
+  if (a === "again") reconnectPmtiles();
+  if (a === "fit") fitCustom();
+  if (a === "help") { closePops(); $("pmHelp").classList.add("open"); }
+});
+$("pmInput").addEventListener("change", e => { if (e.target.files[0]) openPmtiles(e.target.files[0]); e.target.value = ""; });
+$("pmHelpClose").addEventListener("click", () => $("pmHelp").classList.remove("open"));
+$("pmHelp").addEventListener("click", e => { if (e.target === $("pmHelp")) $("pmHelp").classList.remove("open"); });
+// хранилище «последнего файла» (IndexedDB): Chrome позволяет запомнить файл и переоткрыть по разрешению
+const idb = (() => { let p; return () => p ||= new Promise((ok, no) => {
+  const r = indexedDB.open("st1520", 1); r.onupgradeneeded = () => r.result.createObjectStore("kv"); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }); })();
+async function kvSet(k, v) { try { const db = await idb(); db.transaction("kv", "readwrite").objectStore("kv").put(v, k); } catch {} }
+async function kvGet(k) { try { const db = await idb(); return await new Promise(ok => { const r = db.transaction("kv").objectStore("kv").get(k); r.onsuccess = () => ok(r.result); r.onerror = () => ok(null); }); } catch { return null; } }
+kvGet("pmHandle").then(h => { if (h && h.getFile) { PM.saved = h; renderCustomMap(); } });
+
 /* наведение и клик */
 let hoverId = null;
 const tip = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 10, maxWidth: "280px" });
@@ -917,6 +1068,7 @@ function offlineLabels(boxes, free) {
   const inView = (x, y) => bb.contains([x, y]) || bb.contains([x - 360, y]);
   for (const [x, y, t, ml] of L.countries) if (z >= ml - 1.5 && z < 7.5 && inView(x, y)) cand.push([x, y, t, "ofl-country", 1000 - ml]);
   for (const [x, y, t, ml] of L.seas) if (z >= ml - 1.5 && z < 10 && inView(x, y)) cand.push([x, y, t, "ofl-sea", 900 - ml]);
+  for (const [x, y, t, ml] of L.regions || []) if (z >= Math.min(ml, 6) - 1.5 && z < 8.5 && inView(x, y)) cand.push([x, y, t, "ofl-region", 70 - ml]);
   for (const [x, y, t, mz, pop, cap] of L.places) {
     if (!(z >= mz - 1.3 || (cap === 2 && z >= 2.5)) || !inView(x, y)) continue;
     cand.push([x, y, t, "ofl-place" + (cap === 2 ? " cap" : cap === 1 ? " cap1" : ""), cap * 40 + Math.log10(pop + 10) * 10]);
@@ -925,7 +1077,7 @@ function offlineLabels(boxes, free) {
   let n = 0;
   for (const [x, y, t, cls, ] of cand) {
     const p = map.project([x, y]), place = cls.startsWith("ofl-place");
-    const w = t.length * (cls === "ofl-country" ? 9 : 6.8) + (place ? 14 : 8);
+    const w = t.length * (cls === "ofl-country" ? 9 : cls === "ofl-region" ? 6.2 : 6.8) + (place ? 14 : 8);
     const box = place ? [p.x - 4, p.y - 9, p.x + w, p.y + 9] : [p.x - w / 2, p.y - 9, p.x + w / 2, p.y + 9];
     if (!free(box)) continue;
     boxes.push(box);
@@ -1138,7 +1290,7 @@ $("results").addEventListener("click", e => { const li = e.target.closest(".res"
 $("qClear").addEventListener("click", () => { $("q").value = ""; runSearch(); $("q").focus(); });
 document.addEventListener("keydown", e => {
   if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); setPanelHidden(false); $("q").focus(); $("q").select(); setSheet("expanded"); }
-  if (e.key === "Escape") { closePops(); $("infoModal").classList.remove("open"); $("qModal").classList.remove("open"); if ($("panel").classList.contains("show-detail") && document.activeElement !== $("q")) closeDetail(); }
+  if (e.key === "Escape") { closePops(); $("infoModal").classList.remove("open"); $("qModal").classList.remove("open"); $("pmHelp").classList.remove("open"); if ($("panel").classList.contains("show-detail") && document.activeElement !== $("q")) closeDetail(); }
 });
 
 /* ================= карточка станции ================= */
@@ -1374,7 +1526,8 @@ function togglePop(btn, pop) {
 $("layersBtn").addEventListener("click", () => togglePop("layersBtn", "layersPop"));
 $("exportBtn").addEventListener("click", () => togglePop("exportBtn", "exportPop"));
 function renderLayersPop() {
-  $("basemaps").innerHTML = Object.entries(BASEMAPS).map(([k, b]) =>
+  renderCustomMap();
+  $("basemaps").innerHTML = Object.entries(BASEMAPS).filter(([k]) => k !== "custom" || PM.pm).map(([k, b]) =>
     `<button class="bm" data-bm="${k}" aria-pressed="${k === basemap}"><div class="sw" style="background:${b.sw}"></div>${b.label}</button>`).join("");
   $("overlays").innerHTML = Object.entries(OVERLAYS).map(([k, o]) =>
     `<label class="ov"><input type="radio" name="ov" value="${k}" ${k === overlay ? "checked" : ""}><span>${o.label}${o.hint ? `<small>${o.hint}</small>` : ""}</span></label>`).join("");
@@ -1402,7 +1555,7 @@ $("themeBtn").addEventListener("click", () => {
   theme = THEMES[(THEMES.indexOf(theme) + 1) % 3]; store.set("theme", theme); applyTheme(theme);
   const want = darkPref() ? "dark" : "positron";
   if ((basemap === "dark" || basemap === "positron") && basemap !== want) setBasemap(want);
-  else if (basemap === "offline") setBasemap("offline");  // перекрасить схему под тему
+  else if (basemap === "offline" || basemap === "custom") setBasemap(basemap);  // перекрасить под тему
   toast($("themeBtn").title);
 });
 

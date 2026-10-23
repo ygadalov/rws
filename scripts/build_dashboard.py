@@ -86,6 +86,15 @@ def vendor(name):
     return text
 
 
+def glyphs():
+    """{шрифт: {диапазон: base64 PBF}} — подписи на своей карте без загрузки шрифтов из интернета."""
+    import base64
+    out = {}
+    for f in sorted((VENDOR / "glyphs").glob("*/*.pbf")):
+        out.setdefault(f.parent.name, {})[f.stem] = base64.b64encode(f.read_bytes()).decode()
+    return out
+
+
 def cities():
     c = pd.read_csv(CITIES, sep=";", dtype={"esr": str}, keep_default_na=False)
     return c[["city", "region", "esr", "km"]].values.tolist()
@@ -120,10 +129,14 @@ def main():
         "basemap": json.loads((VENDOR / "basemap-offline.json").read_text(encoding="utf-8")),
         # подписи и вода офлайн-схемы (Natural Earth), см. scripts/build_offline_labels.py
         "labels": json.loads((VENDOR / "basemap-labels.json").read_text(encoding="utf-8")),
+        # своя карта из файла PMTiles: стиль Protomaps (русские подписи) и встроенные шрифты Noto Sans
+        "pmstyle": json.loads((VENDOR / "protomaps-style.json").read_text(encoding="utf-8")),
+        "glyphs": glyphs(),
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     html = TEMPLATE.read_text(encoding="utf-8")
-    for key, name in (("MAPLIBRE_JS", "maplibre-gl.js"), ("MAPLIBRE_CSS", "maplibre-gl.css"), ("XLSX_JS", "xlsx.full.min.js")):
+    for key, name in (("MAPLIBRE_JS", "maplibre-gl.js"), ("MAPLIBRE_CSS", "maplibre-gl.css"), ("XLSX_JS", "xlsx.full.min.js"),
+                      ("PMTILES_JS", "pmtiles.js")):
         html = html.replace(f"/*__{key}__*/", vendor(name), 1)
     html = html.replace("/*__DATA__*/null", payload)
     OUT.write_text(html, encoding="utf-8")
