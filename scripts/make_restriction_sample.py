@@ -1,33 +1,37 @@
-"""Случайная дислокация с договорами лизинга и запрещёнными регионами — для проверки модуля ограничений курсирования.
+"""Случайная дислокация с договорами лизинга и запрещёнными регионами — для проверки ограничений курсирования.
 
-Запуск: python3 scripts/make_restriction_sample.py data/samples/дислокация_ограничения_пример.xlsx
+Запуск: python3 scripts/make_restriction_sample.py <файл.xlsx> [число вагонов, по умолчанию 2400]
+Около 2% вагонов с ограничениями ставятся в запрещённые регионы (или на запрещённую дорогу).
 """
-import random, sys, pandas as pd
-random.seed(7)
+import random, sys, pandas as pd, numpy as np
+random.seed(11)
+N = int(sys.argv[2]) if len(sys.argv) > 2 else 2400
 st = pd.read_csv("data/output/stations.csv", sep=";", dtype=str, keep_default_na=False)
-st = st[(st.lat != "") & (st.is_virtual != "True") & st.type.isin(["станция"])]
-CONTRACTS = [  # договор, лизингодатель, запрещённые регионы (как могут прийти в дислокации)
-    ("ДЛ-2024/017", "ЛК «Альфа»", "Республика Дагестан; Чеченская Республика; Республика Ингушетия; Республика Крым"),
+st = st[(st.lat != "") & (st.is_virtual != "True") & st.type.isin(["станция"])].reset_index(drop=True)
+CONTRACTS = [("ДЛ-2024/017", "ЛК «Альфа»", "Республика Дагестан; Чеченская Республика; Республика Ингушетия; Республика Крым"),
     ("ДЛ-2023/112", "ЛК «Бета»", "Казахстан; Узбекистан; Киргизия"),
     ("ДЛ-2025/004", "ЛК «Гамма»", "Мурманская область, Республика Карелия, Архангельская область"),
     ("ДЛ-2022/089", "ЛК «Альфа»", "Забайкальский край; Амурская область; Приморский край"),
-    ("Собственный парк", "—", ""),
-]
-def region_of(r, regs): return any(p.strip() in r.region or r.region in p for p in regs)
-rows = []
+    ("ДЛ-2021/233", "ЛК «Дельта»", "Октябрьская ж.д.; Калининградская область"),
+    ("Собственный парк", "—", "")]
+pools = []
+for c in CONTRACTS:
+    forb = [x.strip().replace(" ж.д.", "") for x in c[2].replace(",", ";").split(";") if x.strip()]
+    hit = st.region.apply(lambda r: any(f in r for f in forb)) | st.railway.isin(forb) if forb else pd.Series(False, index=st.index)
+    pools.append((st.index[~hit].values, st.index[hit].values))
 kinds = ["Полувагон", "Цистерна", "Крытый", "Платформа", "Хоппер"]
-for n in range(2400):
-    c = random.choices(CONTRACTS, weights=[3, 3, 2, 2, 4])[0]
-    forb = [x.strip() for x in c[2].replace(",", ";").split(";") if x.strip()]
-    if forb and random.random() < 0.035:  # нарушитель
-        pool = st[st.region.apply(lambda r: any(f in r or (f in ("Казахстан", "Узбекистан", "Киргизия") and r == f) for f in forb))]
-    else:
-        pool = st[~st.region.apply(lambda r: any(f in r for f in forb))] if forb else st
-    s = pool.sample(1, random_state=random.randint(0, 10**9)).iloc[0]
-    rows.append({"№ вагона": str(50000000 + random.randint(0, 9999999)), "Род ПС": random.choice(kinds),
-                 "Собственник": c[1], "Договор лизинга": c[0], "Станция операции (код)": s.esr, "Станция операции": s["name"],
-                 "Дорога операции": s.railway, "Запрещённые регионы курсирования": c[2],
-                 "Состояние": random.choice(["Груженый", "Порожний"])})
-df = pd.DataFrame(rows)
+ci = np.random.default_rng(1).choice(len(CONTRACTS), N, p=[.2, .2, .15, .15, .1, .2])
+rows, used = [], set()
+for k in ci:
+    c = CONTRACTS[k]; ok, bad = pools[k]
+    i = random.choice(bad) if len(bad) and random.random() < 0.02 else random.choice(ok)
+    s = st.iloc[i]
+    while True:
+        w = str(50000000 + random.randint(0, 49999999))
+        if w not in used: used.add(w); break
+    rows.append((w, random.choice(kinds), c[1], c[0], s.esr, s["name"], s.railway, c[2], random.choice(["Груженый", "Порожний"]),
+                 f"{random.randint(1,22):02d}.10.2026 {random.randint(0,23):02d}:{random.randint(0,59):02d}"))
+df = pd.DataFrame(rows, columns=["№ вагона", "Род ПС", "Собственник", "Договор лизинга", "Станция операции (код)", "Станция операции",
+                                 "Дорога операции", "Запрещённые регионы курсирования", "Состояние", "Дата операции"])
 df.to_excel(sys.argv[1], index=False)
-print(len(df), df["Договор лизинга"].value_counts().to_dict())
+print(len(df), df.shape)

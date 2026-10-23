@@ -484,7 +484,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .restr-card b { color: var(--danger); }
 .restr-card.ok { background: color-mix(in srgb, var(--ok) 12%, transparent); } .restr-card.ok svg, .restr-card.ok b { color: var(--ok); }
 .restr-card.none { background: var(--hover); color: var(--muted); } .restr-card.none svg { color: var(--faint); }
-.restr-list { list-style: none; margin: 6px 0 10px; padding: 0; display: grid; gap: 2px; }
+.restr-list { list-style: none; margin: 6px 0 10px; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
 .restr-list li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 13px; }
 .restr-list li:hover { background: var(--hover); }
 .restr-list .sw { width: 12px; height: 12px; border-radius: 3px; flex: none; border: 1.5px solid var(--danger);
@@ -2106,7 +2106,7 @@ function wagonRows() {
 }
 function aggregate() {
   const rows = wagonRows(), col = activeCol();
-  const by = new Map(), miss = new Map(), vByRegion = new Map(); let empty = 0, vTotal = 0;
+  const by = new Map(), miss = new Map(), vByRegion = new Map(), vByWhy = new Map(); let empty = 0, vTotal = 0;
   for (const r of rows) {
     const raw = cellStr(r[col.idx]);
     const w = W.qty >= 0 ? toNumber(r[W.qty]) : 1;
@@ -2125,19 +2125,22 @@ function aggregate() {
       o.v += w; vTotal += w;
       const g = vByRegion.get(s.region || "—") || { n: 0, st: new Set(), why: new Set() };
       g.n += w; g.st.add(s.i); g.why.add(why); vByRegion.set(s.region || "—", g);
+      const h = vByWhy.get(why) || { n: 0, st: new Set(), why: new Set([s.region || "—"]) };
+      h.n += w; h.st.add(s.i); h.why.add(s.region || "—"); vByWhy.set(why, h);
     }
   }
-  // запретные зоны: регионы из перечней у вагонов по фильтру (для «разрешённых» — только регионы с нарушениями)
+  // запретные зоны: регионы и страны из перечней у вагонов по фильтру (дороги контура не имеют — только точки);
+  // для «разрешённых» — регионы, где есть нарушения
   const zones = new Map();
   if (W.restr) {
     if (W.restr.mode === "deny") {
       const seen = new Set();
       for (const r of rows) { const v = cellStr(r[W.restr.idx]); if (seen.has(v)) continue; seen.add(v);
         for (const t of parseRestr(v)) for (const reg of zoneRegions(t)) zones.set(reg, 0); }
-    }
-    for (const [reg, g] of vByRegion) zones.set(reg, g.n);
+      for (const [reg, g] of vByRegion) if (zones.has(reg)) zones.set(reg, g.n);
+    } else for (const [reg, g] of vByRegion) zones.set(reg, g.n);
   }
-  W.agg = { rows, by, miss, empty, vTotal, vByRegion, zones };
+  W.agg = { rows, by, miss, empty, vTotal, vByRegion, vByWhy, zones };
 }
 function wagonFeatures() {
   if (!W.loaded || state.tab !== "wagons") return emptyFC();
@@ -2284,7 +2287,8 @@ function renderRestr() {
     card.innerHTML = ICON_OK + `<div><b>Нарушений нет</b><br>Проверено ${fmt(withRestr)} ваг. с ограничениями по договору</div>`;
   }
   $("wgOnlyViol").checked = !!W.onlyViol; $("wgZones").checked = W.showZones;
-  $("wgRestrList").innerHTML = [...a.vByRegion].sort((x, y) => y[1].n - x[1].n).map(([reg, g]) =>
+  const groups = R.mode === "deny" ? a.vByWhy : a.vByRegion;
+  $("wgRestrList").innerHTML = [...groups].sort((x, y) => y[1].n - x[1].n).map(([reg, g]) =>
     `<li data-reg="${esc(reg)}" title="${esc([...g.why].join("; "))}"><span class="sw"></span><span class="t">${esc(reg)}</span><span class="c mono">${fmt(g.n)} ваг. · ${fmt(g.st.size)} ст.</span></li>`).join("");
   $("wgRestrExport").hidden = $("wgReportBtn").hidden = !a.vTotal;
 }
@@ -2304,7 +2308,7 @@ $("wgOnlyViol").addEventListener("change", e => { W.onlyViol = e.target.checked;
 $("wgZones").addEventListener("change", e => { W.showZones = e.target.checked; applyModeStyling(); renderLegend(); updateLabels(); });
 $("wgRestrList").addEventListener("click", e => {
   const li = e.target.closest("[data-reg]"); if (!li) return;
-  const g = W.agg.vByRegion.get(li.dataset.reg);
+  const g = (W.restr.mode === "deny" ? W.agg.vByWhy : W.agg.vByRegion).get(li.dataset.reg);
   fitPoints([...g.st].map(i => S[i]).filter(s => s.has).map(s => [s.lon, s.lat]), 8);
 });
 $("wgRestrExport").addEventListener("click", exportViolations);
@@ -2342,7 +2346,7 @@ function reportSpec() {
   const opt = [[/договор/i, "Договор"], [/^род\s*(пс|ваг)|тип\s*ваг/i, "Род вагона"], [/груж|состоян/i, "Состояние"], [/дата.*опер|время.*опер|^дата$/i, "Дата операции"]]
     .map(([re, t]) => [findHeader(re), t]).filter(([i]) => i >= 0 && i !== gi);
   const cols = [["№ п/п"], ...(W.wagonIdx >= 0 ? [["№ вагона"]] : []), ...opt.map(([, t]) => [t]), ["Станция"], ["Код ЕСР"], ["Регион"], ["Дорога"],
-    [W.restr.mode === "deny" ? "Запрещённый регион по договору" : "Нарушение"], ["Пояснение / принятые меры"]];
+    [W.restr.mode === "deny" ? "Запрещено договором" : "Нарушение"], ["Пояснение / принятые меры"]];
   const row = (it, k) => [k + 1, ...(W.wagonIdx >= 0 ? [cellStr(it.r[W.wagonIdx])] : []), ...opt.map(([i]) => cellStr(it.r[i])),
     it.s.name, it.s.esr, it.s.region || "", it.s.railway ? it.s.railway + " ж. д." : "", it.why, ""];
   return { gi, groupH: gi >= 0 ? W.headers[gi] : "", groups: reportGroups(gi).filter(g => on.has(g.name)), cols, row,
@@ -2400,7 +2404,7 @@ function reportHTML(R, maps) {
     <h1>Справка</h1><h2>о вагонах, находящихся вне разрешённого полигона курсирования</h2>
     <p>По данным дислокации на <b>${esc(R.date)}</b> вагоны в количестве <b>${g.items.length}</b> находятся на станциях регионов,
       ${deny ? "курсирование в которых запрещено" : "не входящих в разрешённый полигон курсирования"} условиями договора:</p>
-    <table class="sum"><tr><th>${deny ? "Запрещённый регион" : "Нарушение"}</th><th>Вагонов</th></tr>
+    <table class="sum"><tr><th>${deny ? "Запрещено договором (регион, дорога, страна)" : "Нарушение"}</th><th>Вагонов</th></tr>
       ${[...regs].sort((a, b) => b[1] - a[1]).map(([k, n]) => `<tr><td>${esc(k)}</td><td class="n">${n}</td></tr>`).join("")}</table>
     ${maps?.get(g.name) ? `<img class="map" src="${maps.get(g.name)}" alt="Карта нарушений">` : ""}
     <table class="list"><thead><tr>${R.cols.map(([t]) => `<th>${esc(t)}</th>`).join("")}</tr></thead>
@@ -2615,13 +2619,14 @@ document.addEventListener("paste", e => {
   e.preventDefault();
   setReport("Вставка из буфера обмена", parseCSV(text));
 });
-$("wgNum").addEventListener("input", e => { W.num = e.target.value.replace(/\D/g, ""); applyWagons(); scheduleFit(fitWagons); });
+let numTimer = 0;  // на больших отчётах пересчёт на каждую цифру тормозит набор
+$("wgNum").addEventListener("input", e => { clearTimeout(numTimer); numTimer = setTimeout(() => { W.num = e.target.value.replace(/\D/g, ""); applyWagons(); scheduleFit(fitWagons); }, 200); });
 $("wgAddFilter").addEventListener("change", e => {
   const idx = +e.target.value; if (!e.target.value) return;
   W.shown.push(idx); renderWagonDropdowns();
   document.querySelector(`[data-wg="${idx}"] .dd-btn`)?.click();
 });
-$("wgReset").addEventListener("click", () => { W.filters.clear(); W.num = ""; $("wgNum").value = ""; renderWagonDropdowns(); applyWagons(); scheduleFit(fitWagons); });
+$("wgReset").addEventListener("click", () => { clearTimeout(numTimer); W.filters.clear(); W.num = ""; $("wgNum").value = ""; renderWagonDropdowns(); applyWagons(); scheduleFit(fitWagons); });
 $("wgView").addEventListener("click", e => {
   const b = e.target.closest("[data-v]"); if (!b) return;
   W.view = b.dataset.v; store.set("wgView", W.view);

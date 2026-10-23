@@ -127,7 +127,7 @@
 
 Контуры регионов: `python3 scripts/build_region_shapes.py <папка с geojson Natural Earth 5.1.2>`.
 Пример отчёта на случайных данных — `data/samples/дислокация_ограничения_пример.xlsx`
-(генератор `scripts/make_restriction_sample.py`).
+(генератор `scripts/make_restriction_sample.py`, число вагонов — вторым параметром; на 60 тыс. вагонов загрузка около 3 с).
 
 Библиотеки MapLibre GL 4.7.1 и SheetJS 0.18.5 встраиваются в файл при сборке из `dashboard/vendor/`
 (лицензии лежат там же), поэтому дашборд не зависит от CDN и открывается в сетях, где они заблокированы.
