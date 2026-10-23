@@ -530,7 +530,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
   <div class="modal">
     <h2 id="infoTitle">О данных</h2>
     <p>Единый справочник станций с кодами ЕСР собран из справочника ЕСР и OpenStreetMap (osm2esr). Дополнительно использованы Тарифное руководство №4 на 21.10.2026 (Книга 1 — тарифные участки и расстояния, Книга 2 — списки станций, города и порты) и на 30.12.2023, АСУ «Экспресс» и перекодировка станций Крыма.</p>
-    <p>Подложки: OpenFreeMap, CARTO, Esri World Imagery, OpenStreetMap; ж/д слой — OpenRailwayMap (CC-BY-SA). Данные карты © участники OpenStreetMap.</p>
+    <p>Подложки: OpenFreeMap, CARTO, Esri World Imagery, OpenStreetMap; ж/д слой — OpenRailwayMap (CC-BY-SA). Данные карты © участники OpenStreetMap. Офлайн-схема — Natural Earth (общественное достояние).</p>
     <p id="builtAt"></p>
     <button class="tb-btn" id="infoClose" style="box-shadow:none">Закрыть</button>
   </div>
@@ -647,7 +647,7 @@ const BASEMAPS = {
   dark: { label: "Тёмная", url: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json", sw: "linear-gradient(135deg,#1b1f27,#2f3642)" },
   satellite: { label: "Спутник", raster: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr: "Esri, Maxar, Earthstar Geographics", sw: "linear-gradient(135deg,#3d5a3a,#7b6f4f 60%,#2f4a5c)" },
   osm: { label: "OSM", raster: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", attr: "© участники OpenStreetMap", sw: "linear-gradient(135deg,#f2efe9,#aad3df 50%,#cdebb0)" },
-  none: { label: "Без подложки", sw: "repeating-linear-gradient(45deg,var(--hover) 0 6px,var(--panel-solid) 6px 12px)" },
+  offline: { label: "Схема (офлайн)", sw: "linear-gradient(160deg,#dbe6ee 0 38%,#f5f4ef 38% 100%)" },
 };
 const ORM = "https://{s}.tiles.openrailwaymap.org/";
 const OVERLAYS = {
@@ -663,6 +663,7 @@ let overlay = store.get("overlay") || "off";
 let showLines = store.get("lines") === "1";  // схема участков по умолчанию выключена
 const LINES_FC = { type: "FeatureCollection", features: (RAW.lines || []).map(([id, name, kind, parts], j) => ({
   type: "Feature", id: j, geometry: { type: "MultiLineString", coordinates: parts }, properties: { id, name, k: kind } })) };
+if (basemap === "none") basemap = "offline";
 if (!BASEMAPS[basemap]) basemap = "positron";
 if (!OVERLAYS[overlay]) overlay = "off";
 
@@ -673,9 +674,26 @@ function rasterStyle(b) {
   return { version: 8, sources: { base: { type: "raster", tiles: [b.raster], tileSize: 256, maxzoom: 19, attribution: b.attr } },
     layers: [{ id: "base", type: "raster", source: "base" }] };
 }
+// офлайн-схема: суша и границы Natural Earth 1:50m, встроены в файл — работает без интернета
+function offlineStyle() {
+  const dk = darkPref(), land = ["==", ["get", "k"], "land"];
+  return { version: 8, sources: { ofl: { type: "geojson", data: RAW.basemap || { type: "FeatureCollection", features: [] } } },
+    layers: [
+      { id: "bg", type: "background", paint: { "background-color": dk ? "#0c1420" : "#dbe6ee" } },
+      { id: "ofl-land", type: "fill", source: "ofl", filter: land, paint: { "fill-color": dk ? "#1a1e26" : "#f5f4ef" } },
+      { id: "ofl-coast", type: "line", source: "ofl", filter: land, paint: { "line-color": dk ? "#2c3442" : "#b9c7d3", "line-width": 0.7 } },
+      { id: "ofl-border", type: "line", source: "ofl", filter: ["==", ["get", "k"], "border"],
+        paint: { "line-color": dk ? "#5a6475" : "#a39e93", "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.7, 8, 1.5], "line-dasharray": [3, 2] } },
+    ] };
+}
+function fallbackToOffline(label) {
+  basemap = "offline"; store.set("basemap", "offline"); renderLayersPop();
+  toast(`Подложка «${label}» недоступна в этой сети — включена офлайн-схема`);
+  return offlineStyle();
+}
 async function loadStyle(key) {
   const b = BASEMAPS[key];
-  if (key === "none") return blankStyle();
+  if (key === "offline") return offlineStyle();
   if (b.raster) return rasterStyle(b);
   try {
     const ctl = new AbortController();
@@ -685,10 +703,22 @@ async function loadStyle(key) {
     if (!r.ok) throw new Error(r.status);
     return await r.json();
   } catch (e) {
-    toast("Подложка «" + b.label + "» недоступна — показана пустая");
-    return blankStyle();
+    return fallbackToOffline(b.label);
   }
 }
+// стиль загрузился, но тайлы не грузятся (сайт заблокирован) — через 7 с переходим на офлайн-схему
+const OWN_SOURCES = new Set(["st", "sel", "wg", "lines", "orm", "ofl"]);
+let tileWatch = null;
+function watchTiles(key) {
+  if (key === "offline") { tileWatch = null; return; }
+  const w = tileWatch = { key, ok: 0, err: 0 };
+  setTimeout(() => {
+    if (tileWatch !== w || basemap !== key || w.ok || !w.err) return;
+    map.setStyle(fallbackToOffline(BASEMAPS[key].label), { diff: false });
+    map.once("style.load", addStationLayers);
+  }, 7000);
+}
+
 
 if (typeof maplibregl === "undefined") {
   startupError("Не загрузилась библиотека карты", "<p>Файл собран без встроенной библиотеки MapLibre. Пересоберите его: <code>python3 scripts/build_dashboard.py</code>.</p>");
@@ -760,6 +790,7 @@ async function setBasemap(key) {
   const style = await loadStyle(key);
   map.setStyle(style, { diff: false });
   map.once("style.load", addStationLayers);
+  watchTiles(basemap);
   renderLayersPop();
 }
 function setOverlay(key) {
@@ -773,6 +804,9 @@ function setOverlay(key) {
   }
   renderLayersPop();
 }
+
+map.on("error", e => { if (tileWatch && e.sourceId && !OWN_SOURCES.has(e.sourceId)) tileWatch.err++; });
+map.on("data", e => { if (tileWatch && e.dataType === "source" && e.tile && !OWN_SOURCES.has(e.sourceId)) tileWatch.ok++; });
 
 /* наведение и клик */
 let hoverId = null;
@@ -1316,6 +1350,7 @@ $("themeBtn").addEventListener("click", () => {
   theme = THEMES[(THEMES.indexOf(theme) + 1) % 3]; store.set("theme", theme); applyTheme(theme);
   const want = darkPref() ? "dark" : "positron";
   if ((basemap === "dark" || basemap === "positron") && basemap !== want) setBasemap(want);
+  else if (basemap === "offline") setBasemap("offline");  // перекрасить схему под тему
   toast($("themeBtn").title);
 });
 
@@ -1863,6 +1898,7 @@ buildDropdowns(); renderLayersPop();
 filtered = S.filter(s => passes(s));
 map.once("load", async () => {
   map.setStyle(await loadStyle(basemap), { diff: false });
+  watchTiles(basemap);
   map.once("style.load", () => { addStationLayers(); applyFilters(); fromHash(); $("loading").classList.add("hide"); });
 });
 </script>
