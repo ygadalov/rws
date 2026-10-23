@@ -518,7 +518,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 <div class="popover" id="layersPop" role="dialog" aria-label="Слои карты">
   <h3>Подложка</h3>
   <div class="bm-grid" id="basemaps"></div>
-  <h3>Своя карта из файла</h3>
+  <h3 style="display:flex;align-items:center">Своя карта из файла<button class="info-inline" id="pmInfo" title="Как получить подробную карту без интернета" aria-label="Как получить подробную карту без интернета"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button></h3>
   <div class="custom-map" id="customMap"></div>
   <input type="file" id="pmInput" accept=".pmtiles" hidden>
   <h3>Схема сети</h3>
@@ -957,16 +957,15 @@ function renderCustomMap() {
     ? `<div class="meta"><b>${esc(PM.name)}</b> · ${PM.kind === "vector" ? "векторная, подписи по-русски" : "растровая"} · до масштаба ${PM.header.maxZoom}</div>
        <div class="row"><button class="btn" data-pm="fit">Показать область</button><button class="btn" data-pm="open">Другой файл…</button></div>`
     : `${PM.saved ? `<button class="btn primary" data-pm="again">${ic}Подключить снова: ${esc(PM.saved.name)}</button>` : ""}
-       <button class="btn" data-pm="open">${ic}Открыть файл .pmtiles…</button>
-       <button class="link-btn" data-pm="help" style="text-align:left">Подробная карта без интернета — как получить файл?</button>`;
+       <button class="btn" data-pm="open">${ic}Открыть файл .pmtiles…</button>`;
 }
 $("customMap").addEventListener("click", e => {
   const a = e.target.closest("[data-pm]")?.dataset.pm; if (!a) return;
   if (a === "open") pickPmtiles();
   if (a === "again") reconnectPmtiles();
   if (a === "fit") fitCustom();
-  if (a === "help") { closePops(); $("pmHelp").classList.add("open"); }
 });
+$("pmInfo").addEventListener("click", () => { closePops(); $("pmHelp").classList.add("open"); });
 $("pmInput").addEventListener("change", e => { if (e.target.files[0]) openPmtiles(e.target.files[0]); e.target.value = ""; });
 $("pmHelpClose").addEventListener("click", () => $("pmHelp").classList.remove("open"));
 $("pmHelp").addEventListener("click", e => { if (e.target === $("pmHelp")) $("pmHelp").classList.remove("open"); });
