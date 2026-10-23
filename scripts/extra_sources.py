@@ -152,6 +152,25 @@ def merge_tariff(st, x):
     return st
 
 
+def validate_transit_pair(st):
+    """Проверка на станциях класса A: скрываем точку и восстанавливаем по двум транзитным пунктам."""
+    good = st[st.coord_quality.isin(["A", "B", "D"])].set_index("esr")[["lat", "lon", "name"]]
+    errs, precs = [], []
+    a = st[st.coord_quality == "A"]
+    for e, lat, lon, tr in zip(a.esr, a.lat, a.lon, a._transit):
+        pts = [p for p in tr if p[0] in good.index and p[0] != e]
+        r = transit_pair_estimate(good, pts) if len(pts) > 1 else None
+        if r:
+            errs.append(haversine(r[0], r[1], lat, lon))
+            precs.append(r[2])
+    e, p = np.array(errs), np.array(precs)
+    return pd.DataFrame({"Показатель": [
+        "Точек в проверке", "Медианная ошибка, км", "90-й перцентиль ошибки, км",
+        "Доля в пределах заявленной точности, %", "Доля с ошибкой > 10 км, %"], "Значение": [
+        len(e), round(float(np.median(e)), 2), round(float(np.percentile(e, 90)), 1),
+        round(float((e <= p).mean() * 100), 1), round(float((e > 10).mean() * 100), 1)]})
+
+
 def check_transit(st):
     """Сверка координат с тарифными расстояниями до транзитных пунктов."""
     good = st[st.coord_quality.isin(["A", "B", "D"])].set_index("esr")[["lat", "lon"]]
@@ -174,13 +193,48 @@ def check_transit(st):
     return st
 
 
+PAIR_MAX_KM = 120
+
+
+def transit_pair_estimate(good, pts):
+    """Станция на пути между двумя транзитными пунктами: ka + kb ≈ путь между ними.
+    Ставим на отрезок пропорционально ka / (ka + kb). Возвращает (lat, lon, точность, a, b, ka, kb)."""
+    best = None
+    for i in range(len(pts)):
+        for j in range(i + 1, len(pts)):
+            (ea, na, ka), (eb, nb, kb) = pts[i], pts[j]
+            if ka <= 0 or kb <= 0:
+                continue
+            la, loa, lb, lob = good.at[ea, "lat"], good.at[ea, "lon"], good.at[eb, "lat"], good.at[eb, "lon"]
+            d, L = haversine(la, loa, lb, lob), ka + kb
+            # пункты должны лежать «по разные стороны»: путь через станцию не короче прямой и не сильно длиннее
+            if d < 1 or d > L * 1.05 + 2 or L > d * 1.6 + 10 or L > PAIR_MAX_KM:
+                continue
+            if best is None or L < best[0]:
+                t = ka / L
+                semi = np.sqrt(max(0.0, (L / 2) ** 2 - (d / 2) ** 2))  # полуось эллипса возможных положений
+                best = (L, la + t * (lb - la), loa + t * (lob - loa), round(max(3.0, semi * 0.5), 1), na, nb, ka, kb)
+    return best[1:] if best else None
+
+
 def fill_by_transit(st):
-    """Пункт без координат в ≤15 км (по тарифу) от транзитного пункта с координатами — ставим туда."""
+    """Пункт без координат по транзитным пунктам ТР №4: между двумя пунктами по тарифным расстояниям,
+    иначе — в ≤15 км (по тарифу) от ближайшего пункта."""
     good = st[st.coord_quality.isin(["A", "B", "D"])].set_index("esr")[["lat", "lon", "name"]]
     n = 0
     for i in st.index[st.coord_quality.eq("")]:
         pts = [(e, name, km) for e, name, km in st.at[i, "_transit"] if e in good.index]
         if not pts:
+            continue
+        pair = transit_pair_estimate(good, pts)
+        if pair:
+            lat, lon, prec, na, nb, ka, kb = pair
+            st.loc[i, ["lat", "lon"]] = round(lat, 6), round(lon, 6)
+            st.at[i, "coord_quality"] = "E"
+            st.at[i, "coord_source"] = "транзитные пункты"
+            st.at[i, "coord_precision_km"] = prec
+            st.at[i, "coord_note"] = f"между транзитными пунктами {na} ({ka} км) и {nb} ({kb} км) по тарифным расстояниям"
+            n += 1
             continue
         e, name, km = min(pts, key=lambda t: t[2])
         if km > TRANSIT_FILL_MAX_KM:

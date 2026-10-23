@@ -673,7 +673,8 @@ def main():
     st["tr4_port"] = st["esr"].map(tr["ports"]).fillna("")
     interp_check = pd.concat([
         validate_interpolation(st).assign(Метод="по соседним кодам ЕСР"),
-        t26.validate_sections(st, sec).assign(Метод="по участкам ТР №4 (Книга 1)")], ignore_index=True)
+        t26.validate_sections(st, sec).assign(Метод="по участкам ТР №4 (Книга 1)"),
+        xs.validate_transit_pair(st).assign(Метод="между двумя транзитными пунктами ТР №4")], ignore_index=True)
     summary = write_outputs(st, cand, interp_check)
     write_tr4_extras(st, tr)
 

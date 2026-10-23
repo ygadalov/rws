@@ -198,6 +198,12 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .legend.min .legend-items, .legend.min select { display: none; }
 .legend-title { font-weight: 600; margin: 0 0 6px; font-size: 12px; }
 
+.prec-label { pointer-events: none; font-size: 11.5px; font-weight: 600; color: #1d4ed8; background: rgba(255,255,255,.88); padding: 1px 7px; border-radius: 999px; border: 1px dashed #2463eb; white-space: nowrap; }
+:root[data-theme="dark"] .prec-label { background: rgba(15,17,21,.85); color: #93b4ff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .prec-label { background: rgba(15,17,21,.85); color: #93b4ff; } }
+.prec-note { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.prec-note .ring { width: 16px; height: 16px; border-radius: 50%; border: 1.5px dashed #2463eb; background: rgba(36,99,235,.08); flex: none; }
+.prec-note .txt { flex: 1; }
 .st-label { pointer-events: none; font-size: 12px; font-weight: 550; color: var(--text); white-space: nowrap;
   text-shadow: 0 0 2px var(--label-halo), 0 0 2px var(--label-halo), 0 0 3px var(--label-halo); }
 .maplibregl-popup-content { background: var(--panel-solid); color: var(--text); border-radius: 10px; padding: 7px 10px; box-shadow: var(--shadow); font: 12.5px/1.35 Inter, system-ui, sans-serif; }
@@ -454,7 +460,8 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
   <h3>Подложка</h3>
   <div class="bm-grid" id="basemaps"></div>
   <h3>Схема сети</h3>
-  <label class="switch-row" style="padding:2px 4px 12px">Тарифные участки ТР №4 <span class="switch"><input type="checkbox" id="linesToggle"><span></span></span></label>
+  <label class="switch-row" style="padding:2px 4px 4px">Тарифные участки ТР №4 <span class="switch"><input type="checkbox" id="linesToggle"><span></span></span></label>
+  <label class="switch-row" style="padding:2px 4px 12px">Зона погрешности выбранной станции <span class="switch"><input type="checkbox" id="precToggle"><span></span></span></label>
   <h3>Железнодорожный слой · OpenRailwayMap</h3>
   <div class="ov-list" id="overlays"></div>
 </div>
@@ -1028,12 +1035,28 @@ function circlePoly(lon, lat, km) {
   }
   return { type: "Feature", geometry: { type: "Polygon", coordinates: [pts] }, properties: {} };
 }
+// зона погрешности: пунктирный круг радиусом «точность, км» и подпись «±N км» у его верхнего края
+let precMarker = null;
 function drawSelection(s) {
+  precMarker?.remove(); precMarker = null;
   const src = map.getSource("sel"); if (!src) return;
   if (!s || !s.has) return src.setData(emptyFC());
   const feats = [{ type: "Feature", geometry: { type: "Point", coordinates: [s.lon, s.lat] }, properties: {} }];
-  if (s.prec && s.prec >= 2) feats.unshift(circlePoly(s.lon, s.lat, s.prec));
+  if (s.prec && s.prec >= 2 && showPrec) {
+    feats.unshift(circlePoly(s.lon, s.lat, s.prec));
+    const el = document.createElement("div"); el.className = "prec-label"; el.textContent = `зона ±${fmtKm(s.prec)} км`;
+    precMarker = new maplibregl.Marker({ element: el, anchor: "bottom", offset: [0, -2] })
+      .setLngLat([s.lon, s.lat + s.prec / 6371 * 180 / Math.PI]).addTo(map);
+  }
   src.setData({ type: "FeatureCollection", features: feats });
+}
+const fmtKm = v => String(v).replace(".", ",");
+let showPrec = store.get("prec") !== "0";
+function setPrec(on) {
+  showPrec = on; store.set("prec", on ? "1" : "0");
+  $("precToggle").checked = on;
+  document.querySelectorAll(".prec-toggle-card").forEach(x => x.checked = on);
+  drawSelection(state.selected);
 }
 const ICON = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>',
@@ -1080,6 +1103,8 @@ function selectStation(s, { fly = true, push = true, keepScroll = false } = {}) 
       <div class="section-title">Координаты</div>
       ${s.has ? `<div class="qbox"><span class="dot" style="background:${q.color}"></span><div><b>${q.label}</b>${s.prec ? ` · точность ±${s.prec} км` : ""}
         <div class="note">${esc(s.qnote || q.hint)}</div>
+        ${s.prec && s.prec >= 2 ? `<div class="note prec-note"><span class="ring"></span><span class="txt">Пунктирный круг на карте — зона ±${fmtKm(s.prec)} км, в которой находится станция</span>
+          <label class="switch" title="Показывать зону на карте"><input type="checkbox" class="prec-toggle-card" aria-label="Показывать зону погрешности на карте" ${showPrec ? "checked" : ""}><span></span></label></div>` : ""}
         ${s.tconf ? '<div class="note" style="color:var(--danger)">Противоречит тарифным расстояниям ТР №4</div>' : ""}
         ${s.osm ? `<div class="note"><a target="_blank" rel="noopener" href="https://www.openstreetmap.org/${s.osmtype || "node"}/${s.osm}">Объект OSM ${s.osm}</a>${s.osmname && s.osmname !== s.name ? " · «" + esc(s.osmname) + "»" : ""}</div>` : ""}</div></div>`
       : `<div class="qbox"><span class="dot" style="border:1.5px dashed var(--faint)"></span><div><b>Координат нет</b><div class="note">Станция есть в справочнике ЕСР, но надёжно определить её положение не удалось</div></div></div>`}
@@ -1119,7 +1144,12 @@ function selectStation(s, { fly = true, push = true, keepScroll = false } = {}) 
   setSheet("mid");
   drawSelection(s);
   if (push) history.replaceState(null, "", "#esr=" + s.esr);
-  if (s.has && fly) {
+  if (s.has && fly && s.prec >= 2 && showPrec) {
+    // зона погрешности должна целиком помещаться на экране вместе с подписью
+    const dLat = s.prec / 6371 * 180 / Math.PI, dLon = dLat / Math.cos(s.lat * Math.PI / 180), pad = mapPadding();
+    map.fitBounds([[s.lon - dLon, s.lat - dLat], [s.lon + dLon, s.lat + dLat]],
+      { padding: { left: pad.left + 50, right: 70, top: 70, bottom: pad.bottom + 50 }, maxZoom: 13, speed: 1.6, essential: true });
+  } else if (s.has && fly) {
     const z = Math.max(map.getZoom(), s.prec && s.prec >= 10 ? 10 : 13);
     map.flyTo({ center: [s.lon, s.lat], zoom: z, padding: mapPadding(), speed: 1.6, essential: true });
   } else if (!s.has) toast("У этой станции нет координат");
@@ -1133,6 +1163,7 @@ function closeDetail(clearHash = true) {
   state.selected = null; drawSelection(null);
   if (clearHash) history.replaceState(null, "", location.pathname + location.search);
 }
+$("detail").addEventListener("change", e => { if (e.target.classList.contains("prec-toggle-card")) setPrec(e.target.checked); });
 $("detail").addEventListener("click", e => {
   if (e.target.closest("#dBack")) return closeDetail();
   const cp = e.target.closest("[data-copy]"); if (cp) return copy(cp.dataset.copy);
@@ -1226,6 +1257,8 @@ function setLines(on) {
   if (map.getLayer("lines")) map.setLayoutProperty("lines", "visibility", on ? "visible" : "none");
 }
 $("linesToggle").checked = $("linesToggle2").checked = showLines;
+$("precToggle").checked = showPrec;
+$("precToggle").addEventListener("change", e => setPrec(e.target.checked));
 $("linesToggle").addEventListener("change", e => setLines(e.target.checked));
 $("linesToggle2").addEventListener("change", e => setLines(e.target.checked));
 
