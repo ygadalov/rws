@@ -415,6 +415,14 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .restr-setup { display: grid; gap: 8px; margin-top: 8px; }
 .wtable td.viol { color: var(--danger); font-weight: 600; white-space: nowrap; }
 .wtable tr.viol td { background: color-mix(in srgb, var(--danger) 7%, transparent); }
+.rep-grid { display: grid; gap: 10px; margin: 12px 0; }
+.rep-grid label.f { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.rep-grid .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rep-list { max-height: 200px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; padding: 4px; }
+.rep-list label { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 7px; font-size: 13px; color: var(--text); cursor: pointer; }
+.rep-list label:hover { background: var(--hover); }
+.rep-list .t { flex: 1; min-width: 0; overflow-wrap: anywhere; } .rep-list .c { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.rep-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-top: 14px; }
 .zone-label { pointer-events: none; font-size: 11.5px; font-weight: 650; color: var(--danger); white-space: nowrap;
   text-shadow: 0 0 3px var(--label-halo), 0 0 3px var(--label-halo), 0 0 2px var(--label-halo); }
 .zone-label span { font-weight: 500; opacity: .85; }
@@ -582,11 +590,12 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
             <label class="switch-row">Только вагоны с нарушениями <span class="switch"><input type="checkbox" id="wgOnlyViol"><span></span></span></label>
             <label class="switch-row">Запретные зоны на карте <span class="switch"><input type="checkbox" id="wgZones" checked><span></span></span></label>
             <ul class="restr-list" id="wgRestrList"></ul>
+            <button class="btn primary" id="wgReportBtn" style="width:100%;margin-bottom:8px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Справка о нарушениях…</button>
             <button class="btn" id="wgRestrExport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Выгрузить нарушения (CSV)</button>
           </div>
           <div class="restr-setup">
             <select class="field" id="wgRestrCol" aria-label="Столбец с ограничениями"></select>
-            <div class="seg" id="wgRestrMode"><button data-m="deny" aria-pressed="true">Запрещённые регионы</button><button data-m="allow" aria-pressed="false">Разрешённые регионы</button></div>
+            <div class="seg" id="wgRestrMode"><button data-m="deny" aria-pressed="true" title="Перечень — запрещённые регионы">Запрещённые</button><button data-m="allow" aria-pressed="false" title="Перечень — разрешённые регионы (полигон)">Разрешённые</button></div>
           </div>
         </div>
         <div class="section">
@@ -712,6 +721,28 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
     <h2 id="qTitle">Точность координат</h2>
     <div class="q-legend" id="qLegend"></div>
     <button class="tb-btn" id="qClose" style="box-shadow:none">Закрыть</button>
+  </div>
+</div>
+<div class="modal-bg" id="repModal" role="dialog" aria-modal="true" aria-labelledby="repTitle">
+  <div class="modal" style="width:min(600px,100%)">
+    <h2 id="repTitle">Справка о нарушениях курсирования</h2>
+    <p style="margin:0">Для отчёта перед лизинговыми компаниями: перечень вагонов вне разрешённого полигона — отдельная справка на каждого получателя.</p>
+    <div class="rep-grid">
+      <label class="f">Одна справка на каждого
+        <select class="field" id="repGroup"></select></label>
+      <div class="rep-list" id="repList"></div>
+      <div class="two">
+        <label class="f">Дислокация по состоянию на<input class="field" id="repDate"></label>
+        <label class="f">Отправитель (организация)<input class="field" id="repFrom" placeholder="ООО «…»"></label>
+      </div>
+      <label class="f">Исполнитель (ФИО, телефон)<input class="field" id="repWho" placeholder="Иванов И. И., +7 …"></label>
+      <label class="switch-row" style="color:var(--text)">Карта нарушений в печатной справке <span class="switch"><input type="checkbox" id="repMap" checked><span></span></span></label>
+    </div>
+    <div class="rep-actions">
+      <button class="tb-btn" id="repClose" style="box-shadow:none">Отмена</button>
+      <button class="btn" id="repXlsx">Excel</button>
+      <button class="btn accent" id="repPrint">Печать / PDF</button>
+    </div>
   </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
@@ -1465,7 +1496,7 @@ $("results").addEventListener("click", e => { const li = e.target.closest(".res"
 $("qClear").addEventListener("click", () => { $("q").value = ""; runSearch(); $("q").focus(); });
 document.addEventListener("keydown", e => {
   if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); setPanelHidden(false); $("q").focus(); $("q").select(); setSheet("expanded"); }
-  if (e.key === "Escape") { closePops(); $("infoModal").classList.remove("open"); $("qModal").classList.remove("open"); $("pmHelp").classList.remove("open"); if ($("panel").classList.contains("show-detail") && document.activeElement !== $("q")) closeDetail(); }
+  if (e.key === "Escape") { closePops(); $("infoModal").classList.remove("open"); $("qModal").classList.remove("open"); $("pmHelp").classList.remove("open"); $("repModal").classList.remove("open"); if ($("panel").classList.contains("show-detail") && document.activeElement !== $("q")) closeDetail(); }
 });
 
 /* ================= карточка станции ================= */
@@ -2176,7 +2207,7 @@ function renderRestr() {
   $("wgOnlyViol").checked = !!W.onlyViol; $("wgZones").checked = W.showZones;
   $("wgRestrList").innerHTML = [...a.vByRegion].sort((x, y) => y[1].n - x[1].n).map(([reg, g]) =>
     `<li data-reg="${esc(reg)}" title="${esc([...g.why].join("; "))}"><span class="sw"></span><span class="t">${esc(reg)}</span><span class="c mono">${fmt(g.n)} ваг. · ${fmt(g.st.size)} ст.</span></li>`).join("");
-  $("wgRestrExport").hidden = !a.vTotal;
+  $("wgRestrExport").hidden = $("wgReportBtn").hidden = !a.vTotal;
 }
 function exportViolations() {
   const col = activeCol(), out = [];
@@ -2198,6 +2229,142 @@ $("wgRestrList").addEventListener("click", e => {
   fitPoints([...g.st].map(i => S[i]).filter(s => s.has).map(s => [s.lon, s.lat]), 8);
 });
 $("wgRestrExport").addEventListener("click", exportViolations);
+
+/* справка о нарушениях: перечень вагонов вне разрешённого полигона, отдельно по каждому получателю (лизингодателю/договору) */
+const findHeader = re => W.headers.findIndex(h => re.test(h));
+function reportGroups(gi) {
+  // все нарушения по текущим фильтрам отчёта («только нарушения» перечень не меняет)
+  const keep = W.onlyViol; W.onlyViol = false; const rows = wagonRows(); W.onlyViol = keep;
+  const col = activeCol(), groups = new Map();
+  for (const r of rows) {
+    const s = resolveCell(col, r[col.idx]), why = violation(r, s); if (!why) continue;
+    const k = gi >= 0 ? cellStr(r[gi]) || "—" : "Все получатели";
+    const g = groups.get(k) || { name: k, items: [] }; g.items.push({ r, s, why }); groups.set(k, g);
+  }
+  return [...groups.values()].sort((a, b) => b.items.length - a.items.length);
+}
+function openReport() {
+  const auto = [/лизингодат|арендодат/i, /собственник/i, /договор/i].map(findHeader).find(i => i >= 0) ?? -1;
+  const cand = W.headers.map((h, idx) => ({ h, idx })).filter(c => c.idx !== W.wagonIdx && !W.codeCols.some(o => o.idx === c.idx) && c.idx !== W.restr.idx);
+  $("repGroup").innerHTML = `<option value="-1">Одна общая справка</option>` + cand.map(c => `<option value="${c.idx}" ${c.idx === auto ? "selected" : ""}>${esc(c.h)}</option>`).join("");
+  $("repDate").value = W.generated || new Date().toLocaleDateString("ru-RU");
+  $("repFrom").value = store.get("repFrom") || ""; $("repWho").value = store.get("repWho") || "";
+  renderRepList(); $("repModal").classList.add("open");
+}
+function renderRepList() {
+  const gs = reportGroups(+$("repGroup").value);
+  $("repList").innerHTML = gs.map(g => `<label><input type="checkbox" checked value="${esc(g.name)}"><span class="t">${esc(g.name)}</span><span class="c mono">${fmt(g.items.length)} ваг.</span></label>`).join("")
+    || '<div class="empty" style="padding:10px">Нарушений нет — справка не нужна</div>';
+}
+function reportSpec() {
+  const gi = +$("repGroup").value, on = new Set([...$("repList").querySelectorAll("input:checked")].map(x => x.value));
+  store.set("repFrom", $("repFrom").value.trim()); store.set("repWho", $("repWho").value.trim());
+  // дополнительные столбцы перечня — если они есть в отчёте
+  const opt = [[/договор/i, "Договор"], [/^род\s*(пс|ваг)|тип\s*ваг/i, "Род вагона"], [/груж|состоян/i, "Состояние"], [/дата.*опер|время.*опер|^дата$/i, "Дата операции"]]
+    .map(([re, t]) => [findHeader(re), t]).filter(([i]) => i >= 0 && i !== gi);
+  const cols = [["№ п/п"], ...(W.wagonIdx >= 0 ? [["№ вагона"]] : []), ...opt.map(([, t]) => [t]), ["Станция"], ["Код ЕСР"], ["Регион"], ["Дорога"],
+    [W.restr.mode === "deny" ? "Запрещённый регион по договору" : "Нарушение"], ["Пояснение / принятые меры"]];
+  const row = (it, k) => [k + 1, ...(W.wagonIdx >= 0 ? [cellStr(it.r[W.wagonIdx])] : []), ...opt.map(([i]) => cellStr(it.r[i])),
+    it.s.name, it.s.esr, it.s.region || "", it.s.railway ? it.s.railway + " ж. д." : "", it.why, ""];
+  return { gi, groupH: gi >= 0 ? W.headers[gi] : "", groups: reportGroups(gi).filter(g => on.has(g.name)), cols, row,
+    date: $("repDate").value.trim(), from: $("repFrom").value.trim(), who: $("repWho").value.trim(), withMap: $("repMap").checked };
+}
+const REP_TITLE = "Справка о вагонах, находящихся вне разрешённого полигона курсирования";
+async function reportXlsx() {
+  const R = reportSpec(); if (!R.groups.length) return;
+  await ensureXLSX();
+  const wb = XLSX.utils.book_new(), used = new Set(["Сводка"]);
+  const sum = [[REP_TITLE], [`Дислокация по состоянию на ${R.date}`], ...(R.from ? [[`Отправитель: ${R.from}`]] : []), [], [R.groupH || "Получатель", "Вагонов", "Станций", "Регионов"]];
+  R.groups.forEach(g => sum.push([g.name, g.items.length, new Set(g.items.map(x => x.s.i)).size, new Set(g.items.map(x => x.s.region)).size]));
+  const ws0 = XLSX.utils.aoa_to_sheet(sum); ws0["!cols"] = [{ wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
+  XLSX.utils.book_append_sheet(wb, ws0, "Сводка");
+  for (const g of R.groups) {
+    const aoa = [[REP_TITLE], [`${R.groupH || "Получатель"}: ${g.name}`], [`Дислокация по состоянию на ${R.date}`], ...(R.from ? [[`Отправитель: ${R.from}`]] : []), [],
+      R.cols.map(c => c[0]), ...g.items.map(R.row), [], [`Итого вагонов: ${g.items.length}`], ...(R.who ? [[`Исполнитель: ${R.who}`]] : [])];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = R.cols.map(([t]) => ({ wch: /п\/п/.test(t) ? 6 : /Пояснение|Запрещ|Регион|Нарушение/.test(t) ? 30 : /Станция|Договор/.test(t) ? 22 : 13 }));
+    const hr = aoa.findIndex(x => x[0] === "№ п/п");
+    ws["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: hr, c: 0 }, e: { r: hr + g.items.length, c: R.cols.length - 1 } }) };
+    let nm = g.name.replace(/[\\/?*[\]:]/g, " ").slice(0, 28).trim() || "Лист", k = 2;
+    while (used.has(nm)) nm = nm.slice(0, 26) + " " + k++;
+    used.add(nm); XLSX.utils.book_append_sheet(wb, ws, nm);
+  }
+  XLSX.writeFile(wb, `справка_нарушения_курсирования_${R.date.replace(/[^\d]+/g, "-")}.xlsx`);
+}
+// снимок карты: только нарушения получателя, без анимации; DOM-подписи (зоны, числа) в снимок не попадают
+const nextIdle = () => new Promise(res => { const t = setTimeout(res, 8000); map.once("idle", () => { clearTimeout(t); res(); }); });
+const snapshot = () => new Promise(res => { map.once("render", () => { try { res(map.getCanvas().toDataURL("image/jpeg", 0.85)); } catch { res(null); } }); map.triggerRepaint(); });
+async function reportMaps(R) {
+  const keep = { filters: new Map(W.filters), only: W.onlyViol, view: W.view, cam: { center: map.getCenter(), zoom: map.getZoom() } };
+  const out = new Map();
+  try {
+    W.view = "circles"; W.onlyViol = true;
+    for (const g of R.groups) {
+      if (R.gi >= 0) W.filters.set(R.gi, new Set([g.name]));
+      applyWagons();
+      const pts = g.items.filter(x => x.s.has).map(x => [x.s.lon, x.s.lat]); if (!pts.length) continue;
+      const b = pts.reduce((b, p) => b.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
+      map.fitBounds(b, { padding: 60, maxZoom: 7, duration: 0 }); await nextIdle();
+      out.set(g.name, await snapshot());
+    }
+  } finally {
+    W.filters = keep.filters; W.onlyViol = keep.only; W.view = keep.view; applyWagons(); map.jumpTo(keep.cam);
+  }
+  return out;
+}
+function reportHTML(R, maps) {
+  const now = new Date().toLocaleString("ru-RU"), deny = W.restr.mode === "deny";
+  const sec = (g, i) => {
+    const regs = new Map(); g.items.forEach(x => regs.set(x.why, (regs.get(x.why) || 0) + 1));
+    return `<section${i ? ' class="pb"' : ""}>
+    <div class="top"><div>${esc(R.from) || "&nbsp;"}</div><div>${R.groupH ? esc(R.groupH) + ": " : "Кому: "}<b>${esc(g.name)}</b></div></div>
+    <h1>Справка</h1><h2>о вагонах, находящихся вне разрешённого полигона курсирования</h2>
+    <p>По данным дислокации на <b>${esc(R.date)}</b> вагоны в количестве <b>${g.items.length}</b> находятся на станциях регионов,
+      ${deny ? "курсирование в которых запрещено" : "не входящих в разрешённый полигон курсирования"} условиями договора:</p>
+    <table class="sum"><tr><th>${deny ? "Запрещённый регион" : "Нарушение"}</th><th>Вагонов</th></tr>
+      ${[...regs].sort((a, b) => b[1] - a[1]).map(([k, n]) => `<tr><td>${esc(k)}</td><td class="n">${n}</td></tr>`).join("")}</table>
+    ${maps?.get(g.name) ? `<img class="map" src="${maps.get(g.name)}" alt="Карта нарушений">` : ""}
+    <table class="list"><thead><tr>${R.cols.map(([t]) => `<th>${esc(t)}</th>`).join("")}</tr></thead>
+      <tbody>${g.items.map((it, k) => `<tr>${R.row(it, k).map(v => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table>
+    <p class="total">Итого вагонов: <b>${g.items.length}</b></p>
+    <div class="sign"><div>Исполнитель: ${esc(R.who) || "____________________"}</div><div>Подпись ____________ &nbsp; Дата ____________</div></div>
+    <div class="foot">Сформировано в RWS 1520 · ${esc(now)} · источник: ${esc(W.name)} · станция по столбцу «${esc(activeCol().h)}»</div>
+  </section>`;
+  };
+  return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${esc(REP_TITLE)}</title><style>
+    @page { size: A4 landscape; margin: 12mm 12mm 14mm; }
+    body { font: 10.5pt/1.4 Inter, "Segoe UI", Arial, sans-serif; color: #111827; margin: 0; }
+    .pb { break-before: page; }
+    .top { display: flex; justify-content: space-between; color: #4B5563; font-size: 9.5pt; border-bottom: 2px solid #2457D6; padding-bottom: 6px; }
+    h1 { font-size: 16pt; margin: 14px 0 0; text-align: center; letter-spacing: .04em; }
+    h2 { font-size: 11.5pt; font-weight: 500; margin: 2px 0 12px; text-align: center; }
+    table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #D1D5DB; padding: 3px 6px; text-align: left; vertical-align: top; }
+    th { background: #EEF3FD; font-weight: 600; font-size: 9pt; } td { font-size: 9.5pt; } thead { display: table-header-group; } tr { break-inside: avoid; }
+    .sum { width: auto; min-width: 45%; margin: 6px 0 10px; } .n { text-align: right; }
+    .map { display: block; width: 100%; max-height: 82mm; object-fit: contain; border: 1px solid #D1D5DB; border-radius: 4px; margin: 4px 0 10px; }
+    .total { margin: 8px 0 0; } .sign { display: flex; justify-content: space-between; margin-top: 18px; }
+    .foot { margin-top: 14px; color: #6B7280; font-size: 8pt; }
+  </style></head><body>${R.groups.map(sec).join("")}</body></html>`;
+}
+async function reportPrint() {
+  const R = reportSpec(); if (!R.groups.length) return;
+  $("repModal").classList.remove("open");
+  let maps = null;
+  if (R.withMap) { toast("Готовлю карты для справки…"); maps = await reportMaps(R); }
+  const html = reportHTML(R, maps);
+  W.lastReportHTML = html;  // для проверки и повторной печати
+  // печать из скрытого фрейма: в диалоге печати Chrome можно выбрать «Сохранить как PDF»
+  const f = document.createElement("iframe"); f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+  document.body.appendChild(f);
+  f.onload = () => setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => f.remove(), 60000); }, 300);
+  f.srcdoc = html;
+}
+$("wgReportBtn").addEventListener("click", openReport);
+$("repGroup").addEventListener("change", renderRepList);
+$("repClose").addEventListener("click", () => $("repModal").classList.remove("open"));
+$("repModal").addEventListener("click", e => { if (e.target === $("repModal")) $("repModal").classList.remove("open"); });
+$("repXlsx").addEventListener("click", () => reportXlsx().catch(e => toast("Не удалось сформировать Excel: " + (e.message || e))));
+$("repPrint").addEventListener("click", () => reportPrint().catch(e => toast("Не удалось сформировать справку: " + (e.message || e))));
 
 function switchTab(t) {
   state.tab = t;
