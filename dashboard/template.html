@@ -59,9 +59,9 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .info-inline:hover { color: var(--accent); background: var(--accent-soft); }
 .info-inline svg { width: 15px; height: 15px; }
 .section-title .info-inline { margin-top: -2px; }
-.q-legend { display: grid; gap: 5px; margin: 0 0 10px; padding: 9px 10px; border-radius: 10px; background: var(--hover); font-size: 12.5px; }
-.q-legend[hidden] { display: none; }
-.q-row { display: grid; grid-template-columns: 10px 14px 1fr; align-items: center; gap: 7px; }
+.q-legend { display: grid; gap: 10px; margin: 4px 0 18px; font-size: 13px; }
+.q-row { display: grid; grid-template-columns: 10px 14px 1fr; align-items: baseline; gap: 8px; }
+.q-row span:last-child b { color: var(--text); font-weight: 600; }
 .q-row .dot { width: 10px; height: 10px; border-radius: 50%; }
 .q-row span:last-child { color: var(--muted); }
 .brand .spacer { flex: 1; }
@@ -351,7 +351,6 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
         </div>
         <div class="section">
           <div class="section-title"><span>Точность координат<button class="info-inline" id="qInfo" title="Что означают классы точности" aria-label="Что означают классы точности"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button></span></div>
-          <div class="q-legend" id="qLegend" hidden></div>
           <div class="chips" id="qualityChips"></div>
         </div>
         <div class="section">
@@ -492,6 +491,13 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
     <p>Подложки: OpenFreeMap, CARTO, Esri World Imagery, OpenStreetMap; ж/д слой — OpenRailwayMap (CC-BY-SA). Данные карты © участники OpenStreetMap.</p>
     <p id="builtAt"></p>
     <button class="tb-btn" id="infoClose" style="box-shadow:none">Закрыть</button>
+  </div>
+</div>
+<div class="modal-bg" id="qModal" role="dialog" aria-modal="true" aria-labelledby="qTitle">
+  <div class="modal" style="width:min(440px,100%)">
+    <h2 id="qTitle">Точность координат</h2>
+    <div class="q-legend" id="qLegend"></div>
+    <button class="tb-btn" id="qClose" style="box-shadow:none">Закрыть</button>
   </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
@@ -995,7 +1001,7 @@ $("results").addEventListener("click", e => { const li = e.target.closest(".res"
 $("qClear").addEventListener("click", () => { $("q").value = ""; runSearch(); $("q").focus(); });
 document.addEventListener("keydown", e => {
   if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); setPanelHidden(false); $("q").focus(); $("q").select(); setSheet("expanded"); }
-  if (e.key === "Escape") { closePops(); $("infoModal").classList.remove("open"); if ($("panel").classList.contains("show-detail") && document.activeElement !== $("q")) closeDetail(); }
+  if (e.key === "Escape") { closePops(); $("infoModal").classList.remove("open"); $("qModal").classList.remove("open"); if ($("panel").classList.contains("show-detail") && document.activeElement !== $("q")) closeDetail(); }
 });
 
 /* ================= карточка станции ================= */
@@ -1277,16 +1283,14 @@ function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add
 
 /* о данных */
 $("infoBtn").addEventListener("click", () => $("infoModal").classList.add("open"));
-$("qInfo").addEventListener("click", () => {
-  const box = $("qLegend"); box.hidden = !box.hidden;
-  $("qInfo").setAttribute("aria-expanded", String(!box.hidden));
-});
-$("qInfo").setAttribute("aria-controls", "qLegend"); $("qInfo").setAttribute("aria-expanded", "false");
+$("qInfo").addEventListener("click", () => $("qModal").classList.add("open"));
+$("qClose").addEventListener("click", () => $("qModal").classList.remove("open"));
+$("qModal").addEventListener("click", e => { if (e.target === $("qModal")) $("qModal").classList.remove("open"); });
 $("infoClose").addEventListener("click", () => $("infoModal").classList.remove("open"));
 $("infoModal").addEventListener("click", e => { if (e.target === $("infoModal")) $("infoModal").classList.remove("open"); });
 // расшифровка букв и цветов точности под заголовком «Точность координат»
 $("qLegend").innerHTML = Object.entries(QUALITY).map(([k, v]) =>
-  `<div class="q-row"><span class="dot" style="background:${v.color}"></span><b>${k}</b><span>${esc(v.short)}</span></div>`).join("");
+  `<div class="q-row"><span class="dot" style="background:${v.color}"></span><b>${k}</b><span><b>${esc(v.label.split(" — ")[1])}</b> — ${esc(v.hint)}</span></div>`).join("");
 $("builtAt").textContent = "Сборка данных: " + RAW.built + " · станций в справочнике: " + fmt(S.length);
 
 
