@@ -207,6 +207,17 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .prec-note { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .prec-note .ring { width: 16px; height: 16px; border-radius: 50%; border: 1.5px dashed #2463eb; background: rgba(36,99,235,.08); flex: none; }
 .prec-note .txt { flex: 1; }
+.ofl-place, .ofl-country, .ofl-sea { pointer-events: none; white-space: nowrap; text-shadow: 0 0 2px var(--label-halo), 0 0 2px var(--label-halo), 0 0 3px var(--label-halo); }
+.ofl-place { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text); }
+.ofl-place i { width: 6px; height: 6px; border-radius: 50%; background: #5b6472; box-shadow: 0 0 0 1.5px var(--label-halo); flex: none; }
+.ofl-place.cap1 { font-weight: 600; }
+.ofl-place.cap { font-weight: 700; font-size: 13px; }
+.ofl-place.cap i { width: 8px; height: 8px; background: #374151; }
+.ofl-country { font-size: 12px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; color: #8b8478; }
+.ofl-sea { font-size: 12px; font-style: italic; color: #4f7ea3; }
+:root[data-theme="dark"] .ofl-place i { background: #aab3c0; } :root[data-theme="dark"] .ofl-country { color: #8a94a3; } :root[data-theme="dark"] .ofl-sea { color: #7aa2c4; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ofl-place i { background: #aab3c0; } :root:not([data-theme="light"]) .ofl-country { color: #8a94a3; } :root:not([data-theme="light"]) .ofl-sea { color: #7aa2c4; } }
+.st-label.minor { font-size: 11px; font-weight: 500; color: var(--muted); }
 .st-label { pointer-events: none; font-size: 12px; font-weight: 550; color: var(--text); white-space: nowrap;
   text-shadow: 0 0 2px var(--label-halo), 0 0 2px var(--label-halo), 0 0 3px var(--label-halo); }
 .maplibregl-popup-content { background: var(--panel-solid); color: var(--text); border-radius: 10px; padding: 7px 10px; box-shadow: var(--shadow); font: 12.5px/1.35 Inter, system-ui, sans-serif; }
@@ -677,10 +688,16 @@ function rasterStyle(b) {
 // офлайн-схема: суша и границы Natural Earth 1:50m, встроены в файл — работает без интернета
 function offlineStyle() {
   const dk = darkPref(), land = ["==", ["get", "k"], "land"];
-  return { version: 8, sources: { ofl: { type: "geojson", data: RAW.basemap || { type: "FeatureCollection", features: [] } } },
+  const water = dk ? "#0c1420" : "#dbe6ee", empty = { type: "FeatureCollection", features: [] };
+  const river = k => ({ id: "ofl-river" + k, type: "line", source: "ofw", minzoom: k ? 5 : 0,
+    filter: ["all", ["==", ["get", "k"], "river"], k ? [">", ["get", "z"], 4] : ["<=", ["get", "z"], 4]],
+    paint: { "line-color": dk ? "#1f3550" : "#a9c6dc", "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.5, 8, 1.6, 12, 2.4] } });
+  return { version: 8, sources: { ofl: { type: "geojson", data: RAW.basemap || empty }, ofw: { type: "geojson", data: RAW.labels?.water || empty } },
     layers: [
-      { id: "bg", type: "background", paint: { "background-color": dk ? "#0c1420" : "#dbe6ee" } },
+      { id: "bg", type: "background", paint: { "background-color": water } },
       { id: "ofl-land", type: "fill", source: "ofl", filter: land, paint: { "fill-color": dk ? "#1a1e26" : "#f5f4ef" } },
+      { id: "ofl-lake", type: "fill", source: "ofw", filter: ["==", ["get", "k"], "lake"], paint: { "fill-color": water } },
+      river(0), river(1),
       { id: "ofl-coast", type: "line", source: "ofl", filter: land, paint: { "line-color": dk ? "#2c3442" : "#b9c7d3", "line-width": 0.7 } },
       { id: "ofl-border", type: "line", source: "ofl", filter: ["==", ["get", "k"], "border"],
         paint: { "line-color": dk ? "#5a6475" : "#a39e93", "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.7, 8, 1.5], "line-dasharray": [3, 2] } },
@@ -707,7 +724,7 @@ async function loadStyle(key) {
   }
 }
 // стиль загрузился, но тайлы не грузятся (сайт заблокирован) — через 7 с переходим на офлайн-схему
-const OWN_SOURCES = new Set(["st", "sel", "wg", "lines", "orm", "ofl"]);
+const OWN_SOURCES = new Set(["st", "sel", "wg", "lines", "orm", "ofl", "ofw"]);
 let tileWatch = null;
 function watchTiles(key) {
   if (key === "offline") { tileWatch = null; return; }
@@ -781,6 +798,7 @@ function addStationLayers() {
   map.addLayer({ id: "sel-pt", type: "circle", source: "sel", filter: ["==", ["geometry-type"], "Point"], paint: {
     "circle-radius": 9, "circle-color": "rgba(0,0,0,0)", "circle-stroke-width": 3, "circle-stroke-color": "#2463eb" } });
   addWagonLayers(); applyModeStyling();
+  setTimeout(updateLabels, 0);
   if (state.selected) drawSelection(state.selected);
 }
 const emptyFC = () => ({ type: "FeatureCollection", features: [] });
@@ -855,38 +873,72 @@ map.on("mouseleave", "lines", () => {
 let labelMarkers = [];
 function updateLabels() {
   labelMarkers.forEach(m => m.remove()); labelMarkers = [];
+  // занятые панелью и легендой области — подписи там не нужны; общий список для защиты от наложений
+  const boxes = ["panel", "legend"].map(id => $(id).getBoundingClientRect()).filter(r => r.width).map(r => [r.left, r.top, r.right, r.bottom]);
+  const free = box => !boxes.some(b => !(box[2] < b[0] || box[0] > b[2] || box[3] < b[1] || box[1] > b[3]));
   if (map.getLayer("wg-circle") && state.tab === "wagons" && W.loaded && W.view === "circles") {
     const z = map.getZoom(), k = z <= 3 ? 0.75 : z >= 8 ? 1 : 0.75 + (z - 3) * 0.05;
-    const taken = ["panel", "legend"].map(id => $(id).getBoundingClientRect()).filter(r => r.width).map(r => [r.left, r.top, r.right, r.bottom]);
     for (const f of map.queryRenderedFeatures({ layers: ["wg-circle"] }).sort((a, b) => b.properties.n - a.properties.n).slice(0, 400)) {
       if (f.properties.r * k < 10) continue;
       const p = map.project(f.geometry.coordinates), hw = String(f.properties.n).length * 4 + 4;
       const box = [p.x - hw, p.y - 8, p.x + hw, p.y + 8];
-      if (taken.some(b => !(box[2] < b[0] || box[0] > b[2] || box[3] < b[1] || box[1] > b[3]))) continue;
-      taken.push(box);
+      if (!free(box)) continue;
+      boxes.push(box);
       const el = document.createElement("div"); el.className = "wg-count mono"; el.textContent = fmt(f.properties.n);
       labelMarkers.push(new maplibregl.Marker({ element: el }).setLngLat(f.geometry.coordinates).addTo(map));
     }
   }
-  if (!map.getLayer("st") || map.getZoom() < 10.5) return;
-  const fs = map.queryRenderedFeatures({ layers: ["st"] });
-  fs.sort((a, b) => b.properties.k - a.properties.k);
-  // занятые панелью и легендой области — подписи там не нужны
-  const boxes = ["panel", "legend"].map(id => $(id).getBoundingClientRect()).filter(r => r.width)
-    .map(r => [r.left, r.top, r.right, r.bottom]), seen = new Set();
-  for (const f of fs) {
-    const s = S[f.properties.i];
-    if (seen.has(s.i)) continue; seen.add(s.i);
-    const p = map.project([s.lon, s.lat]);
-    const w = s.name.length * 6.6 + 10, box = [p.x + 6, p.y - 9, p.x + 6 + w, p.y + 9];
-    if (boxes.some(b => !(box[2] < b[0] || box[0] > b[2] || box[3] < b[1] || box[1] > b[3]))) continue;
+  // в офлайн-схеме мелких городов нет — с масштаба 7,5 подписываем станции (обычно они названы по посёлку);
+  // до 10,5 — только станции (не о.п. и не «… км») и после подписей городов
+  const zoom = map.getZoom(), offline = basemap === "offline", minor = offline && zoom < 10.5;
+  if (offline && minor) offlineLabels(boxes, free);
+  if (map.getLayer("st") && (zoom >= 10.5 || (offline && zoom >= 7.5))) {
+    const fs = map.queryRenderedFeatures({ layers: ["st"] }).sort((a, b) => b.properties.k - a.properties.k), seen = new Set();
+    let n = 0;
+    for (const f of fs) {
+      const s = S[f.properties.i];
+      if (seen.has(s.i)) continue; seen.add(s.i);
+      if (minor && (s.type !== "станция" || /км/.test(s.name))) continue;
+      const p = map.project([s.lon, s.lat]);
+      const box = [p.x + 6, p.y - 9, p.x + 6 + s.name.length * 6.6 + 10, p.y + 9];
+      if (!free(box)) continue;
+      boxes.push(box);
+      const el = document.createElement("div"); el.className = "st-label" + (minor ? " minor" : ""); el.textContent = s.name;
+      labelMarkers.push(new maplibregl.Marker({ element: el, anchor: "left", offset: [9, 0] }).setLngLat([s.lon, s.lat]).addTo(map));
+      if (++n >= 250) break;
+    }
+  }
+  if (offline && !minor) offlineLabels(boxes, free);
+}
+// подписи офлайн-схемы: страны, моря и озёра, города (DOM — шрифты подложки без интернета недоступны)
+function offlineLabels(boxes, free) {
+  const L = RAW.labels; if (!L) return;
+  const z = map.getZoom(), bb = map.getBounds(), cand = [];
+  const inView = (x, y) => bb.contains([x, y]) || bb.contains([x - 360, y]);
+  for (const [x, y, t, ml] of L.countries) if (z >= ml - 1.5 && z < 7.5 && inView(x, y)) cand.push([x, y, t, "ofl-country", 1000 - ml]);
+  for (const [x, y, t, ml] of L.seas) if (z >= ml - 1.5 && z < 10 && inView(x, y)) cand.push([x, y, t, "ofl-sea", 900 - ml]);
+  for (const [x, y, t, mz, pop, cap] of L.places) {
+    if (!(z >= mz - 1.3 || (cap === 2 && z >= 2.5)) || !inView(x, y)) continue;
+    cand.push([x, y, t, "ofl-place" + (cap === 2 ? " cap" : cap === 1 ? " cap1" : ""), cap * 40 + Math.log10(pop + 10) * 10]);
+  }
+  cand.sort((a, b) => b[4] - a[4]);
+  let n = 0;
+  for (const [x, y, t, cls, ] of cand) {
+    const p = map.project([x, y]), place = cls.startsWith("ofl-place");
+    const w = t.length * (cls === "ofl-country" ? 9 : 6.8) + (place ? 14 : 8);
+    const box = place ? [p.x - 4, p.y - 9, p.x + w, p.y + 9] : [p.x - w / 2, p.y - 9, p.x + w / 2, p.y + 9];
+    if (!free(box)) continue;
     boxes.push(box);
-    const el = document.createElement("div"); el.className = "st-label"; el.textContent = s.name;
-    labelMarkers.push(new maplibregl.Marker({ element: el, anchor: "left", offset: [9, 0] }).setLngLat([s.lon, s.lat]).addTo(map));
-    if (labelMarkers.length >= 250) break;
+    const el = document.createElement("div"); el.className = cls;
+    if (place) el.innerHTML = `<i></i>${esc(t)}`; else el.textContent = t;
+    labelMarkers.push(new maplibregl.Marker({ element: el, anchor: place ? "left" : "center", offset: place ? [-3, 0] : [0, 0] }).setLngLat([x, y]).addTo(map));
+    if (++n >= 220) break;
   }
 }
-map.on("moveend", updateLabels);
+// после перемещения точки на новом масштабе дорисовываются не сразу — повторяем, когда карта «успокоится»
+let labelsPending = false;
+map.on("moveend", () => { updateLabels(); labelsPending = true; });
+map.on("idle", () => { if (labelsPending) { labelsPending = false; updateLabels(); } });
 
 /* ================= фильтры ================= */
 function applyFilters() {

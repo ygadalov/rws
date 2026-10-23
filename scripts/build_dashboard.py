@@ -118,6 +118,8 @@ def main():
         "cities": cities(),
         # офлайн-подложка (Natural Earth 1:50m), см. scripts/build_offline_basemap.mjs
         "basemap": json.loads((VENDOR / "basemap-offline.json").read_text(encoding="utf-8")),
+        # подписи и вода офлайн-схемы (Natural Earth), см. scripts/build_offline_labels.py
+        "labels": json.loads((VENDOR / "basemap-labels.json").read_text(encoding="utf-8")),
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     html = TEMPLATE.read_text(encoding="utf-8")
