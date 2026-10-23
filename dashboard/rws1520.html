@@ -59,6 +59,11 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .info-inline:hover { color: var(--accent); background: var(--accent-soft); }
 .info-inline svg { width: 15px; height: 15px; }
 .section-title .info-inline { margin-top: -2px; }
+.q-legend { display: grid; gap: 5px; margin: 0 0 10px; padding: 9px 10px; border-radius: 10px; background: var(--hover); font-size: 12.5px; }
+.q-legend[hidden] { display: none; }
+.q-row { display: grid; grid-template-columns: 10px 14px 1fr; align-items: center; gap: 7px; }
+.q-row .dot { width: 10px; height: 10px; border-radius: 50%; }
+.q-row span:last-child { color: var(--muted); }
 .brand .spacer { flex: 1; }
 .icon-btn { width: 34px; height: 34px; border-radius: 10px; border: 1px solid transparent; background: transparent; display: grid; place-items: center; color: var(--muted); }
 .icon-btn:hover { background: var(--hover); color: var(--text); }
@@ -346,6 +351,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
         </div>
         <div class="section">
           <div class="section-title"><span>Точность координат<button class="info-inline" id="qInfo" title="Что означают классы точности" aria-label="Что означают классы точности"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button></span></div>
+          <div class="q-legend" id="qLegend" hidden></div>
           <div class="chips" id="qualityChips"></div>
         </div>
         <div class="section">
@@ -483,7 +489,6 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
   <div class="modal">
     <h2 id="infoTitle">О данных</h2>
     <p>Единый справочник станций с кодами ЕСР собран из справочника ЕСР и OpenStreetMap (osm2esr). Дополнительно использованы Тарифное руководство №4 на 21.10.2026 (Книга 1 — тарифные участки и расстояния, Книга 2 — списки станций, города и порты) и на 30.12.2023, АСУ «Экспресс» и перекодировка станций Крыма.</p>
-    <table id="qTable"></table>
     <p>Подложки: OpenFreeMap, CARTO, Esri World Imagery, OpenStreetMap; ж/д слой — OpenRailwayMap (CC-BY-SA). Данные карты © участники OpenStreetMap.</p>
     <p id="builtAt"></p>
     <button class="tb-btn" id="infoClose" style="box-shadow:none">Закрыть</button>
@@ -503,11 +508,11 @@ const store = {
 
 /* ================= данные ================= */
 const QUALITY = {
-  A: { label: "A — подтверждено", color: "#2463eb", hint: "Точка OSM подтверждена: привязка, название и соседи по коду сходятся" },
-  B: { label: "B — вероятно", color: "#0ea5b7", hint: "Пройдены 2 из 3 проверок или выбрано из дублей с уверенным отрывом" },
-  C: { label: "C — сомнительно", color: "#e11d48", hint: "Неподтверждённая привязка, другое название или неоднозначные дубли" },
-  D: { label: "D — по связанному коду", color: "#f59e0b", hint: "Координаты основного кода станции, второго кода (Крым) или одноимённой станции" },
-  E: { label: "E — приблизительно", color: "#94a3b8", hint: "Положение на тарифном участке между соседями (обычно ±1–3 км) или интерполяция по соседним кодам (±10 км и хуже)" },
+  A: { label: "A — подтверждено", short: "подтверждено: точка OSM, название и соседи сходятся", color: "#2463eb", hint: "Точка OSM подтверждена: привязка, название и соседи по коду сходятся" },
+  B: { label: "B — вероятно", short: "вероятно: пройдена часть проверок", color: "#0ea5b7", hint: "Пройдены 2 из 3 проверок или выбрано из дублей с уверенным отрывом" },
+  C: { label: "C — сомнительно", short: "сомнительно: стоит проверить", color: "#e11d48", hint: "Неподтверждённая привязка, другое название или неоднозначные дубли" },
+  D: { label: "D — по связанному коду", short: "по связанному коду или одноимённой станции", color: "#f59e0b", hint: "Координаты основного кода станции, второго кода (Крым) или одноимённой станции" },
+  E: { label: "E — приблизительно", short: "приблизительно: по участку ТР №4 или соседним кодам", color: "#94a3b8", hint: "Положение на тарифном участке между соседями (обычно ±1–3 км) или интерполяция по соседним кодам (±10 км и хуже)" },
 };
 const PASS_OPS = { "П": "билеты на все поезда, багаж", "Б": "билеты на все поезда, без багажа", "О": "пригородные и местные поезда", "Х": "операции не производятся", "К": "контрейлерные отправки" };
 const TYPE_COLORS = { "станция": "#2463eb", "остановочный пункт": "#16a34a", "разъезд": "#f59e0b", "обгонный пункт": "#db2777", "блок-пост": "#7c3aed", "путевой пост": "#9333ea", "пост": "#a855f7", "условный пункт": "#64748b" };
@@ -1272,11 +1277,16 @@ function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add
 
 /* о данных */
 $("infoBtn").addEventListener("click", () => $("infoModal").classList.add("open"));
-$("qInfo").addEventListener("click", () => $("infoModal").classList.add("open"));
+$("qInfo").addEventListener("click", () => {
+  const box = $("qLegend"); box.hidden = !box.hidden;
+  $("qInfo").setAttribute("aria-expanded", String(!box.hidden));
+});
+$("qInfo").setAttribute("aria-controls", "qLegend"); $("qInfo").setAttribute("aria-expanded", "false");
 $("infoClose").addEventListener("click", () => $("infoModal").classList.remove("open"));
 $("infoModal").addEventListener("click", e => { if (e.target === $("infoModal")) $("infoModal").classList.remove("open"); });
-$("qTable").innerHTML = Object.entries(QUALITY).map(([k, v]) =>
-  `<tr><td style="white-space:nowrap"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${v.color};margin-right:6px"></span><b>${v.label}</b></td><td>${v.hint}</td></tr>`).join("");
+// расшифровка букв и цветов точности под заголовком «Точность координат»
+$("qLegend").innerHTML = Object.entries(QUALITY).map(([k, v]) =>
+  `<div class="q-row"><span class="dot" style="background:${v.color}"></span><b>${k}</b><span>${esc(v.short)}</span></div>`).join("");
 $("builtAt").textContent = "Сборка данных: " + RAW.built + " · станций в справочнике: " + fmt(S.length);
 
 
