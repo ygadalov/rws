@@ -1854,7 +1854,9 @@ function xcheckNote(s) {
     <p>Координаты сверены со свежим OpenStreetMap (данные на ${dt(V.osm_base)}, ${fmt(V.osm_objects)} объектов с кодом ЕСР) и Викиданными
     (${fmt(V.wikidata_items)} станций с кодом ЕСР). Подтверждено ${fmt(V.confirmed)} точек, из них ${fmt(V.refined)} приблизительных оценок уточнено
     по источникам; ${fmt(V.replaced)} точек заменено — оба источника согласны между собой, а прежняя точка была дальше 5 км;
-    ${fmt(V.added)} кодов получили координаты (без координат — ${fmt(V.no_coords_after)} вместо ${fmt(V.no_coords_before)}).
+    ${fmt(V.added)} кодов получили координаты${V.by_name ? `, из них ${fmt((V.by_name.B || 0) + (V.by_name.C || 0))} — по названию среди всех станций OSM
+    (${fmt(V.by_name.B || 0)} подтверждены расстоянием до соседей по участку ТР №4, ${fmt(V.by_name.C || 0)} — только регионом, класс C)` : ""}
+    (без координат — ${fmt(V.no_coords_after)} вместо ${fmt(V.no_coords_before)}).
     ${fmt(V.conflict)} расхождений больше 5 км оставлены как есть и вынесены в список для ручной проверки.</p>
     <table class="vt"><tr><th>Класс до сверки</th><th class="n">Сверено</th><th class="n">Медиана, км</th><th class="n">Подтверждено</th><th class="n">Заменено</th><th class="n">Расхождения</th></tr>
     ${V.classes.map(c => `<tr><td title="${esc(QUALITY[c.class]?.label || c.class)}"><span class="dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:${qColor(c.class)}"></span>${esc(c.class)}</td><td class="n mono">${fmt(c.checked)}</td><td class="n mono">${c.median_km == null ? "—" : fmtKm(c.median_km)}</td>

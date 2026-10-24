@@ -45,11 +45,15 @@
    "conflict": 92
   }
  ],
- "added": 169,
+ "added": 277,
  "confirmed": 18736,
  "refined": 1589,
  "replaced": 215,
- "conflict": 218,
+ "conflict": 213,
  "no_coords_before": 1063,
- "no_coords_after": 894
+ "no_coords_after": 786,
+ "by_name": {
+  "B": 64,
+  "C": 44
+ }
 }

@@ -624,6 +624,7 @@ def main():
     import extra_sources as xs
     import tr4_2026 as t26
     import verify_sources as vs
+    import name_match as nm
 
     ref, osm = load()
     tr = t26.load()
@@ -670,7 +671,10 @@ def main():
     # сверка со свежим OSM и Викиданными (scripts/fetch_sources.py): подтверждение, уточнение, замена по большинству
     before = st[["esr", "coord_quality"]].copy()
     st, ext_cnt, ext_meta = vs.verify_external(st)
+    # оставшиеся без координат — по названию среди всех станций и платформ OSM
+    st, name_cnt = nm.fill_by_osm_name(st, sec)
     verification = vs.verification_stats(before, st, ext_meta)
+    verification["by_name"] = {k: v for k, v in name_cnt.items() if k in ("B", "C")}
     st["has_coords_tmp"] = st["coord_quality"] != ""
     st = xs.check_transit(st)
     st = xs.merge_express(st)
@@ -709,6 +713,7 @@ def main():
     print(f"точек среди станций другой страны: {st.geo_country_mismatch.sum()}")
     print(f"атрибуты достроены по соседям: {(st.admin_inferred != '').sum()}")
     print(f"сверка OSM {ext_meta['osm_base']} и Викиданных: {ext_cnt}; на ручную проверку: {n_review}")
+    print(f"по названию среди станций OSM: {name_cnt}")
     print(json.dumps({k: v for k, v in verification.items() if k != "classes"}, ensure_ascii=False))
     print(pd.DataFrame(verification["classes"]).to_string(index=False))
 

@@ -35,7 +35,7 @@ CYR = dict(zip("абвгдеёжзийклмнопрстуфхцчшщъыьэю
                 "f", "h", "c", "c", "s", "sc", "", "y", "", "e", "u", "a"]))
 # я/ю: в эстонских названиях — «ä/ü» (Пяэскюла = Pääsküla), в литовских — «ia/iu» (Чютеляй = Čiuteliai)
 CYR_LT = {**CYR, "я": "ia", "ю": "iu"}
-LAT = str.maketrans("äöõüčšžėęųūįąłńóśźżāēīņļķģ", "aooucszeeuuialnoszzaeinlkg")
+LAT = str.maketrans("äöõüčšžėęųūįąłńóśźżāēīņļķģəığçşâ", "aooucszeeuuialnoszzaeinlkgaigcsa")  # + азербайджанский
 SUFFIX = re.compile(r"\b(train|railway)?\s*station\b|\b(stotis|jaam|stacija|peatus|stancija|stanc)\b", re.I)
 
 
