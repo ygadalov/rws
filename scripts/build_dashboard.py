@@ -6,9 +6,12 @@
 файлы прежних версий в dashboard/ удаляются (история — в git).
 
 Запуск (после build_stations.py): python3 scripts/build_dashboard.py
+Пробная сборка с функциями в разработке (ограничения курсирования, справка о нарушениях):
+  python3 scripts/build_dashboard.py --preview  → dashboard/rws1520_v<версия>_preview.html (в git не хранится)
 """
 import json
 import re
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -18,7 +21,8 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "data" / "output" / "stations.csv"
 TEMPLATE = ROOT / "dashboard" / "template.html"
 VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
-OUT = ROOT / "dashboard" / f"rws1520_v{VERSION}.html"
+PREVIEW = "--preview" in sys.argv
+OUT = ROOT / "dashboard" / f"rws1520_v{VERSION}{'_preview' if PREVIEW else ''}.html"
 
 # (колонка в stations.csv, ключ в странице, кодирование: s — строка, d — словарь, n — число, b — флаг)
 FIELDS = [
@@ -135,17 +139,19 @@ def main():
         # своя карта из файла PMTiles: стиль Protomaps (русские подписи) и встроенные шрифты Noto Sans
         "pmstyle": json.loads((VENDOR / "protomaps-style.json").read_text(encoding="utf-8")),
         "glyphs": glyphs(),
-        # контуры регионов для запретных зон (ограничения курсирования), см. scripts/build_region_shapes.py
-        "regionShapes": json.loads((VENDOR / "region-shapes.json").read_text(encoding="utf-8")),
+        # контуры регионов для запретных зон (ограничения курсирования, только в пробной сборке), см. scripts/build_region_shapes.py
+        "regionShapes": json.loads((VENDOR / "region-shapes.json").read_text(encoding="utf-8")) if PREVIEW else {},
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-    html = TEMPLATE.read_text(encoding="utf-8").replace("__VERSION__", VERSION)  # только в шаблоне, до встраивания библиотек
+    # только в шаблоне, до встраивания библиотек
+    html = TEMPLATE.read_text(encoding="utf-8").replace("__VERSION__", VERSION + (" превью" if PREVIEW else ""))
+    html = html.replace("/*__PREVIEW__*/false", "true" if PREVIEW else "false")
     for key, name in (("MAPLIBRE_JS", "maplibre-gl.js"), ("MAPLIBRE_CSS", "maplibre-gl.css"), ("XLSX_JS", "xlsx.full.min.js"),
                       ("PMTILES_JS", "pmtiles.js")):
         html = html.replace(f"/*__{key}__*/", vendor(name), 1)
     html = html.replace("/*__DATA__*/null", payload)
-    for old in OUT.parent.glob("rws1520*.html"):
-        if old != OUT:
+    for old in OUT.parent.glob("rws1520_v*_preview.html" if PREVIEW else "rws1520*.html"):
+        if old != OUT and (PREVIEW or not old.stem.endswith("_preview")):
             old.unlink()
     OUT.write_text(html, encoding="utf-8")
     print(f"{OUT.relative_to(ROOT)}: {len(st)} станций, {OUT.stat().st_size / 1e6:.1f} МБ")

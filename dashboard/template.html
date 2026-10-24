@@ -1989,7 +1989,7 @@ function setReport(name, aoa) {
   const qtyCols = headers.map((h, idx) => ({ h, idx })).filter(c => c.idx !== wagonIdx && !codeCols.some(o => o.idx === c.idx)
     && prof[c.idx].num >= 0.9 && prof[c.idx].wagon < 0.5);
   const qtyAuto = wagonIdx < 0 ? qtyCols.find(c => /кол|количеств|шт|ваг|qty|count/i.test(c.h)) : null;
-  const restrIdx = headers.findIndex(h => RESTR_HEADER.test(h));
+  const restrIdx = PREVIEW ? headers.findIndex(h => RESTR_HEADER.test(h)) : -1;
   const cats = [];
   headers.forEach((h, idx) => {
     if (idx === wagonIdx || idx === restrIdx || codeCols.some(c => c.idx === idx) || /дата|время|код/i.test(h) || prof[idx].num >= 0.9) return;
@@ -2124,6 +2124,8 @@ const fitWagons = () => fitPoints([...W.agg.by.values()].filter(o => o.s.has).ma
 
 /* ограничения курсирования (договор лизинга): столбец с перечнем запрещённых или разрешённых регионов.
    Элемент перечня сверяется с регионом станции (части «Московская область + Москва» — по отдельности), дорогой и страной. */
+// функции в разработке: включаются только в пробной сборке (build_dashboard.py --preview)
+const PREVIEW = /*__PREVIEW__*/false;
 const WG_DANGER = "#D92D4B";
 const RESTR_HEADER = /(запрещ|разреш|допуст)\S*\s+(регион|дорог|стран|зон|курс)|ограничени\S*\s+(курс|передвиж|по\s+курс)|полигон\S*\s+курс/i;
 const restrMode = h => /разреш|допуст|полигон/i.test(h) ? "allow" : "deny";
@@ -2184,6 +2186,7 @@ function hatchImage() {
 const ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17.5v.01"/></svg>';
 const ICON_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>';
 function renderRestr() {
+  $("wgRestrSec").hidden = !PREVIEW; if (!PREVIEW) return;
   const a = W.agg, R = W.restr;
   const cand = W.headers.map((h, idx) => ({ h, idx })).filter(c => c.idx !== W.wagonIdx && !W.codeCols.some(o => o.idx === c.idx));
   $("wgRestrCol").innerHTML = `<option value="-1">${R ? "Не проверять ограничения" : "Столбец с ограничениями…"}</option>`
