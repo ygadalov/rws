@@ -12,3 +12,7 @@
 
 Данные своей карты (файл PMTiles, который пользователь открывает в дашборде) в сборку не входят;
 сборки Protomaps основаны на OpenStreetMap — © участники OpenStreetMap, лицензия ODbL.
+
+## info-tooltip
+
+Собственный модуль подсказок (i) проекта: `info-tooltip.css`, `info-tooltip.js`, описание — `info-tooltip.md`.

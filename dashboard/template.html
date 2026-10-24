@@ -14,7 +14,8 @@
 <style>/*__MAPLIBRE_CSS__*/</style>
 <script>/*__MAPLIBRE_JS__*/</script>
 <script>/*__XLSX_JS__*/</script>
-<script>/*__PMTILES_JS__*/</script>
+<script>/*__PMTILES_JS__*/
+/*__INFO_TIP_JS__*/</script>
 <style>
 /* RWS 1520 — дизайн-токены v1.0
    Имена совпадают с текущими переменными дашборда; новые помечены «new».
@@ -136,10 +137,14 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .brand-ver { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--hover); border-radius: 6px; padding: 1px 6px; vertical-align: 2px; margin-left: 4px; }
 .brand h1 { font-size: 15px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
 .brand p { margin: 0; font-size: 12px; color: var(--muted); display: flex; align-items: center; }
-.info-inline { border: 0; background: none; padding: 0; margin-left: 5px; width: 18px; height: 18px; display: inline-grid; place-items: center; color: var(--faint); border-radius: 50%; vertical-align: middle; }
-.info-inline:hover { color: var(--accent); background: var(--accent-soft); }
-.info-inline svg { width: 15px; height: 15px; }
-.section-title .info-inline { margin-top: -2px; }
+/* подсказки (i) — модуль info-tooltip (dashboard/vendor/info-tooltip.*), цвета — по брендбуку */
+/*__INFO_TIP_CSS__*/
+:root { --tip-icon: var(--faint); --tip-icon-hover: var(--accent); --tip-bg: #1E2533; --tip-fg: #E9ECF1; --tip-accent: #9DB8FF; }
+.info-tip { margin-left: 4px; border-radius: 50%; }
+.section-title .info-tip { margin-top: -2px; }
+.tt { font: 500 12px/1.5 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }  /* в модуле «font: … inherit» — недопустимая запись, браузер её отбрасывает */
+.tt-body .tt-q { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
+.tt-body .tt-q i { width: 8px; height: 8px; border-radius: 50%; flex: none; transform: translateY(-1px); }
 .custom-map { display: grid; gap: 8px; margin-bottom: 14px; font-size: 12.5px; }
 .custom-map .btn { width: 100%; height: 34px; font-size: 13px; }
 .custom-map .btn svg { width: 16px; height: 16px; }
@@ -149,11 +154,6 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .custom-map .meta b { color: var(--text); overflow-wrap: anywhere; }
 .steps { padding-left: 20px; color: var(--muted); } .steps li { margin: 6px 0; }
 .modal code { font-size: 12px; background: var(--hover); padding: 1px 5px; border-radius: 5px; overflow-wrap: anywhere; }
-.q-legend { display: grid; gap: 10px; margin: 4px 0 18px; font-size: 13px; }
-.q-row { display: grid; grid-template-columns: 10px 14px 1fr; align-items: baseline; gap: 8px; }
-.q-row span:last-child b { color: var(--text); font-weight: 600; }
-.q-row .dot { width: 10px; height: 10px; border-radius: 50%; }
-.q-row span:last-child { color: var(--muted); }
 .brand .spacer { flex: 1; }
 .icon-btn { width: 34px; height: 34px; border-radius: 10px; border: 1px solid transparent; background: transparent; display: grid; place-items: center; color: var(--muted); }
 .icon-btn:hover { background: var(--hover); color: var(--text); }
@@ -510,7 +510,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
   <path d="M9 20L7 22.8M15 20L17 22.8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/>
 </svg>
       </div>
-      <div><h1>RWS <span class="brand-num">1520</span> <span class="brand-ver mono" title="Версия дашборда">v__VERSION__</span></h1><p><span id="subtitle">Коды ЕСР и координаты</span><button class="info-inline" id="infoBtn" title="О данных" aria-label="О данных"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button></p></div>
+      <div><h1>RWS <span class="brand-num">1520</span> <span class="brand-ver mono" title="Версия дашборда">v__VERSION__</span></h1><p><span id="subtitle">Коды ЕСР и координаты</span><button class="info-tip" type="button" id="infoBtn" aria-label="О данных"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8.01"/></svg><span class="info-bubble" role="tooltip">Источники данных, сверка координат с OSM и Викиданными, версия. <b>Нажмите — подробности.</b></span></button></p></div>
       <div class="spacer"></div>
       <button class="icon-btn" id="panelHide" title="Скрыть панель" aria-label="Скрыть панель"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 10l-2 2 2 2"/></svg></button>
     </div>
@@ -540,7 +540,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
           </div>
         </div>
         <div class="section">
-          <div class="section-title"><span>Точность координат<button class="info-inline" id="qInfo" title="Что означают классы точности" aria-label="Что означают классы точности"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button></span></div>
+          <div class="section-title"><span>Точность координат<button class="info-tip" type="button" id="qInfo" aria-label="Что означают классы точности"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8.01"/></svg><span class="info-bubble" role="tooltip" id="qTip"></span></button></span></div>
           <div class="chips" id="qualityChips"></div>
         </div>
         <div class="section">
@@ -658,7 +658,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 <div class="popover" id="layersPop" role="dialog" aria-label="Слои карты">
   <h3>Подложка</h3>
   <div class="bm-grid" id="basemaps"></div>
-  <h3 style="display:flex;align-items:center">Своя карта из файла<button class="info-inline" id="pmInfo" title="Как получить подробную карту без интернета" aria-label="Как получить подробную карту без интернета"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button></h3>
+  <h3 style="display:flex;align-items:center">Своя карта из файла<button class="info-tip" type="button" id="pmInfo" aria-label="Как получить подробную карту без интернета"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8.01"/></svg><span class="info-bubble" role="tooltip">Подробная карта OpenStreetMap из файла <b>.pmtiles</b> на ПК или сетевом диске — без интернета. <b>Нажмите — как получить файл.</b></span></button></h3>
   <div class="custom-map" id="customMap"></div>
   <input type="file" id="pmInput" accept=".pmtiles" hidden>
   <h3>Схема сети</h3>
@@ -726,13 +726,6 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
       Файл .mbtiles можно преобразовать: <code>pmtiles convert карта.mbtiles карта.pmtiles</code>.
       Данные карты — © участники OpenStreetMap (ODbL).</p>
     <button class="tb-btn" id="pmHelpClose" style="box-shadow:none">Закрыть</button>
-  </div>
-</div>
-<div class="modal-bg" id="qModal" role="dialog" aria-modal="true" aria-labelledby="qTitle">
-  <div class="modal" style="width:min(440px,100%)">
-    <h2 id="qTitle">Точность координат</h2>
-    <div class="q-legend" id="qLegend"></div>
-    <button class="tb-btn" id="qClose" style="box-shadow:none">Закрыть</button>
   </div>
 </div>
 <div class="modal-bg" id="repModal" role="dialog" aria-modal="true" aria-labelledby="repTitle">
@@ -1508,7 +1501,7 @@ $("results").addEventListener("click", e => { const li = e.target.closest(".res"
 $("qClear").addEventListener("click", () => { $("q").value = ""; runSearch(); $("q").focus(); });
 document.addEventListener("keydown", e => {
   if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); setPanelHidden(false); $("q").focus(); $("q").select(); setSheet("expanded"); }
-  if (e.key === "Escape") { closePops(); $("infoModal").classList.remove("open"); $("qModal").classList.remove("open"); $("pmHelp").classList.remove("open"); $("repModal").classList.remove("open"); if ($("panel").classList.contains("show-detail") && document.activeElement !== $("q")) closeDetail(); }
+  if (e.key === "Escape") { closePops(); $("infoModal").classList.remove("open"); $("pmHelp").classList.remove("open"); $("repModal").classList.remove("open"); if ($("panel").classList.contains("show-detail") && document.activeElement !== $("q")) closeDetail(); }
 });
 
 /* ================= карточка станции ================= */
@@ -1827,14 +1820,14 @@ function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add
 
 /* о данных */
 $("infoBtn").addEventListener("click", () => $("infoModal").classList.add("open"));
-$("qInfo").addEventListener("click", () => $("qModal").classList.add("open"));
-$("qClose").addEventListener("click", () => $("qModal").classList.remove("open"));
-$("qModal").addEventListener("click", e => { if (e.target === $("qModal")) $("qModal").classList.remove("open"); });
 $("infoClose").addEventListener("click", () => $("infoModal").classList.remove("open"));
 $("infoModal").addEventListener("click", e => { if (e.target === $("infoModal")) $("infoModal").classList.remove("open"); });
-// расшифровка букв и цветов точности под заголовком «Точность координат»
-$("qLegend").innerHTML = Object.entries(QUALITY).map(([k, v]) =>
-  `<div class="q-row"><span class="dot" style="background:${qColor(k)}"></span><b>${k}</b><span><b>${esc(v.label.split(" — ")[1])}</b> — ${esc(v.hint)}</span></div>`).join("");
+// подсказки (i): общий слой поверх панелей (dashboard/vendor/info-tooltip.js); у «О данных» и «Своей карты»
+// клик открывает окно с подробностями, наведение — короткая подсказка. Тексты подсказок — свои, не из данных.
+// Расшифровка классов точности: A — цвет бренда (var(--accent)), поэтому подходит обеим темам.
+$("qTip").innerHTML = `<b>Точность координат</b>` + Object.entries(QUALITY).map(([k, v]) =>
+  `<span class="tt-q"><i style="background:${k === "A" ? "var(--accent)" : qColor(k)}"></i><b>${k}</b> ${esc(v.short)}</span>`).join("");
+initInfoTooltips({ noClick: "#infoBtn, #pmInfo" });
 // сверка со свежим OSM и Викиданными: окно «О данных» и строка в карточке станции
 function xcheckNote(s) {
   if (!s.xcheck && !s.wd) return "";

@@ -151,7 +151,7 @@ def main():
     html = TEMPLATE.read_text(encoding="utf-8").replace("__VERSION__", VERSION + (" превью" if PREVIEW else ""))
     html = html.replace("/*__PREVIEW__*/false", "true" if PREVIEW else "false")
     for key, name in (("MAPLIBRE_JS", "maplibre-gl.js"), ("MAPLIBRE_CSS", "maplibre-gl.css"), ("XLSX_JS", "xlsx.full.min.js"),
-                      ("PMTILES_JS", "pmtiles.js")):
+                      ("PMTILES_JS", "pmtiles.js"), ("INFO_TIP_CSS", "info-tooltip.css"), ("INFO_TIP_JS", "info-tooltip.js")):
         html = html.replace(f"/*__{key}__*/", vendor(name), 1)
     html = html.replace("/*__DATA__*/null", payload)
     for old in OUT.parent.glob("rws1520_v*_preview.html" if PREVIEW else "rws1520*.html"):
