@@ -9,6 +9,7 @@
 а соседние станции с координатами проверяются на согласованность с тарифными расстояниями.
 """
 import pickle
+from pathlib import Path
 import re
 
 import numpy as np
@@ -296,6 +297,124 @@ def apply_sections(st, sec):
         st.at[i, "coord_precision_km"] = prec
         st.at[i, "coord_note"] = note
     return st, cnt
+
+
+END_MAX_KM = 3      # станция без пары якорей: до ближайшего якоря по участку не дальше этого
+END_DIR_KM = (1, 30)  # второй якорь для направления (экстраполяция) — на таком расстоянии от первого
+
+
+def section_end_estimates(st, sec, codes=None):
+    """Оценки для кодов, у которых якоря на участке только с одной стороны (крайняя станция участка, узел):
+    точка ближайшего якоря (не дальше END_MAX_KM по участку), сдвинутая по направлению участка, если рядом есть
+    второй якорь и путь между ними почти прямой. Оценки с разных участков (узел — конец нескольких) усредняются
+    с весом 1/расстояние²: направления расходятся, и среднее ложится ближе к узлу."""
+    parts = {}
+    for d in _sec_frames(st, sec):
+        q = d.coord_quality.fillna("").values
+        anchors = [k for k in range(len(d)) if q[k] in ANCHOR]
+        if not anchors:
+            continue
+        for j in range(len(d)):
+            e = d.esr.iat[j]
+            if codes is not None and e not in codes or codes is None and q[j] != "":
+                continue
+            # на том же километре — только та же станция под другим кодом («Высоцк» и «Высоцк (перев.)»):
+            # разные станции на одном км бывают в разных местах (стыки, парки)
+            others = [k for k in anchors if k != j and d.esr.iat[k] != e and (d.km.iat[k] != d.km.iat[j]
+                      or norm_name(d.name.iat[k]) == norm_name(d.name.iat[j]))]
+            near = sorted(others, key=lambda k: abs(d.km.iat[k] - d.km.iat[j]))
+            if not near:
+                continue
+            a = near[0]
+            dk = abs(d.km.iat[a] - d.km.iat[j])
+            if dk > END_MAX_KM:
+                continue
+            la, lo, how = d.lat.iat[a], d.lon.iat[a], "соседняя точка"
+            side = np.sign(d.km.iat[a] - d.km.iat[j])
+            far = [k for k in near[1:] if np.sign(d.km.iat[k] - d.km.iat[a]) == side
+                   and END_DIR_KM[0] <= abs(d.km.iat[k] - d.km.iat[a]) <= END_DIR_KM[1]]
+            if dk and far:
+                b = far[0]
+                kb = abs(d.km.iat[b] - d.km.iat[a])
+                if haversine(d.lat.iat[a], d.lon.iat[a], d.lat.iat[b], d.lon.iat[b]) >= 0.8 * kb:  # почти прямой путь
+                    t = dk / kb
+                    la, lo, how = la + t * (la - d.lat.iat[b]), lo + t * (lo - d.lon.iat[b]), "по направлению участка"
+            parts.setdefault(e, []).append((la, lo, dk, d.sec.iat[j], d.esr.iat[a], how))
+    est = {}
+    for e, ps in parts.items():
+        w = np.array([1 / max(p[2], 0.3) ** 2 for p in ps])
+        la = float(np.dot(w, [p[0] for p in ps]) / w.sum())
+        lo = float(np.dot(w, [p[1] for p in ps]) / w.sum())
+        est[e] = (la, lo, max(p[2] for p in ps), ps)
+    return est
+
+
+def end_precision(dk):
+    # километраж ТР №4 целый: «1 км» — это 0,5–1,5 км; на проверке ±(dk + 1) покрывает около 90% точек
+    return float(dk) + 1.0
+
+
+REGION_SHAPES = Path(__file__).resolve().parent.parent / "dashboard" / "vendor" / "region-shapes.json"
+REGION_TOL_KM = 20
+
+
+def _in_ring(x, y, ring):
+    inside = False
+    for (x1, y1), (x2, y2) in zip(ring, ring[1:]):
+        if (y1 > y) != (y2 > y) and x < (x2 - x1) * (y - y1) / (y2 - y1) + x1:
+            inside = not inside
+    return inside
+
+
+def km_to_region(lat, lon, polys):
+    if any(_in_ring(lon, lat, p[0]) for p in polys):
+        return 0.0
+    return min(haversine(lat, lon, y, x) for p in polys for x, y in p[0])
+
+
+def fill_by_section_end(st, sec):
+    """Коды без координат на краю участка (узлы, стыковые) — по ближайшему якорю участка (класс E).
+    Защита от ошибочных якорей: точка должна попасть в свой регион из справочника ЕСР (с запасом REGION_TOL_KM);
+    без известного региона код не заполняется."""
+    import json
+    shapes = json.loads(REGION_SHAPES.read_text(encoding="utf-8"))
+    est = section_end_estimates(st, sec)
+    idx = pd.Series(st.index, index=st.esr)
+    n = rejected = 0
+    for e, (la, lo, dk, ps) in est.items():
+        if e not in idx or st.at[idx[e], "coord_quality"] != "":
+            continue
+        i = idx[e]
+        polys = shapes.get(st.at[i, "region"])
+        if not polys or km_to_region(la, lo, polys) > REGION_TOL_KM:
+            rejected += 1
+            continue
+        st.loc[i, ["lat", "lon"]] = round(la, 6), round(lo, 6)
+        st.at[i, "coord_quality"] = "E"
+        st.at[i, "coord_source"] = "край участка " + ", ".join(sorted({p[3] for p in ps}))
+        st.at[i, "coord_precision_km"] = end_precision(dk)
+        st.at[i, "coord_note"] = "по участкам ТР №4: " + "; ".join(
+            f"{p[3]} — {p[2]:g} км от {p[4]} ({p[5]})" for p in ps)
+        n += 1
+    return st, n, rejected
+
+
+def validate_section_end(st, sec):
+    """Проверка на известных точках A: каждую считаем «без координат» и сравниваем оценку с настоящей."""
+    a = st[st.coord_quality == "A"]
+    codes = set(a.esr)
+    est = section_end_estimates(st, sec, codes)
+    pos = a.set_index("esr")[["lat", "lon"]]
+    errs, precs = [], []
+    for e, (la, lo, dk, ps) in est.items():
+        errs.append(haversine(pos.at[e, "lat"], pos.at[e, "lon"], la, lo))
+        precs.append(end_precision(dk))
+    e, p = np.array(errs), np.array(precs)
+    return pd.DataFrame({"Показатель": [
+        "Точек в проверке", "Медианная ошибка, км", "90-й перцентиль ошибки, км",
+        "Доля в пределах заявленной точности, %", "Доля с ошибкой > 10 км, %"], "Значение": [
+        len(e), round(float(np.median(e)), 2), round(float(np.percentile(e, 90)), 1),
+        round(float((e <= p).mean() * 100), 1), round(float((e > 10).mean() * 100), 1)]})
 
 
 def check_sections(st, sec):

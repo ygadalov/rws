@@ -1,0 +1,65 @@
+/* ──────────────────────────────────────────────────────────────
+   info-tooltip — подсказки по кнопке (i)
+   Один общий слой в <body>: не обрезается overflow-предками.
+   Переменные темы можно переопределить на :root своего проекта.
+   ────────────────────────────────────────────────────────────── */
+
+:root {
+    --tip-bg: #1e293b;          /* фон подсказки */
+    --tip-fg: #e2e8f0;          /* текст подсказки */
+    --tip-strong: #ffffff;      /* <b> внутри подсказки */
+    --tip-accent: #93c5fd;      /* .em внутри подсказки */
+    --tip-icon: #64748b;        /* значок (i) в покое */
+    --tip-icon-hover: #2563eb;  /* значок (i) под курсором и в фокусе */
+}
+
+/* ── Значок (i) ─────────────────────────────────────────────── */
+.info-tip {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; padding: 0;
+    border: none; background: transparent;
+    color: var(--tip-icon);
+    cursor: pointer; flex-shrink: 0; vertical-align: middle;
+    -webkit-tap-highlight-color: transparent;
+    transition: color .14s;
+}
+.info-tip svg { width: 16px; height: 16px; display: block; }
+.info-tip:hover, .info-tip:focus-visible { color: var(--tip-icon-hover); outline: none; }
+
+/* Источник текста. Лежит внутри кнопки и никогда не показывается на месте:
+   скрипт поднимает его разметку в общий слой. display:none не мешает
+   прочитать innerHTML, но убирает пузырь из потока и из-под обрезки. */
+.info-bubble { display: none !important; }
+
+/* ── Общий слой ─────────────────────────────────────────────── */
+.tt {
+    position: fixed; z-index: 9999;
+    width: max-content; max-width: min(340px, calc(100vw - 16px));
+    background: var(--tip-bg); color: var(--tip-fg);
+    font: 500 12px/1.5 inherit;
+    padding: 10px 13px; border-radius: 9px;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,.35);
+    text-align: left; text-transform: none; letter-spacing: 0; white-space: normal;
+    opacity: 0; visibility: hidden; transform: translateY(-3px);
+    transition: opacity .15s, transform .15s, visibility .15s;
+    pointer-events: none;   /* подсказка не перехватывает курсор */
+}
+.tt.show { opacity: 1; visibility: visible; transform: translateY(0); }
+.tt-body b  { color: var(--tip-strong); font-weight: 700; }
+.tt-body .em { color: var(--tip-accent); font-weight: 700; }
+
+/* Стрелка. Снизу слоя, когда подсказка под значком; сверху — когда
+   перевёрнута вверх (класс flip ставит скрипт). */
+.tt-arrow {
+    position: absolute; bottom: 100%;
+    width: 0; height: 0;
+    border: 6px solid transparent; border-bottom-color: var(--tip-bg);
+}
+.tt.flip .tt-arrow {
+    bottom: auto; top: 100%;
+    border-bottom-color: transparent; border-top-color: var(--tip-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tt { transition: none; }
+}

@@ -1,0 +1,94 @@
+/* RWS 1520 — дизайн-токены v1.0
+   Имена совпадают с текущими переменными rws1520.html; новые помечены «new».
+   Заменяет блок :root / @media (prefers-color-scheme: dark) / :root[data-theme="dark"] целиком. */
+
+:root {
+  /* Бренд и справочник станций — синий */
+  --accent:        #2457D6;              /* логотип, кнопки, фокус, выделение, станции */
+  --accent-hover:  #1D47B3;              /* new */
+  --accent-soft:   #E8EEFC;              /* фон выбранного, кольцо фокуса */
+  --accent-ink:    #FFFFFF;              /* new: глиф/текст на --accent */
+
+  /* Ваши данные (вагоны, загрузки) — оранжевый, ТОЛЬКО для пользовательских данных */
+  --data:          #F97316;              /* new: точки, бары, рамки, иконки */
+  --data-strong:   #C2410C;              /* new: фон кнопки с белым текстом, бейдж */
+  --data-text:     #C2410C;              /* new: оранжевый текст на светлом */
+  --data-soft:     rgba(249,115,22,.12); /* new: подложка выбранного чипа, drop-зона */
+
+  /* Нейтральные */
+  --bg:            #F4F5F7;
+  --panel:         rgba(255,255,255,.94);
+  --panel-solid:   #FFFFFF;
+  --hover:         #F1F3F6;
+  --line:          #E3E6EA;
+  --line-strong:   #CFD4DA;
+  --text:          #15181D;
+  --muted:         #646B75;              /* вторичный текст, 4.9:1 на --bg */
+  --faint:         #8C939C;              /* только иконки и текст ≥18px — 3.1:1 */
+
+  /* Статусы */
+  --danger:        #D92D4B;
+  --ok:            #16804F;
+
+  /* Карта */
+  --label-halo:    #FFFFFF;
+  --point-stroke:  #FFFFFF;              /* new: обводка всех точек на карте */
+
+  --radius: 14px;
+  --shadow: 0 8px 32px rgba(16,24,40,.14), 0 1px 3px rgba(16,24,40,.08);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --accent:        #6D9BFF;
+    --accent-hover:  #8DB2FF;
+    --accent-soft:   #1D2A47;
+    --accent-ink:    #0F1115;            /* тёмный глиф на светло-синем, НЕ белый */
+    --data:          #F97316;
+    --data-strong:   #C2410C;
+    --data-text:     #FB923C;
+    --data-soft:     rgba(249,115,22,.16);
+    --bg:            #0F1115;
+    --panel:         rgba(24,27,33,.94);
+    --panel-solid:   #181B21;
+    --hover:         #222731;
+    --line:          #2A2F37;
+    --line-strong:   #3A414B;
+    --text:          #E9ECF1;
+    --muted:         #A0A8B3;
+    --faint:         #77808B;
+    --danger:        #F05A75;
+    --ok:            #3BB77E;
+    --label-halo:    #0F1115;
+    --point-stroke:  #0F1115;
+    --shadow: 0 8px 32px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --accent:        #6D9BFF;
+  --accent-hover:  #8DB2FF;
+  --accent-soft:   #1D2A47;
+  --accent-ink:    #0F1115;
+  --data:          #F97316;
+  --data-strong:   #C2410C;
+  --data-text:     #FB923C;
+  --data-soft:     rgba(249,115,22,.16);
+  --bg:            #0F1115;
+  --panel:         rgba(24,27,33,.94);
+  --panel-solid:   #181B21;
+  --hover:         #222731;
+  --line:          #2A2F37;
+  --line-strong:   #3A414B;
+  --text:          #E9ECF1;
+  --muted:         #A0A8B3;
+  --faint:         #77808B;
+  --danger:        #F05A75;
+  --ok:            #3BB77E;
+  --label-halo:    #0F1115;
+  --point-stroke:  #0F1115;
+  --shadow: 0 8px 32px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4);
+  color-scheme: dark;
+}
