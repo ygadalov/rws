@@ -656,6 +656,8 @@ def main():
     st.loc[drop, ["lat", "lon", "coord_precision_km"]] = np.nan
     st.loc[drop, ["coord_quality", "coord_source", "coord_note"]] = ""
     st, n_transit = xs.fill_by_transit(st)
+    # узлы и крайние станции участков — только оставшиеся без координат (прежние оценки не трогаем)
+    st, n_end, n_end_rej = t26.fill_by_section_end(st, sec)
     st["has_coords_tmp"] = st["coord_quality"] != ""
     st = xs.check_transit(st)
     st = xs.merge_express(st)
@@ -674,6 +676,7 @@ def main():
     interp_check = pd.concat([
         validate_interpolation(st).assign(Метод="по соседним кодам ЕСР"),
         t26.validate_sections(st, sec).assign(Метод="по участкам ТР №4 (Книга 1)"),
+        t26.validate_section_end(st, sec).assign(Метод="край участка ТР №4 (узлы, до 3 км от соседа)"),
         xs.validate_transit_pair(st).assign(Метод="между двумя транзитными пунктами ТР №4")], ignore_index=True)
     summary = write_outputs(st, cand, interp_check)
     write_tr4_extras(st, tr)
@@ -683,7 +686,7 @@ def main():
     print(interp_check.to_string(index=False))
     print(f"новых кодов из ТР №4 2026: {len(new_rows)}, из них с координатами: "
           f"{(st.is_new_tr4 & (st.coord_quality != '')).sum()}")
-    print(f"новые коды по старой нумерации: {n_recoded}; участки: понижено до C {n_sec_bad}, одноимённые по участку {n_sec_name}, {sec_cnt}")
+    print(f"новые коды по старой нумерации: {n_recoded}; участки: понижено до C {n_sec_bad}, одноимённые по участку {n_sec_name}, {sec_cnt}, край участка {n_end} (отклонено вне своего региона или без региона: {n_end_rej})")
     print(f"Крым (старый↔новый код): {n_crimea}, по одноимённым: {n_name}, интерполяцией: {n_interp}, "
           f"снято E по тарифу: {drop.sum()}, по транзитному пункту: {n_transit}")
     print(f"в тарифном списке ТР №4: {st.in_tariff_list.sum()}; противоречат тарифу: "
