@@ -214,7 +214,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .dd-foot { display: flex; justify-content: space-between; padding: 6px 4px 2px; border-top: 1px solid var(--line); margin-top: 6px; }
 .filters-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }  /* длинное значение не растягивает панель */
 
-.switch-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; font-size: 13px; }
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 5px 0; font-size: 13px; }
 .switch { position: relative; width: 34px; height: 20px; flex: none; }
 .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
 .switch span { position: absolute; inset: 0; background: var(--line-strong); border-radius: 999px; transition: .15s; }
@@ -674,7 +674,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
   <input type="file" id="pmInput" accept=".pmtiles" hidden>
   <h3>Схема сети</h3>
   <label class="switch-row" style="padding:2px 4px 4px">Тарифные участки ТР №4 <span class="switch"><input type="checkbox" id="linesToggle"><span></span></span></label>
-  <label class="switch-row" style="padding:2px 4px 12px">Зона погрешности выбранной станции <span class="switch"><input type="checkbox" id="precToggle"><span></span></span></label>
+  <label class="switch-row" style="padding:2px 4px 12px">Зона погрешности станции <span class="switch"><input type="checkbox" id="precToggle"><span></span></span></label>
   <h3>Железнодорожный слой · OpenRailwayMap</h3>
   <div class="ov-list" id="overlays"></div>
 </div>
@@ -730,7 +730,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
         Утилита скачивает только нужную часть. Чем больше <code>maxzoom</code>, тем подробнее и тяжелее файл:
         ориентировочно 10 — сотни мегабайт (города и дороги), 12–13 — единицы гигабайт (улицы и деревни).</li>
       <li>Положите <code>sng.pmtiles</code> на сетевой диск — один файл для всех.</li>
-      <li>В дашборде: «Слои» → «Открыть файл .pmtiles». В Chrome файл запоминается: при следующем открытии
+      <li>В дашборде: «Слои» → «Открыть файл PMTiles». В Chrome файл запоминается: при следующем открытии
         достаточно нажать «Подключить снова».</li>
     </ol>
     <p>Подходят векторные сборки Protomaps (подписи по-русски, светлая и тёмная тема) и растровые .pmtiles.
@@ -1154,7 +1154,7 @@ function renderCustomMap() {
     ? `<div class="meta"><b>${esc(PM.name)}</b> · ${PM.kind === "vector" ? "векторная, подписи по-русски" : "растровая"} · до масштаба ${PM.header.maxZoom}</div>
        <div class="row"><button class="btn" data-pm="fit">Показать область</button><button class="btn" data-pm="open">Другой файл…</button></div>`
     : `${PM.saved ? `<button class="btn accent" data-pm="again">${ic}Подключить снова: ${esc(PM.saved.name)}</button>` : ""}
-       <button class="btn" data-pm="open">${ic}Открыть файл .pmtiles…</button>`;
+       <button class="btn" data-pm="open">${ic}Открыть файл PMTiles</button>`;
 }
 $("customMap").addEventListener("click", e => {
   const a = e.target.closest("[data-pm]")?.dataset.pm; if (!a) return;
