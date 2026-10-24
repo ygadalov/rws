@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Сборка самодостаточного HTML-дашборда: dashboard/template.html + данные → dashboard/rws1520.html.
+"""Сборка самодостаточного HTML-дашборда: dashboard/template.html + данные → dashboard/rws1520_v<версия>.html.
 
 Данные встраиваются в страницу компактно (повторяющиеся строки — через словари),
-поэтому rws1520.html открывается двойным щелчком, без сервера.
+поэтому файл открывается двойным щелчком, без сервера. Версия — из файла VERSION в корне (см. CHANGELOG.md);
+файлы прежних версий в dashboard/ удаляются (история — в git).
 
 Запуск (после build_stations.py): python3 scripts/build_dashboard.py
 """
@@ -16,7 +17,8 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "data" / "output" / "stations.csv"
 TEMPLATE = ROOT / "dashboard" / "template.html"
-OUT = ROOT / "dashboard" / "rws1520.html"
+VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+OUT = ROOT / "dashboard" / f"rws1520_v{VERSION}.html"
 
 # (колонка в stations.csv, ключ в странице, кодирование: s — строка, d — словарь, n — число, b — флаг)
 FIELDS = [
@@ -118,6 +120,7 @@ def main():
         else:
             cols.append(v.tolist())
     data = {
+        "version": VERSION,
         "built": date.today().isoformat(),
         "fields": [k for _, k, _ in FIELDS],
         "kinds": [t for _, _, t in FIELDS],
@@ -136,11 +139,14 @@ def main():
         "regionShapes": json.loads((VENDOR / "region-shapes.json").read_text(encoding="utf-8")),
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-    html = TEMPLATE.read_text(encoding="utf-8")
+    html = TEMPLATE.read_text(encoding="utf-8").replace("__VERSION__", VERSION)  # только в шаблоне, до встраивания библиотек
     for key, name in (("MAPLIBRE_JS", "maplibre-gl.js"), ("MAPLIBRE_CSS", "maplibre-gl.css"), ("XLSX_JS", "xlsx.full.min.js"),
                       ("PMTILES_JS", "pmtiles.js")):
         html = html.replace(f"/*__{key}__*/", vendor(name), 1)
     html = html.replace("/*__DATA__*/null", payload)
+    for old in OUT.parent.glob("rws1520*.html"):
+        if old != OUT:
+            old.unlink()
     OUT.write_text(html, encoding="utf-8")
     print(f"{OUT.relative_to(ROOT)}: {len(st)} станций, {OUT.stat().st_size / 1e6:.1f} МБ")
 
