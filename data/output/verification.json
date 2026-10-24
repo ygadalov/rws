@@ -1,0 +1,55 @@
+{
+ "date": "2026-10-24",
+ "osm_base": "2026-10-24",
+ "osm_objects": 17764,
+ "wikidata_items": 14207,
+ "classes": [
+  {
+   "class": "A",
+   "checked": 16271,
+   "median_km": 0.01,
+   "confirmed": 16149,
+   "replaced": 14,
+   "conflict": 32
+  },
+  {
+   "class": "B",
+   "checked": 594,
+   "median_km": 0.0,
+   "confirmed": 575,
+   "replaced": 4,
+   "conflict": 8
+  },
+  {
+   "class": "C",
+   "checked": 43,
+   "median_km": 0.09,
+   "confirmed": 26,
+   "replaced": 3,
+   "conflict": 14
+  },
+  {
+   "class": "D",
+   "checked": 274,
+   "median_km": 0.03,
+   "confirmed": 249,
+   "replaced": 3,
+   "conflict": 14
+  },
+  {
+   "class": "E",
+   "checked": 2115,
+   "median_km": 1.48,
+   "confirmed": 1737,
+   "replaced": 191,
+   "conflict": 92
+  }
+ ],
+ "added": 169,
+ "confirmed": 18736,
+ "refined": 1589,
+ "replaced": 215,
+ "conflict": 218,
+ "no_coords_before": 1063,
+ "no_coords_after": 894
+}

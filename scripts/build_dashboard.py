@@ -44,9 +44,11 @@ FIELDS = [
     ("admin_inferred", "inferred", "d"),
     ("is_new_tr4", "newcode", "b"), ("tr4_date", "tr4date", "d"), ("tr4_excluded", "excluded", "b"),
     ("tr4_sections", "sections", "s"), ("tr4_port", "port", "s"), ("section_conflict", "sconf", "b"),
+    ("ext_check", "xcheck", "d"), ("ext_osm_km", "xosm", "n"), ("ext_wd_km", "xwd", "n"), ("wikidata", "wd", "s"),
 ]
 SECTIONS = ROOT / "data" / "output" / "tr4_sections.csv"
 CITIES = ROOT / "data" / "output" / "tr4_cities.csv"
+VERIFY = ROOT / "data" / "output" / "verification.json"
 
 
 def section_lines():
@@ -139,6 +141,8 @@ def main():
         # своя карта из файла PMTiles: стиль Protomaps (русские подписи) и встроенные шрифты Noto Sans
         "pmstyle": json.loads((VENDOR / "protomaps-style.json").read_text(encoding="utf-8")),
         "glyphs": glyphs(),
+        # сверка со свежим OSM и Викиданными (scripts/verify_sources.py)
+        "verify": json.loads(VERIFY.read_text(encoding="utf-8")) if VERIFY.exists() else None,
         # контуры регионов для запретных зон (ограничения курсирования, только в пробной сборке), см. scripts/build_region_shapes.py
         "regionShapes": json.loads((VENDOR / "region-shapes.json").read_text(encoding="utf-8")) if PREVIEW else {},
     }

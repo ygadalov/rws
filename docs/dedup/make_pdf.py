@@ -6,7 +6,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepTogether, PageBreak)
+from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepTogether, PageBreak, CondPageBreak)
 D = sys.argv[1]; OUTPDF = sys.argv[2]
 F = "/usr/share/fonts/truetype/dejavu/"
 pdfmetrics.registerFont(TTFont("Sans", F + "DejaVuSans.ttf")); pdfmetrics.registerFont(TTFont("Sans-B", F + "DejaVuSans-Bold.ttf"))
@@ -139,7 +139,32 @@ s += [P("8. Что посмотреть в результатах", h2),
       P("<b>Пороги</b> (подобраны на этих данных, легко менять): одно место — 5 км; сосед по коду правдоподобен — до 50 км; "
         "похожее название — от 70 %; якорь — от 85 %; отрыв в конфликте — 1,5 балла.")]
 
-s += [P("Итоговая карта", h2),
+import json as _json
+from pathlib import Path as _Path
+_V = _json.loads((_Path(__file__).resolve().parents[2] / "data" / "output" / "verification.json").read_text(encoding="utf-8"))
+_n = lambda x: f"{x:,}".replace(",", " ")
+_km = lambda x: "—" if x is None else str(x).replace(".", ",")
+s += [P("9. Сверка со свежим OpenStreetMap и Викиданными", h2),
+      P(f"После сборки каждая точка сверяется с двумя независимыми источниками, выгруженными {_V['date'][8:10]}.{_V['date'][5:7]}.{_V['date'][:4]}: "
+        f"свежим OpenStreetMap ({_n(_V['osm_objects'])} объектов с тегом {code('esr:user')}, Overpass API) и Викиданными "
+        f"({_n(_V['wikidata_items'])} станций с кодом ЕСР, свойство P2815). Старый файл {code('osm2esr.csv')} устарел: "
+        "в нём нет 1 571 кода, которые сейчас есть в OSM."),
+      B("<b>подтверждено</b> — источник в пределах max(3 км, заявленной точности); оценки C и E при этом уточняются точкой источника (класс B);"),
+      B("<b>заменено</b> — оба источника согласны между собой (≤ 3 км), а точка справочника дальше 5 км (решение большинством);"),
+      B("<b>добавлено</b> — код без координат получает точку источника: оба согласны — A, один с тем же названием — B "
+        "(названия сравниваются и через транслитерацию: эстонские и литовские станции в источниках записаны латиницей);"),
+      B("<b>расхождение</b> — больше 5 км и не решено большинством: точка не меняется, код выносится в список для ручной проверки "
+        f"({code('review_coordinates.csv')})."),
+      table([["Класс до сверки", "Сверено", "Медиана, км", "Подтверждено", "Заменено", "Расхождения"]] +
+            [[c["class"], _n(c["checked"]), _km(c["median_km"]), _n(c["confirmed"]), _n(c["replaced"]), _n(c["conflict"])] for c in _V["classes"]],
+            [W * 0.2, W * 0.14, W * 0.16, W * 0.18, W * 0.14, W * 0.18]),
+      Spacer(1, 6),
+      P(f"<b>Итог:</b> подтверждено {_n(_V['confirmed'])} точек (из них {_n(_V['refined'])} приблизительных оценок уточнено), "
+        f"заменено {_n(_V['replaced'])}, координаты получили {_n(_V['added'])} кодов — без координат осталось {_n(_V['no_coords_after'])} "
+        f"вместо {_n(_V['no_coords_before'])}; на ручную проверку — {_n(_V['conflict'])}. Медиана расхождения у класса A — "
+        f"{_km(_V['classes'][0]['median_km'])} км: выбор точки из дублей (п. 2–5) подтверждается независимыми источниками.")]
+
+s += [CondPageBreak(120 * mm), P("Итоговая карта", h2),
       fig("map.png", W, "Рис. 3. Все станции справочника с координатами, цвет — класс точности. Класс E — приблизительные оценки "
           "для кодов, которых нет в OSM (по участкам ТР №4 и соседям по коду), D — по связанному коду.")]
 
