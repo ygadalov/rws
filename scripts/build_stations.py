@@ -166,6 +166,28 @@ def drop_retagged(ref, osm):
     return osm.drop(index=bad)
 
 
+def apply_manual(st):
+    """Ручные уточнения координат (data/raw/stations_manual.csv: esr;lat;lon;source;note) — приоритет над всеми
+    источниками. Для станций, которых нет в OSM с кодом ЕСР и которые не удаётся поставить по участкам."""
+    path = RAW / "stations_manual.csv"
+    if not path.exists():
+        return st, 0
+    man = pd.read_csv(path, sep=";", dtype=str, keep_default_na=False, comment="#")
+    n = 0
+    for _, m in man.iterrows():
+        i = st.index[st.esr == m.esr]
+        if not len(i):
+            continue
+        st.loc[i, ["lat", "lon"]] = float(m.lat), float(m.lon)
+        st.loc[i, "coord_quality"] = "B"
+        st.loc[i, "coord_precision_km"] = 1.0
+        st.loc[i, "coord_source"] = "вручную: " + m.source
+        st.loc[i, "coord_note"] = m.note
+        n += len(i)
+    print(f"ручные уточнения координат: {n}")
+    return st, n
+
+
 def enrich_ref(ref):
     r = pd.DataFrame({"esr": ref["esr"]})
     r["esr5"] = ref["esr"].str[:5]
@@ -690,6 +712,7 @@ def main():
     st, ext_cnt, ext_meta = vs.verify_external(st)
     # оставшиеся без координат — по названию среди всех станций и платформ OSM
     st, name_cnt = nm.fill_by_osm_name(st, sec)
+    st, n_manual = apply_manual(st)
     verification = vs.verification_stats(before, st, ext_meta)
     verification["by_name"] = {k: v for k, v in name_cnt.items() if k in ("B", "C")}
     st["has_coords_tmp"] = st["coord_quality"] != ""
