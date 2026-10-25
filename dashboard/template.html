@@ -582,6 +582,10 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
           <label class="switch-row">Грузовые операции <span class="switch"><input type="checkbox" id="fFreight"><span></span></span></label>
           <label class="switch-row">Скрыть условные пункты и узлы <span class="switch"><input type="checkbox" id="fVirt" checked><span></span></span></label>
         </div>
+        <div class="section">
+          <div class="section-title">На карте</div>
+          <div class="switch-row"><span>Предприятия ремонта вагонов<button class="info-tip" type="button" aria-label="Про слой предприятий ремонта"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8.01"/></svg><span class="info-bubble" role="tooltip">Быстро включить или выключить слой. Виды предприятий (ВЧДр, ВРЗ, ВЧДЭ…) и вид ремонта — в <b>«Слоях»</b> справа вверху.</span></button></span><label class="switch"><input type="checkbox" id="depotsQuick" aria-label="Предприятия ремонта вагонов на карте"><span></span></label></div>
+        </div>
       </div>
     </div>
 
@@ -1336,7 +1340,7 @@ map.on("idle", () => { if (labelsPending) { labelsPending = false; updateLabels(
    (scripts/build_depots.py); расстояния — по графу тарифных участков ТР №4 (scripts/build_rail_graph.py). */
 const DEP_GROUPS = [["ВЧДр", "ВЧДр", "Вагонные ремонтные депо"], ["ВРЗ/ВРП", "ВРЗ и ВРП", "Вагоноремонтные заводы и частные предприятия"],
   ["ВЧДЭ", "ВЧДЭ", "Эксплуатационные вагонные депо"], ["ТОР", "ТОР и ПТО", "Пункты текущего отцепочного ремонта и технического обслуживания"],
-  ["прочее", "Прочие", "Прочие предприятия с кодом ремонта (заводы, операторы, промышленные)"], ["другие", "Локомот., пасс.", "Локомотивные, моторвагонные и пассажирские депо"]];
+  ["прочее", "Прочие", "Прочие предприятия с кодом ремонта (заводы, операторы, промышленные)"], ["другие", "ТЧ, ТЧПРИГ, ЛВЧД", "Локомотивные (ТЧ: ТЧЭ, ТЧР, сервисные депо, локомотиворемонтные заводы), моторвагонные (ТЧПРИГ) и пассажирские вагонные депо (ЛВЧД, ЛВЧ)"]];
 const depGroup = k => k === "ПТО" ? "ТОР" : k === "завод" ? "прочее" : ["локомотивное", "моторвагонное", "пассажирское"].includes(k) ? "другие" : k;
 const DEPOTS = (RAW.depots || []).map(([code, name, short, kind, owner, si, tr, dr, kr, extra], j) =>
   ({ j, code, name, short, kind, group: depGroup(kind), owner, st: si >= 0 ? S[si] : null, tr: !!tr, dr: !!dr, kr: !!kr, extra }));
@@ -1545,10 +1549,12 @@ function renderDepotFilters() {
   const cnt = {}; for (const d of DEPOTS) if (d.st && d.st.has && (!depRepair || (depRepair === "ДР" ? d.dr : d.kr))) cnt[d.group] = (cnt[d.group] || 0) + 1;
   $("depGroups").innerHTML = DEP_GROUPS.map(([k, l, t]) => `<button class="chip" data-g="${k}" aria-pressed="${depGroups.has(k)}" title="${esc(t)}">${esc(l)}<span class="cnt mono">${fmt(cnt[k] || 0)}</span></button>`).join("");
   document.querySelectorAll("#depRepair button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.r === depRepair)));
-  $("depotsToggle").checked = showDepots;
+  $("depotsToggle").checked = $("depotsQuick").checked = showDepots;
   $("depFilters").hidden = !showDepots;
+  $("depotsQuick").closest(".section").hidden = !DEPOTS.length;
 }
-$("depotsToggle").addEventListener("change", e => { showDepots = e.target.checked; store.set("depots", showDepots ? "1" : "0"); refreshDepots(); });
+for (const id of ["depotsToggle", "depotsQuick"])
+  $(id).addEventListener("change", e => { showDepots = e.target.checked; store.set("depots", showDepots ? "1" : "0"); refreshDepots(); });
 $("depGroups").addEventListener("click", e => {
   const b = e.target.closest("[data-g]"); if (!b) return;
   depGroups.has(b.dataset.g) ? depGroups.delete(b.dataset.g) : depGroups.add(b.dataset.g);

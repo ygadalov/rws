@@ -146,7 +146,24 @@ def load():
     osm = osm.apply(lambda c: c.str.strip())
     osm["lat"] = osm["lat"].astype(float)
     osm["lon"] = osm["lon"].astype(float)
-    return ref, osm
+    return ref, drop_retagged(ref, osm)
+
+
+def drop_retagged(ref, osm):
+    """Привязки старой выгрузки, которые в свежем OSM исправлены: объект теперь несёт другой код ЕСР, а его название
+    не похоже на нашу станцию (780302 «Екатеринбург-Товарный» стоял на точке «Звезда», в свежем OSM это 780904)."""
+    fresh_path = RAW / "osm_esr_fresh.csv"
+    if not fresh_path.exists():
+        return osm
+    fresh = pd.read_csv(fresh_path, sep=";", dtype=str, keep_default_na=False)
+    tags = fresh[fresh.osm_type == "node"].groupby("osm_id").esr.apply(set).to_dict()
+    names = dict(zip(ref["esr"], ref["name"]))
+    bad = [i for i, r in osm.iterrows() if r.osm_id in tags and r.esr not in tags[r.osm_id]
+           and name_sim(names.get(r.esr, ""), [r["name"], r.alt_name, r.old_name, r.official_name]) < NAME_OK]
+    if bad:
+        print(f"устаревшие привязки OSM (в свежем OSM объект с другим кодом и названием): {len(bad)} —",
+              ", ".join(f"{osm.at[i, 'esr']} «{osm.at[i, 'name']}»" for i in bad))
+    return osm.drop(index=bad)
 
 
 def enrich_ref(ref):
