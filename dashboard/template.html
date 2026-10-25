@@ -294,7 +294,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .legend-item { display: flex; align-items: center; gap: 8px; }
 .legend-item .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .legend-item .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.legend-item .c { color: var(--faint); }
+.legend-item .c { color: var(--faint); flex: none; }
 .legend .collapse { position: absolute; right: 6px; top: 6px; width: 26px; height: 26px; }
 .legend.min .legend-items, .legend.min select { display: none; }
 .legend.min .legend-title { margin: 0; line-height: 26px; padding-right: 28px; }
@@ -444,6 +444,24 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .rep-list label:hover { background: var(--hover); }
 .rep-list .t { flex: 1; min-width: 0; overflow-wrap: anywhere; } .rep-list .c { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .rep-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-top: 14px; }
+/* предприятия ремонта (brand/depots/DEPOTS.md) */
+.legend-item .dot-depot { border-radius: 3px; background: var(--text); box-shadow: 0 0 0 1.5px var(--panel-solid); }
+.depot-label { display: flex; align-items: center; gap: 6px; pointer-events: none; }
+.depot-badge { font-size: 11px; font-weight: 700; line-height: 16px; padding: 0 6px; border-radius: 999px;
+  background: var(--data-strong, #C2410C); color: #fff; box-shadow: 0 0 0 1.5px var(--point-stroke, #fff); }
+.depot-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap;
+  text-shadow: 0 0 3px var(--label-halo), 0 0 3px var(--label-halo), 0 0 3px var(--label-halo); }
+.depot-card { font-size: 13px; color: #15181D; } .depot-card-t { font-size: 14px; font-weight: 650; margin-bottom: 4px; padding-right: 14px; }
+.depot-card-m { font-size: 12px; color: #5B6472; margin-top: 4px; } .depot-card .link-btn { margin-top: 6px; text-align: left; }
+.seg.seg3 { grid-template-columns: repeat(3, 1fr); } .seg.seg3 button { font-size: 12px; }
+.dep-near { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.dep-near li { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-radius: 8px; cursor: pointer; }
+.dep-near li:hover { background: var(--hover); }
+.dep-near .dep-ico { width: 12px; height: 12px; border-radius: 3px; background: var(--text); box-shadow: 0 0 0 1.5px var(--panel-solid); flex: none; }
+.dep-near .t { flex: 1; min-width: 0; } .dep-near .nm { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dep-near .sub { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dep-near b { font-size: 12.5px; white-space: nowrap; }
+.top .dep { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .zone-label { pointer-events: none; font-size: 11.5px; font-weight: 650; color: var(--danger); white-space: nowrap;
   text-shadow: 0 0 3px var(--label-halo), 0 0 3px var(--label-halo), 0 0 2px var(--label-halo); }
 .zone-label span { font-weight: 500; opacity: .85; }
@@ -675,6 +693,12 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
   <h3>Схема сети</h3>
   <label class="switch-row" style="padding:2px 4px 4px">Тарифные участки ТР №4 <span class="switch"><input type="checkbox" id="linesToggle"><span></span></span></label>
   <label class="switch-row" style="padding:2px 4px 12px">Зона погрешности станции <span class="switch"><input type="checkbox" id="precToggle"><span></span></span></label>
+  <h3>Предприятия ремонта вагонов</h3>
+  <label class="switch-row" style="padding:2px 4px 6px">Показывать на карте <span class="switch"><input type="checkbox" id="depotsToggle"><span></span></span></label>
+  <div id="depFilters" style="padding:0 4px 12px">
+    <div class="chips" id="depGroups" style="margin-bottom:8px"></div>
+    <div class="seg seg3" id="depRepair" title="Виды ремонта — по СЖА 1001 17 (редакция 2017 г.)"><button data-r="">Все</button><button data-r="ДР">Деповской</button><button data-r="КР">Капитальный</button></div>
+  </div>
   <h3>Железнодорожный слой · OpenRailwayMap</h3>
   <div class="ov-list" id="overlays"></div>
 </div>
@@ -709,6 +733,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
     <h2 id="infoTitle">О данных</h2>
     <p>Единый справочник станций с кодами ЕСР собран из справочника ЕСР и OpenStreetMap (osm2esr). Дополнительно использованы Тарифное руководство №4 на 21.10.2026 (Книга 1 — тарифные участки и расстояния, Книга 2 — списки станций, города и порты) и на 30.12.2023, АСУ «Экспресс» и перекодировка станций Крыма.</p>
     <div id="verifyInfo"></div>
+    <div id="depotInfo"></div>
     <p>Подложки: OpenFreeMap, CARTO, Esri World Imagery, OpenStreetMap; ж/д слой — OpenRailwayMap (CC-BY-SA). Данные карты © участники OpenStreetMap. Офлайн-схема — Natural Earth (общественное достояние).</p>
     <p id="builtAt"></p>
     <button class="tb-btn" id="infoClose" style="box-shadow:none">Закрыть</button>
@@ -1050,6 +1075,7 @@ function addStationLayers() {
   map.addLayer({ id: "sel-pt", type: "circle", source: "sel", filter: ["==", ["geometry-type"], "Point"], paint: {
     "circle-radius": 9, "circle-color": "rgba(0,0,0,0)", "circle-stroke-width": 3, "circle-stroke-color": brand(ui) } });
   addWagonLayers(); applyModeStyling();
+  addDepotLayers(dark);
   setTimeout(updateLabels, 0);
   if (state.selected) drawSelection(state.selected);
 }
@@ -1191,6 +1217,8 @@ map.on("mouseleave", "st", () => {
 });
 map.on("click", e => {
   const pad = 6, p = e.point;
+  const dp = depotAt(p);
+  if (dp) return openDepot(dp, [dp.st.lon, dp.st.lat]);
   const wg = map.getLayer("wg-circle") && state.tab === "wagons" ? map.queryRenderedFeatures(p, { layers: ["wg-circle"] }) : [];
   if (wg.length) return selectStation(S[wg.sort((a, b) => a.properties.n - b.properties.n)[0].properties.i], { fly: false });
   const fs = map.getLayer("st") ? map.queryRenderedFeatures([[p.x - pad, p.y - pad], [p.x + pad, p.y + pad]], { layers: ["st"] }) : [];
@@ -1219,6 +1247,7 @@ map.on("mouseleave", "lines", () => {
 /* подписи станций (DOM, чтобы кириллица не зависела от шрифтов подложки) */
 let labelMarkers = [];
 function updateLabels() {
+  if (typeof updateDepotMarkers === "function") updateDepotMarkers();
   labelMarkers.forEach(m => m.remove()); labelMarkers = [];
   // занятые панелью и легендой области — подписи там не нужны; общий список для защиты от наложений
   const boxes = ["panel", "legend"].map(id => $(id).getBoundingClientRect()).filter(r => r.width).map(r => [r.left, r.top, r.right, r.bottom]);
@@ -1300,6 +1329,252 @@ function offlineLabels(boxes, free) {
 let labelsPending = false;
 map.on("moveend", () => { updateLabels(); labelsPending = true; });
 map.on("idle", () => { if (labelsPending) { labelsPending = false; updateLabels(); } });
+
+
+/* ================= предприятия ремонта вагонов ================= */
+/* Слой по brand/depots/DEPOTS.md (значки, порядок слоёв, бейдж данных); данные — СЖА 1001 17 + справочник кодов депо
+   (scripts/build_depots.py); расстояния — по графу тарифных участков ТР №4 (scripts/build_rail_graph.py). */
+const DEP_GROUPS = [["ВЧДр", "ВЧДр", "Вагонные ремонтные депо"], ["ВРЗ/ВРП", "ВРЗ и ВРП", "Вагоноремонтные заводы и частные предприятия"],
+  ["ВЧДЭ", "ВЧДЭ", "Эксплуатационные вагонные депо"], ["ТОР", "ТОР и ПТО", "Пункты текущего отцепочного ремонта и технического обслуживания"],
+  ["прочее", "Прочие", "Прочие предприятия с кодом ремонта (заводы, операторы, промышленные)"], ["другие", "Локомот., пасс.", "Локомотивные, моторвагонные и пассажирские депо"]];
+const depGroup = k => k === "ПТО" ? "ТОР" : k === "завод" ? "прочее" : ["локомотивное", "моторвагонное", "пассажирское"].includes(k) ? "другие" : k;
+const DEPOTS = (RAW.depots || []).map(([code, name, short, kind, owner, si, tr, dr, kr, extra], j) =>
+  ({ j, code, name, short, kind, group: depGroup(kind), owner, st: si >= 0 ? S[si] : null, tr: !!tr, dr: !!dr, kr: !!kr, extra }));
+const DEP_BY_CODE = new Map(DEPOTS.map(d => [d.code.replace(/^0+/, ""), d]));
+let showDepots = store.get("depots") !== "0";
+let depGroups = new Set((() => { try { return JSON.parse(store.get("depGroups")); } catch { return null; } })() || ["ВЧДр", "ВРЗ/ВРП", "ВЧДЭ", "ТОР", "прочее"]);
+let depRepair = store.get("depRepair") || "";  // "", "ДР", "КР" — только предприятия с отметкой в СЖА 1001 17
+const depotOn = d => d.st && d.st.has && depGroups.has(d.group) && (!depRepair || (depRepair === "ДР" ? d.dr : d.kr));
+const DEP_OFFSET = k => [14, 14 + k * 26];  // несколько предприятий на станции — столбиком, подписи друг под другом
+const depLabel = d => (d.short && d.short.length < d.name.length ? d.short : d.name);
+
+/* значки — из brand/depots/icons: графитовая плашка с ключом (zoom ≥ 6) и квадрат (zoom < 6) */
+const DEPOT_WRENCH = ink => `<g fill="none" stroke="${ink}" stroke-width="2.6" stroke-linecap="round"><path d="M13.77 5.62A3.6 3.6 0 1 0 18.38 10.23"/><path d="M12.45 11.55L6 18"/></g>`;
+const DEPOT_ICON = (fill, ink) => `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26"><rect x="1" y="1" width="24" height="24" rx="6" fill="${fill}" stroke="${ink}" stroke-width="2"/><g transform="translate(4.5 4.5) scale(0.7083)">${DEPOT_WRENCH(ink)}</g></svg>`;
+const DEPOT_ICON_SM = (fill, ink) => `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" rx="2" fill="${fill}" stroke="${ink}" stroke-width="1.5"/></svg>`;
+const DEPOT_ICONS = {
+  "depot-light": [DEPOT_ICON("#15181D", "#FFFFFF"), 26], "depot-dark": [DEPOT_ICON("#E9ECF1", "#0F1115"), 26],
+  "depot-sm-light": [DEPOT_ICON_SM("#15181D", "#FFFFFF"), 10], "depot-sm-dark": [DEPOT_ICON_SM("#E9ECF1", "#0F1115"), 10],
+};
+const depotImagesReady = Promise.all(Object.entries(DEPOT_ICONS).map(([id, [svg, size]]) => new Promise((res, rej) => {
+  const img = new Image(size * 2, size * 2);
+  img.onload = () => res([id, img]); img.onerror = rej;
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+})));
+
+function depotFeatures() {
+  // у предприятий нет своих координат — значок на станции примыкания со сдвигом (DEPOTS.md: «положение приблизительное»);
+  // несколько предприятий на одной станции — веером, чтобы не закрывали друг друга
+  const per = new Map(), feats = [];
+  for (const d of DEPOTS) {
+    if (!depotOn(d)) continue;
+    const k = per.get(d.st.i) || 0; per.set(d.st.i, k + 1);
+    feats.push({ type: "Feature", id: d.j, geometry: { type: "Point", coordinates: [d.st.lon, d.st.lat] },
+      properties: { j: d.j, si: d.st.i, k: Math.min(k, 7) } });
+  }
+  return { type: "FeatureCollection", features: feats };
+}
+async function addDepotLayers(dark) {
+  const imgs = await depotImagesReady;
+  if (!map.getLayer("sel-pt") || map.getLayer("depots")) return;  // стиль успел смениться или слой уже есть
+  for (const [id, img] of imgs) if (!map.hasImage(id)) map.addImage(id, img, { pixelRatio: 2 });
+  map.addSource("depots", { type: "geojson", data: depotFeatures() });
+  map.addLayer({ id: "depots", type: "symbol", source: "depots", layout: {
+    visibility: showDepots ? "visible" : "none",
+    "icon-image": ["step", ["zoom"], dark ? "depot-sm-dark" : "depot-sm-light", 6, dark ? "depot-dark" : "depot-light"],
+    "icon-size": ["interpolate", ["linear"], ["zoom"], 3, 0.8, 5.99, 1, 6, 0.77, 10, 1],
+    // сдвиг со станции примыкания; 2-е, 3-е… предприятие на той же станции — правее и ниже
+    // сдвиг в пикселях — только на крупном масштабе: на обзоре столбик из 8 значков «уехал» бы на сотни километров
+    "icon-offset": ["step", ["zoom"], ["literal", [0, 0]], 8,
+      ["match", ["get", "k"], ...[0, 1, 2, 3, 4, 5, 6].flatMap(k => [k, ["literal", DEP_OFFSET(k)]]), ["literal", DEP_OFFSET(7)]]],
+    "symbol-sort-key": ["get", "k"],
+    "icon-allow-overlap": true, "icon-ignore-placement": true } }, "sel-pt");
+  updateLabels();
+}
+function refreshDepots() {
+  if (map.getSource("depots")) map.getSource("depots").setData(depotFeatures());
+  if (map.getLayer("depots")) map.setLayoutProperty("depots", "visibility", showDepots ? "visible" : "none");
+  depNearestCache = null;
+  if (!showDepots) depotPopup.remove();
+  renderDepotFilters(); updateLabels(); renderLegend();
+  if (state.tab === "wagons" && W.loaded) renderWagonStats();
+  if (state.selected && $("panel").classList.contains("show-detail")) selectStation(state.selected, { fly: false, push: false, keepScroll: true });
+}
+
+/* ---------- граф сети: расстояния по тарифным участкам ТР №4 ---------- */
+const GRAPH = (() => {
+  const g = RAW.graph; if (!g) return null;
+  const n = g.n, deg = new Int32Array(n + 1);
+  for (let k = 0; k < g.a.length; k++) { deg[g.a[k] + 1]++; deg[g.b[k] + 1]++; }
+  for (let i = 0; i < n; i++) deg[i + 1] += deg[i];
+  const to = new Int32Array(deg[n]), w = new Float32Array(deg[n]), fill = deg.slice(0, n);
+  for (let k = 0; k < g.a.length; k++) {
+    to[fill[g.a[k]]] = g.b[k]; w[fill[g.a[k]]++] = g.w[k];
+    to[fill[g.b[k]]] = g.a[k]; w[fill[g.b[k]]++] = g.w[k];
+  }
+  return { n, off: deg, to, w };
+})();
+const GNODE = RAW.gnode || [], GSNAP = RAW.gsnap || [];
+// кратчайшие расстояния от набора узлов (двоичная куча); tag — какой источник ближе
+function railDijkstra(sources, { maxKm = 1e9, stop = null } = {}) {
+  const n = GRAPH.n, dist = new Float64Array(n).fill(Infinity), tag = new Int32Array(n).fill(-1);
+  const heap = [];
+  const push = (d, v) => { heap.push([d, v]); let i = heap.length - 1; while (i) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  for (const [v, d0, t] of sources) if (d0 < dist[v]) { dist[v] = d0; tag[v] = t; push(d0, v); }
+  while (heap.length) {
+    const [d, v] = pop();
+    if (d > dist[v]) continue;
+    if (d > maxKm || (stop && stop(v, d))) break;
+    for (let k = GRAPH.off[v]; k < GRAPH.off[v + 1]; k++) {
+      const u = GRAPH.to[k], nd = d + GRAPH.w[k];
+      if (nd < dist[u]) { dist[u] = nd; tag[u] = tag[v]; push(nd, u); }
+    }
+  }
+  return { dist, tag };
+}
+// ближайшие предприятия к станции: по сети, если станция связана с графом; иначе — по прямой
+// «ближайшее» — среди предприятий страны станции: вагон, как правило, ремонтируют на своей сети
+const sameCountry = (s, d) => !s.country || !d.st.country || s.country === d.st.country;
+function nearestDepots(s, k = 3) {
+  const on = DEPOTS.filter(d => depotOn(d) && sameCountry(s, d));
+  if (!on.length || !s.has) return [];
+  const node = GRAPH ? GNODE[s.i] : -1;
+  if (node >= 0) {
+    const atNode = new Map();
+    for (const d of on) { const v = GNODE[d.st.i]; if (v >= 0) (atNode.get(v) || atNode.set(v, []).get(v)).push(d); }
+    const found = [];
+    railDijkstra([[node, GSNAP[s.i] || 0, 0]], { maxKm: 5000, stop: (v, dd) => {
+      for (const d of atNode.get(v) || []) found.push({ d, km: dd + (GSNAP[d.st.i] || 0), rail: true });
+      return found.length >= k;
+    } });
+    if (found.length) return found.slice(0, k);
+  }
+  return on.map(d => ({ d, km: distKm(s, d.st), rail: false })).sort((a, b) => a.km - b.km).slice(0, k);
+}
+// для вкладки «Вагоны»: ближайшее предприятие для каждого узла графа — один проход от всех предприятий сразу
+let depNearestCache = null;  // по странам: один проход от всех предприятий страны
+function nearestDepotFor(s) {
+  if (!GRAPH || !s.has) return null;
+  depNearestCache = depNearestCache || new Map();
+  const c = s.country || "";
+  if (!depNearestCache.has(c)) {
+    const src = DEPOTS.filter(d => depotOn(d) && sameCountry(s, d)).map(d => [GNODE[d.st.i], GSNAP[d.st.i] || 0, d.j]).filter(x => x[0] >= 0);
+    depNearestCache.set(c, src.length ? railDijkstra(src) : { dist: [], tag: [] });
+  }
+  const R = depNearestCache.get(c), v = GNODE[s.i];
+  if (v < 0 || !(R.dist[v] < Infinity)) return null;
+  return { d: DEPOTS[R.tag[v]], km: R.dist[v] + (GSNAP[s.i] || 0) };
+}
+const fmtKmR = km => fmt(Math.round(km)) + " км";
+// строка «ближайшее предприятие» в списке станций вкладки «Вагоны»
+const depLine = s => { if (!showDepots) return ""; const x = nearestDepotFor(s); return x ? `<span class="dep" title="Ближайшее предприятие ремонта по сети: ${esc(x.d.name)}">${x.km < 0.5 ? "на станции" : fmtKmR(x.km)} · ${esc(depLabel(x.d))}</span>` : ""; };
+const depShort = () => "";
+
+/* ---------- карточка предприятия, наведение, клик ---------- */
+const depotPopup = new maplibregl.Popup({ closeButton: true, maxWidth: "320px", offset: 16 });
+const REPAIR_LABELS = { pos: "постройка", kp: "КП с продлением", sensor: "датчики", axle: "черновая ось", side_frame: "боковая рама",
+  bolster: "надрессорная балка", wheelset: "колёсные пары", wheel_survey: "освид. колёсных пар", solid_wheel: "цельнокатаные колёса", brake: "тормоза" };
+function depotWagons(d) {
+  // сколько записей отчёта называют это предприятие в столбцах «… депо … (код)»
+  if (!W.loaded) return 0;
+  const cols = W.headers.map((h, i) => [h, i]).filter(([h]) => /депо|ремонт/i.test(h) && /код/i.test(h)).map(([, i]) => i);
+  const k = d.code.replace(/^0+/, ""); let n = 0;
+  for (const r of W.agg.rows) if (cols.some(i => cellStr(r[i]).replace(/^0+/, "") === k)) n++;
+  return n;
+}
+function openDepot(d, lngLat) {
+  const rep = [d.tr && "ТР", d.dr && "ДР", d.kr && "КР"].filter(Boolean).join(" · ");
+  const extra = (d.extra || "").split(",").filter(Boolean).map(x => REPAIR_LABELS[x] || x).join(", ");
+  const n = depotWagons(d);
+  depotPopup.setLngLat(lngLat).setHTML(`<div class="depot-card">
+    <div class="depot-card-t">${esc(depLabel(d))}</div>
+    ${d.name !== depLabel(d) ? `<div class="depot-card-m">${esc(d.name)}</div>` : ""}
+    <div class="depot-card-m">Код предприятия <b class="mono">${esc(d.code)}</b> · ${esc(d.kind)}${d.owner ? " · " + esc(d.owner) : ""}</div>
+    ${rep ? `<div class="depot-card-m">Ремонт: <b>${rep}</b>${extra ? " · " + esc(extra) : ""}</div>` : ""}
+    <button class="link-btn" data-depot-st="${d.st.i}">Станция примыкания: ${esc(d.st.name)} · <span class="mono">${esc(d.st.esr)}</span></button>
+    ${n ? `<div class="depot-card-m">В отчёте по вагонам: <b class="mono">${fmt(n)}</b> записей с этим предприятием</div>` : ""}
+    <div class="depot-card-m">Положение приблизительное — по станции примыкания</div>
+  </div>`).addTo(map);
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-depot-st]");
+  if (b) { depotPopup.remove(); return selectStation(S[+b.dataset.depotSt], { fly: true }); }
+  const g = e.target.closest("[data-depot]");
+  if (g) { const d = DEPOTS[+g.dataset.depot]; map.flyTo({ center: [d.st.lon, d.st.lat], zoom: Math.max(map.getZoom(), 10) }); openDepot(d, [d.st.lon, d.st.lat]); }
+});
+map.on("mousemove", "depots", e => {
+  const f = e.features[0]; if (!f) return;
+  map.getCanvas().style.cursor = "pointer";
+  const d = DEPOTS[f.properties.j];
+  tip.setLngLat(f.geometry.coordinates).setHTML(`<div class="tip"><b>${esc(depLabel(d))}</b><br><span>${esc(d.kind)}${d.owner ? " · " + esc(d.owner) : ""}</span></div>`).addTo(map);
+});
+map.on("mouseleave", "depots", () => { map.getCanvas().style.cursor = ""; tip.remove(); });
+function depotAt(p) {
+  if (!showDepots || !map.getLayer("depots")) return null;
+  const f = map.queryRenderedFeatures([[p.x - 10, p.y - 10], [p.x + 10, p.y + 10]], { layers: ["depots"] })[0];
+  return f ? DEPOTS[f.properties.j] : null;
+}
+
+/* ---------- подписи и бейдж данных (DEPOTS.md, п. 2) ---------- */
+let depotMarkers = [];
+function updateDepotMarkers() {
+  depotMarkers.forEach(m => m.remove()); depotMarkers = [];
+  if (!showDepots || !map.getLayer("depots")) return;
+  const z = map.getZoom(), wg = state.tab === "wagons" && W.loaded && W.agg;
+  if (z < 6 || (!wg && z < 10)) return;
+  const boxes = [];
+  for (const f of map.queryRenderedFeatures({ layers: ["depots"] }).slice(0, 300)) {
+    const d = DEPOTS[f.properties.j];
+    const n = wg ? (W.agg.by.get(d.st.i)?.n || 0) : 0, label = z >= 10 ? depLabel(d) : "";
+    if (!n && !label) continue;
+    const el = document.createElement("div"); el.className = "depot-label";
+    if (n) { const b = document.createElement("span"); b.className = "depot-badge mono"; b.textContent = fmt(n); b.title = "Вагонов на станции примыкания по отчёту"; el.append(b); }
+    if (label) { const t = document.createElement("span"); t.className = "depot-name"; t.textContent = label; el.append(t); }
+    const [ox, oy] = z >= 8 ? DEP_OFFSET(f.properties.k) : [0, 0], sc = z >= 10 ? 1 : 0.77;
+    const q = map.project(f.geometry.coordinates), x0 = q.x + ox * sc + 16 * sc, y0 = q.y + oy * sc;
+    const box = [x0, y0 - 9, x0 + (label.length * 6.6 + (n ? 40 : 0)), y0 + 9];
+    if (boxes.some(b => !(box[2] < b[0] || box[0] > b[2] || box[3] < b[1] || box[1] > b[3]))) continue;
+    boxes.push(box);
+    depotMarkers.push(new maplibregl.Marker({ element: el, anchor: "left", offset: [ox * sc + 16 * sc, oy * sc] }).setLngLat(f.geometry.coordinates).addTo(map));
+  }
+}
+
+/* ---------- «Слои»: включение и фильтры ---------- */
+function renderDepotFilters() {
+  const cnt = {}; for (const d of DEPOTS) if (d.st && d.st.has && (!depRepair || (depRepair === "ДР" ? d.dr : d.kr))) cnt[d.group] = (cnt[d.group] || 0) + 1;
+  $("depGroups").innerHTML = DEP_GROUPS.map(([k, l, t]) => `<button class="chip" data-g="${k}" aria-pressed="${depGroups.has(k)}" title="${esc(t)}">${esc(l)}<span class="cnt mono">${fmt(cnt[k] || 0)}</span></button>`).join("");
+  document.querySelectorAll("#depRepair button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.r === depRepair)));
+  $("depotsToggle").checked = showDepots;
+  $("depFilters").hidden = !showDepots;
+}
+$("depotsToggle").addEventListener("change", e => { showDepots = e.target.checked; store.set("depots", showDepots ? "1" : "0"); refreshDepots(); });
+$("depGroups").addEventListener("click", e => {
+  const b = e.target.closest("[data-g]"); if (!b) return;
+  depGroups.has(b.dataset.g) ? depGroups.delete(b.dataset.g) : depGroups.add(b.dataset.g);
+  store.set("depGroups", JSON.stringify([...depGroups])); refreshDepots();
+});
+$("depRepair").addEventListener("click", e => {
+  const b = e.target.closest("[data-r]"); if (!b) return;
+  depRepair = b.dataset.r; store.set("depRepair", depRepair); refreshDepots();
+});
+renderDepotFilters();
+const depotLegendItem = () =>
+  `<div class="legend-item"><span class="dot dot-depot"></span><span class="t" title="Предприятия ремонта вагонов">Предприятия ремонта</span><span class="c mono">${fmt(DEPOTS.filter(depotOn).length)}</span></div>`;
+
+/* ---------- карточка станции: ближайшие предприятия ---------- */
+function depotSection(s) {
+  if (!showDepots || !DEPOTS.length || !s.has) return "";
+  const near = nearestDepots(s, 3);
+  if (!near.length) return "";
+  const rail = near[0].rail;
+  return `<div class="section"><div class="section-title">Ближайшие предприятия ремонта</div>
+    <ul class="dep-near">${near.map(({ d, km }) => `<li data-depot="${d.j}"><span class="dep-ico"></span>
+      <div class="t"><div class="nm">${esc(depLabel(d))}</div><div class="sub">${esc(d.kind)}${d.owner ? " · " + esc(d.owner) : ""} · ст. ${esc(d.st.name)}</div></div>
+      <b class="mono">${km < 0.5 ? "здесь" : fmtKmR(km)}</b></li>`).join("")}</ul>
+    <p class="hint">${rail ? "Расстояние по сети — по тарифным участкам ТР №4" : "Станция не связана с тарифными участками — расстояние по прямой"}, предприятия страны станции${GSNAP[s.i] ? " (станция вне участков: + путь до ближайшей станции участка)" : ""}. Фильтр предприятий — в «Слоях».</p></div>`;
+}
+
 
 /* ================= фильтры ================= */
 // после изменения фильтра карта сама показывает отобранные пункты; задержка — пока отмечают несколько значений
@@ -1389,6 +1664,7 @@ function renderDropdownLabels() {
   });
 }
 document.addEventListener("click", e => {
+  if (!e.target.isConnected) return;  // кнопку уже перерисовали (фильтры в «Слоях») — это клик внутри меню, не снаружи
   if (!e.target.closest(".dd")) document.querySelectorAll(".dd.open").forEach(x => x.classList.remove("open"));
   if (!e.target.closest(".popover") && !e.target.closest("#layersBtn") && !e.target.closest("#exportBtn")) closePops();
 });
@@ -1428,6 +1704,7 @@ function renderLegend() {
   if (by !== "q" && by !== "ops") items.sort((a, b) => b[2] - a[2]);
   $("legendItems").innerHTML = items.map(([l, c, n, hollow]) =>
     `<div class="legend-item"><span class="dot" style="${hollow ? `background:transparent;box-shadow:inset 0 0 0 2.5px ${c}` : `background:${c}`}"></span><span class="t" title="${esc(l)}">${esc(l)}</span><span class="c mono">${fmt(n)}</span></div>`).join("");
+  if (showDepots && DEPOTS.length) $("legendItems").insertAdjacentHTML("beforeend", depotLegendItem());
 }
 $("colorBy").addEventListener("change", e => {
   state.colorBy = e.target.value; store.set("colorBy", state.colorBy);
@@ -1603,6 +1880,7 @@ function selectStation(s, { fly = true, push = true, keepScroll = false } = {}) 
       <a class="act" target="_blank" rel="noopener" href="https://www.openrailwaymap.org/?lat=${s.lat}&lon=${s.lon}&zoom=15">${ICON.rail}ORM</a>` : ""}
     </div>
     ${wagonSection(s)}
+    ${depotSection(s)}
     <div class="section">
       <div class="section-title">Координаты</div>
       ${s.has ? `<div class="qbox"><span class="dot" style="background:${qColor(s.q)}"></span><div><b>${q.label}</b>${s.prec ? ` · точность ±${s.prec} км` : ""}
@@ -1861,6 +2139,16 @@ function xcheckNote(s) {
   return `<div class="note${s.xcheck === "расхождение" ? " xbad" : ""}">Сверка ${d}${label ? ": " + label : ""}${parts ? " (" + was + parts + ")" : ""}`
     + `${s.wd ? ` · <a target="_blank" rel="noopener" href="https://www.wikidata.org/wiki/${esc(s.wd)}">Викиданные</a>` : ""}</div>`;
 }
+(function renderDepotInfo() {
+  if (!DEPOTS.length) return;
+  const c = RAW.graph && RAW.graph.check;
+  $("depotInfo").innerHTML = `<h3>Предприятия ремонта вагонов</h3>
+    <p>${fmt(DEPOTS.length)} предприятий с местом на карте: условные коды и виды ремонта — СЖА 1001 17 «Условные коды предприятий»
+    (редакция 2017 г.), названия — справочник кодов депо; место — станция примыкания (код станции из СЖА или из названия).
+    Расстояние до ближайшего предприятия — по сети: граф тарифных участков ТР №4 на 21.10.2026 со стыковкой сетей стран
+    ${c ? `(сверка с тарифными расстояниями ТР №4 до транзитных пунктов: точное совпадение — ${String(c.exact_share).replace(".", ",")}%,
+    в пределах 5% — ${String(c.within_5pct).replace(".", ",")}%)` : ""}; ближайшее ищется среди предприятий страны станции.</p>`;
+})();
 (function renderVerifyInfo() {
   const V = RAW.verify; if (!V) return;
   const dt = x => new Date(x).toLocaleDateString("ru-RU");
@@ -2525,8 +2813,8 @@ function renderWagonStats() {
   const pc = n => n / sum < 0.0005 ? "<0,1%" : (n / sum * 100).toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
   const restN = all.slice(shown).reduce((x, o) => x + o.n, 0);
   $("wgTop").innerHTML = (top.map((o, k) => `<li data-i="${o.s.i}"><span class="rk mono">${k + 1}</span>
-    <div class="tn"><div class="nm">${esc(o.s.name)}${o.s.has ? "" : ' <span class="badge">нет коорд.</span>'}</div><div class="bar"><i style="width:${(o.n / max * 100).toFixed(1)}%"></i></div></div>
-    <b class="mono">${fmt(o.n)}</b><span class="pc mono">${pc(o.n)}</span></li>`).join("")
+    <div class="tn"><div class="nm">${esc(o.s.name)}${o.s.has ? "" : ' <span class="badge">нет коорд.</span>'}</div><div class="bar"><i style="width:${(o.n / max * 100).toFixed(1)}%"></i></div>${depLine(o.s)}</div>
+    ${depShort(o.s)}<b class="mono">${fmt(o.n)}</b><span class="pc mono">${pc(o.n)}</span></li>`).join("")
     + (all.length > shown ? `<li class="rest"><span class="txt">Остальные ${fmt(all.length - shown)} ст. — ${fmt(restN)} ваг. (${pc(restN)})</span>
       <button class="link-btn" data-more="50">Ещё 50</button><button class="link-btn" data-more="all">${all.length > 2000 ? "Первые 2000" : "Все"}</button></li>`
       : all.length > 15 ? `<li class="rest"><span class="txt">Все ${fmt(all.length)} ст. — ${fmt(sum)} ваг.</span><button class="link-btn" data-more="less">Свернуть</button></li>` : ""))
@@ -2581,10 +2869,12 @@ function toCSV(header, rows) {
 }
 function exportWagonSummary() {
   const col = activeCol(), a = W.agg;
-  const rows = [...a.by.values()].sort((x, y) => y.n - x.n).map(o => [o.s.esr, o.s.name, o.s.lat ?? "", o.s.lon ?? "", o.s.railway, o.s.region, o.n]);
-  for (const o of a.miss.values()) rows.push([o.code, o.name, "", "", "", "нет в справочнике ЕСР", o.n]);
+  const dep = s => { const x = showDepots ? nearestDepotFor(s) : null; return x ? [x.d.code, depLabel(x.d), x.d.st.name, Math.round(x.km)] : ["", "", "", ""]; };
+  const rows = [...a.by.values()].sort((x, y) => y.n - x.n).map(o => [o.s.esr, o.s.name, o.s.lat ?? "", o.s.lon ?? "", o.s.railway, o.s.region, o.n, ...dep(o.s)]);
+  for (const o of a.miss.values()) rows.push([o.code, o.name, "", "", "", "нет в справочнике ЕСР", o.n, "", "", "", ""]);
   download(`wagons_by_station_${new Date().toISOString().slice(0, 10)}.csv`, new Blob([toCSV(
-    ["Код ЕСР", "Станция", "Широта", "Долгота", "Дорога", "Регион", "Вагонов (" + col.h + ")"], rows)], { type: "text/csv;charset=utf-8" }));
+    ["Код ЕСР", "Станция", "Широта", "Долгота", "Дорога", "Регион", "Вагонов (" + col.h + ")",
+     "Ближайшее предприятие ремонта (код)", "Ближайшее предприятие ремонта", "Станция предприятия", "Расстояние по сети, км"], rows)], { type: "text/csv;charset=utf-8" }));
 }
 function exportStationWagons(i) {
   const o = W.agg.by.get(i); if (!o) return;

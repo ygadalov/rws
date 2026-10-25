@@ -49,6 +49,50 @@ FIELDS = [
 SECTIONS = ROOT / "data" / "output" / "tr4_sections.csv"
 CITIES = ROOT / "data" / "output" / "tr4_cities.csv"
 VERIFY = ROOT / "data" / "output" / "verification.json"
+DEPOTS = ROOT / "data" / "output" / "depots.csv"
+GRAPH = ROOT / "data" / "output" / "rail_graph.json"
+SNAP_MAX_KM = 50  # станция вне тарифных участков привязывается к ближайшему узлу графа не дальше этого
+
+
+def rail_graph(st):
+    """Граф для расстояний по сети (scripts/build_rail_graph.py) + привязка каждой станции к узлу графа."""
+    if not GRAPH.exists():
+        return None, None, None
+    import numpy as np
+    from scipy.spatial import cKDTree
+    g = json.loads(GRAPH.read_text(encoding="utf-8"))
+    idx = {e: i for i, e in enumerate(g["nodes"])}
+    lat = pd.to_numeric(st.lat, errors="coerce").values
+    lon = pd.to_numeric(st.lon, errors="coerce").values
+    node_of = [idx.get(e, -1) for e in st.esr]
+    have = [(i, node_of[i]) for i in range(len(st)) if node_of[i] >= 0 and not np.isnan(lat[i])]
+    tree = cKDTree(np.radians([[lat[i], lon[i]] for i, _ in have]))
+    gnode, gsnap = [], []
+    for i in range(len(st)):
+        if node_of[i] >= 0:
+            gnode.append(node_of[i]); gsnap.append(0)
+        elif not np.isnan(lat[i]):
+            d, k = tree.query(np.radians([lat[i], lon[i]]))
+            km = float(d) * 6371
+            ok = km <= SNAP_MAX_KM
+            gnode.append(have[k][1] if ok else -1); gsnap.append(round(km * 1.2, 1) if ok else 0)
+        else:
+            gnode.append(-1); gsnap.append(0)
+    e = g["edges"]
+    graph = {"n": len(g["nodes"]), "a": [x[0] for x in e], "b": [x[1] for x in e], "w": [x[2] for x in e], "check": g.get("check")}
+    return graph, gnode, gsnap
+
+
+def depots(st):
+    """Предприятия ремонта с местоположением (scripts/build_depots.py): [код, название, кратко, тип, владелец,
+    индекс станции, ТР, ДР, КР, прочие виды ремонта]."""
+    if not DEPOTS.exists():
+        return []
+    d = pd.read_csv(DEPOTS, sep=";", dtype=str, keep_default_na=False)
+    row = {e: i for i, e in enumerate(st.esr)}
+    d = d[d.esr.isin(row)]
+    t = lambda v: 1 if v == "True" else 0
+    return [[r.code, r.name, r.short_name, r.kind, r.owner, row[r.esr], t(r.tr), t(r.dr), t(r.kr), r.extra] for r in d.itertuples()]
 
 
 def section_lines():
@@ -125,6 +169,7 @@ def main():
             cols.append((v == "True").astype(int).tolist())
         else:
             cols.append(v.tolist())
+    graph, gnode, gsnap = rail_graph(st)
     data = {
         "version": VERSION,
         "built": date.today().isoformat(),
@@ -141,6 +186,9 @@ def main():
         # своя карта из файла PMTiles: стиль Protomaps (русские подписи) и встроенные шрифты Noto Sans
         "pmstyle": json.loads((VENDOR / "protomaps-style.json").read_text(encoding="utf-8")),
         "glyphs": glyphs(),
+        # предприятия ремонта вагонов и граф сети для расстояний «по железной дороге»
+        "depots": depots(st),
+        "graph": graph, "gnode": gnode, "gsnap": gsnap,
         # сверка со свежим OSM и Викиданными (scripts/verify_sources.py)
         "verify": json.loads(VERIFY.read_text(encoding="utf-8")) if VERIFY.exists() else None,
         # контуры регионов для запретных зон (ограничения курсирования, только в пробной сборке), см. scripts/build_region_shapes.py
