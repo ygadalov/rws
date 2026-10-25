@@ -460,7 +460,8 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .dep-near .dep-ico { width: 12px; height: 12px; border-radius: 3px; background: var(--text); box-shadow: 0 0 0 1.5px var(--panel-solid); flex: none; }
 .dep-near .t { flex: 1; min-width: 0; } .dep-near .nm { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dep-near .sub { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dep-near b { font-size: 12.5px; white-space: nowrap; }
+.dep-near b { font-size: 12.5px; white-space: nowrap; text-align: right; }
+.dep-near b small { display: block; font: 400 10.5px/1.3 Inter, system-ui, sans-serif; color: var(--muted); }
 .top .dep { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .zone-label { pointer-events: none; font-size: 11.5px; font-weight: 650; color: var(--danger); white-space: nowrap;
   text-shadow: 0 0 3px var(--label-halo), 0 0 3px var(--label-halo), 0 0 2px var(--label-halo); }
@@ -1221,9 +1222,11 @@ map.on("mouseleave", "st", () => {
 });
 map.on("click", e => {
   const pad = 6, p = e.point;
-  const dp = depotAt(p);
-  if (dp) return openDepot(dp, [dp.st.lon, dp.st.lat]);
   const wg = map.getLayer("wg-circle") && state.tab === "wagons" ? map.queryRenderedFeatures(p, { layers: ["wg-circle"] }) : [];
+  // кружок вагонов важнее значка предприятия: на обзоре значок стоит в центре станции, под кружком;
+  // с масштаба 8 значок сдвинут в сторону — по нему попадаем только точным кликом
+  const dp = wg.length ? (map.getZoom() >= 8 ? depotAt(p, 2) : null) : depotAt(p);
+  if (dp) return openDepot(dp, [dp.st.lon, dp.st.lat]);
   if (wg.length) return selectStation(S[wg.sort((a, b) => a.properties.n - b.properties.n)[0].properties.i], { fly: false });
   const fs = map.getLayer("st") ? map.queryRenderedFeatures([[p.x - pad, p.y - pad], [p.x + pad, p.y + pad]], { layers: ["st"] }) : [];
   if (!fs.length) {
@@ -1509,14 +1512,15 @@ document.addEventListener("click", e => {
 });
 map.on("mousemove", "depots", e => {
   const f = e.features[0]; if (!f) return;
+  if (map.getZoom() < 8 && state.tab === "wagons" && map.getLayer("wg-circle") && map.queryRenderedFeatures(e.point, { layers: ["wg-circle"] }).length) return tip.remove();
   map.getCanvas().style.cursor = "pointer";
   const d = DEPOTS[f.properties.j];
   tip.setLngLat(f.geometry.coordinates).setHTML(`<div class="tip"><b>${esc(depLabel(d))}</b><br><span>${esc(d.kind)}${d.owner ? " · " + esc(d.owner) : ""}</span></div>`).addTo(map);
 });
 map.on("mouseleave", "depots", () => { map.getCanvas().style.cursor = ""; tip.remove(); });
-function depotAt(p) {
+function depotAt(p, r = 10) {
   if (!showDepots || !map.getLayer("depots")) return null;
-  const f = map.queryRenderedFeatures([[p.x - 10, p.y - 10], [p.x + 10, p.y + 10]], { layers: ["depots"] })[0];
+  const f = map.queryRenderedFeatures([[p.x - r, p.y - r], [p.x + r, p.y + r]], { layers: ["depots"] })[0];
   return f ? DEPOTS[f.properties.j] : null;
 }
 
@@ -1575,10 +1579,10 @@ function depotSection(s) {
   if (!near.length) return "";
   const rail = near[0].rail;
   return `<div class="section"><div class="section-title">Ближайшие предприятия ремонта</div>
-    <ul class="dep-near">${near.map(({ d, km }) => `<li data-depot="${d.j}"><span class="dep-ico"></span>
+    <ul class="dep-near">${near.map(({ d, km, rail: r }) => { const h = distKm(s, d.st), far = r && km > h * 1.5 + 2; return `<li data-depot="${d.j}"><span class="dep-ico"></span>
       <div class="t"><div class="nm">${esc(depLabel(d))}</div><div class="sub">${esc(d.kind)}${d.owner ? " · " + esc(d.owner) : ""} · ст. ${esc(d.st.name)}</div></div>
-      <b class="mono">${km < 0.5 ? "здесь" : fmtKmR(km)}</b></li>`).join("")}</ul>
-    <p class="hint">${rail ? "Расстояние по сети — по тарифным участкам ТР №4" : "Станция не связана с тарифными участками — расстояние по прямой"}, предприятия страны станции${GSNAP[s.i] ? " (станция вне участков: + путь до ближайшей станции участка)" : ""}. Фильтр предприятий — в «Слоях».</p></div>`;
+      <b class="mono"${far ? ` title="По прямой ${fmtKmR(h)}: тарифный путь идёт через раздельные пункты участков ТР №4"` : ""}>${km < 0.5 ? "здесь" : fmtKmR(km)}${far ? `<small>по прямой ${fmtKmR(h)}</small>` : ""}</b></li>`; }).join("")}</ul>
+    <p class="hint">${rail ? "Расстояние по сети — по тарифным участкам ТР №4 (через раздельные пункты, поэтому бывает больше, чем по прямой)" : "Станция не связана с тарифными участками — расстояние по прямой"}, предприятия страны станции${GSNAP[s.i] ? " (станция вне участков: + путь до ближайшей станции участка)" : ""}. Фильтр предприятий — в «Слоях».</p></div>`;
 }
 
 

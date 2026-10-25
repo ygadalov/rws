@@ -172,11 +172,12 @@ def apply_manual(st):
     path = RAW / "stations_manual.csv"
     if not path.exists():
         return st, 0
-    man = pd.read_csv(path, sep=";", dtype=str, keep_default_na=False, comment="#")
+    man = pd.read_csv(path, sep=";", dtype=str, keep_default_na=False, comment="#", index_col=False)
     n = 0
     for _, m in man.iterrows():
         i = st.index[st.esr == m.esr]
         if not len(i):
+            print(f"  stations_manual.csv: код {m.esr!r} не найден — проверьте строку (лишняя «;» в примечании?)")
             continue
         st.loc[i, ["lat", "lon"]] = float(m.lat), float(m.lon)
         st.loc[i, "coord_quality"] = "B"
