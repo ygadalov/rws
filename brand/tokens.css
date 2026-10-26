@@ -33,6 +33,12 @@
   /* Карта */
   --label-halo:    #FFFFFF;
   --point-stroke:  #FFFFFF;              /* new: обводка всех точек на карте */
+  /* подсказки (i): всегда тёмные (пояснение поверх интерфейса), цвета тёмной темы */
+  --tip-bg:        #181B21;              /* = --panel-solid тёмной темы */
+  --tip-fg:        #E9ECF1;              /* = --text тёмной темы */
+  --tip-strong:    #FFFFFF;
+  --tip-accent:    #6D9BFF;              /* = --accent тёмной темы */
+  --tip-border:    transparent;
 
   --radius: 14px;
   --shadow: 0 8px 32px rgba(16,24,40,.14), 0 1px 3px rgba(16,24,40,.08);
@@ -62,6 +68,7 @@
     --ok:            #3BB77E;
     --label-halo:    #0F1115;
     --point-stroke:  #0F1115;
+    --tip-border:    #3A414B;            /* = --line-strong: на тёмной панели подсказка не сливается */
     --shadow: 0 8px 32px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4);
     color-scheme: dark;
   }
@@ -89,6 +96,7 @@
   --ok:            #3BB77E;
   --label-halo:    #0F1115;
   --point-stroke:  #0F1115;
+  --tip-border:    #3A414B;
   --shadow: 0 8px 32px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4);
   color-scheme: dark;
 }

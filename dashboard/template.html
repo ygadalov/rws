@@ -52,6 +52,7 @@
   /* Карта */
   --label-halo:    #FFFFFF;
   --point-stroke:  #FFFFFF;              /* new: обводка всех точек на карте */
+  --tip-border:    transparent;          /* рамка подсказки (i); цвета подсказки — после модуля info-tooltip */
 
   --radius: 14px;
   --shadow: 0 8px 32px rgba(16,24,40,.14), 0 1px 3px rgba(16,24,40,.08);
@@ -81,6 +82,7 @@
     --ok:            #3BB77E;
     --label-halo:    #0F1115;
     --point-stroke:  #0F1115;
+    --tip-border:    #3A414B;            /* = --line-strong: на тёмной панели подсказка не сливается */
     --shadow: 0 8px 32px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4);
     color-scheme: dark;
   }
@@ -108,6 +110,7 @@
   --ok:            #3BB77E;
   --label-halo:    #0F1115;
   --point-stroke:  #0F1115;
+  --tip-border:    #3A414B;
   --shadow: 0 8px 32px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4);
   color-scheme: dark;
 }
@@ -139,7 +142,11 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .brand p { margin: 0; font-size: 12px; color: var(--muted); display: flex; align-items: center; }
 /* подсказки (i) — модуль info-tooltip (dashboard/vendor/info-tooltip.*), цвета — по брендбуку */
 /*__INFO_TIP_CSS__*/
-:root { --tip-icon: var(--faint); --tip-icon-hover: var(--accent); --tip-bg: #1E2533; --tip-fg: #E9ECF1; --tip-accent: #9DB8FF; }
+/* подсказки (i) всегда тёмные — пояснение поверх интерфейса; цвета тёмной темы (brand/tokens.css, BRANDBOOK «Подсказки (i)»).
+   Объявлены после модуля: его :root задаёт свои значения по умолчанию */
+:root { --tip-icon: var(--faint); --tip-icon-hover: var(--accent);
+  --tip-bg: #181B21; --tip-fg: #E9ECF1; --tip-strong: #FFFFFF; --tip-accent: #6D9BFF; }
+.tt { border: 1px solid var(--tip-border); }
 .info-tip { margin-left: 4px; border-radius: 50%; }
 .section-title .info-tip { margin-top: -2px; }
 .tt { font: 500 12px/1.5 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }  /* в модуле «font: … inherit» — недопустимая запись, браузер её отбрасывает */
