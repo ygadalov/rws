@@ -17,8 +17,8 @@
 <script>/*__PMTILES_JS__*/
 /*__INFO_TIP_JS__*/</script>
 <style>
-/* RWS 1520 — дизайн-токены v1.0
-   Имена совпадают с текущими переменными дашборда; новые помечены «new».
+/* RWS 1520 — дизайн-токены v1.1
+   Имена совпадают с текущими переменными rws1520.html; новые помечены «new».
    Заменяет блок :root / @media (prefers-color-scheme: dark) / :root[data-theme="dark"] целиком. */
 
 :root {
@@ -52,7 +52,15 @@
   /* Карта */
   --label-halo:    #FFFFFF;
   --point-stroke:  #FFFFFF;              /* new: обводка всех точек на карте */
-  --tip-border:    transparent;          /* рамка подсказки (i); цвета подсказки — после модуля info-tooltip */
+
+  /* Подсказки (i) — тёмный пузырь в обеих темах (BRANDBOOK, раздел 4) */
+  --tip-bg:        #181B21;
+  --tip-fg:        #E9ECF1;
+  --tip-strong:    #FFFFFF;
+  --tip-accent:    #6D9BFF;
+  --tip-border:    transparent;
+  --tip-icon:      var(--faint);
+  --tip-icon-hover: var(--accent);
 
   --radius: 14px;
   --shadow: 0 8px 32px rgba(16,24,40,.14), 0 1px 3px rgba(16,24,40,.08);
@@ -82,7 +90,8 @@
     --ok:            #3BB77E;
     --label-halo:    #0F1115;
     --point-stroke:  #0F1115;
-    --tip-border:    #3A414B;            /* = --line-strong: на тёмной панели подсказка не сливается */
+    --tip-bg:        #262B33;            /* светлее панели: верхний слой в тёмной теме */
+    --tip-border:    #3A414B;
     --shadow: 0 8px 32px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4);
     color-scheme: dark;
   }
@@ -110,6 +119,7 @@
   --ok:            #3BB77E;
   --label-halo:    #0F1115;
   --point-stroke:  #0F1115;
+  --tip-bg:        #262B33;            /* светлее панели: верхний слой в тёмной теме */
   --tip-border:    #3A414B;
   --shadow: 0 8px 32px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4);
   color-scheme: dark;
@@ -142,10 +152,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .brand p { margin: 0; font-size: 12px; color: var(--muted); display: flex; align-items: center; }
 /* подсказки (i) — модуль info-tooltip (dashboard/vendor/info-tooltip.*), цвета — по брендбуку */
 /*__INFO_TIP_CSS__*/
-/* подсказки (i) всегда тёмные — пояснение поверх интерфейса; цвета тёмной темы (brand/tokens.css, BRANDBOOK «Подсказки (i)»).
-   Объявлены после модуля: его :root задаёт свои значения по умолчанию */
-:root { --tip-icon: var(--faint); --tip-icon-hover: var(--accent);
-  --tip-bg: #181B21; --tip-fg: #E9ECF1; --tip-strong: #FFFFFF; --tip-accent: #6D9BFF; }
+/* цвета подсказок — токены --tip-* (brand/tokens.css, BRANDBOOK раздел 4) */
 .tt { border: 1px solid var(--tip-border); }
 .info-tip { margin-left: 4px; border-radius: 50%; }
 .section-title .info-tip { margin-top: -2px; }
@@ -162,7 +169,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .steps { padding-left: 20px; color: var(--muted); } .steps li { margin: 6px 0; }
 .modal code { font-size: 12px; background: var(--hover); padding: 1px 5px; border-radius: 5px; overflow-wrap: anywhere; }
 .brand .spacer { flex: 1; }
-.icon-btn { width: 34px; height: 34px; border-radius: 10px; border: 1px solid transparent; background: transparent; display: grid; place-items: center; color: var(--muted); }
+.icon-btn { width: 34px; height: 34px; padding: 0; border-radius: 10px; border: 1px solid transparent; background: transparent; display: grid; place-items: center; color: var(--muted); }
 .icon-btn:hover { background: var(--hover); color: var(--text); }
 .icon-btn svg { width: 18px; height: 18px; }
 
@@ -466,7 +473,9 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .sec-head { width: 100%; display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 0; margin: 0 0 8px; text-align: left; cursor: pointer; color: inherit; }
 .sec-head .section-title { margin: 0; flex: none; }
 .sec-head .sec-sum { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sec-head .chev { width: 16px; height: 16px; color: var(--faint); flex: none; transition: transform .15s; }
+.sec-head .chev { width: 26px; height: 26px; padding: 4px; margin: -4px -4px -4px 0; border-radius: 8px; color: var(--faint); flex: none; transition: transform .15s, background .15s; }
+.sec-head:hover .chev { background: var(--hover); color: var(--text); }
+.sec-head:focus-visible { outline: none; } .sec-head:focus-visible .chev { box-shadow: 0 0 0 3px var(--accent-soft); color: var(--text); }
 .coll.closed .sec-head { margin-bottom: 0; }
 .coll.closed .sec-head .chev { transform: rotate(-90deg); }
 .coll.closed .sec-body { display: none; }
