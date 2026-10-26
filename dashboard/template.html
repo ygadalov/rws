@@ -454,6 +454,30 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .depot-card { font-size: 13px; color: #15181D; } .depot-card-t { font-size: 14px; font-weight: 650; margin-bottom: 4px; padding-right: 14px; }
 .depot-card-m { font-size: 12px; color: #5B6472; margin-top: 4px; } .depot-card .link-btn { margin-top: 6px; text-align: left; }
 .seg.seg3 { grid-template-columns: repeat(3, 1fr); } .seg.seg3 button { font-size: 12px; }
+.seg.seg4 { grid-template-columns: repeat(4, 1fr); margin-bottom: 8px; } .seg.seg4 button { font-size: 12px; padding: 0 2px; }
+/* сворачиваемые разделы панели «Вагоны»: заголовок — кнопка, справа — краткое значение и стрелка */
+.sec-head { width: 100%; display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 0; margin: 0 0 8px; text-align: left; cursor: pointer; color: inherit; }
+.sec-head .section-title { margin: 0; flex: none; }
+.sec-head .sec-sum { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sec-head .chev { width: 16px; height: 16px; color: var(--faint); flex: none; transition: transform .15s; }
+.coll.closed .sec-head { margin-bottom: 0; }
+.coll.closed .sec-head .chev { transform: rotate(-90deg); }
+.coll.closed .sec-body { display: none; }
+.calc-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 6px; }
+.calc-row.one { grid-template-columns: 1fr; }
+.calc-row .field { padding: 0 6px; font-size: 13px; }
+.sec-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; } .sec-row .sec-head { flex: 1; min-width: 0; margin: 0; }
+.coll.closed .sec-row { margin-bottom: 0; }
+.dd.wgdd { display: flex; gap: 4px; } .dd.wgdd .dd-btn { flex: 1; min-width: 0; }
+.dd .dd-x { width: 28px; height: 36px; flex: none; border-radius: 10px; color: var(--faint); }
+.dd .dd-x:hover { color: var(--danger, #D92D4B); background: var(--hover); }
+.top li.grp.open { background: var(--hover); }
+.top .sub { list-style: none; margin: 0 0 6px 30px; padding: 0; border-left: 2px solid var(--line); }
+.top .sub li { padding: 4px 6px; font-size: 12.5px; }
+.top .sub li b { font-size: 12.5px; min-width: 0; }
+.top .meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.top li.subwrap { display: block; padding: 0; cursor: default; } .top li.subwrap:hover { background: none; }
+.top .sub li.more { cursor: default; color: var(--muted); }
 .dep-near { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
 .dep-near li { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-radius: 8px; cursor: pointer; }
 .dep-near li:hover { background: var(--hover); }
@@ -615,14 +639,17 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
           <div class="chips" id="wgCols" role="radiogroup" aria-label="Столбец с кодом станции"></div>
           <p class="hint" id="wgColHint"></p>
           <select class="field" id="wgOtherCol" style="margin-top:8px" aria-label="Другой столбец как станция"></select>
-          <div id="wgQtyBox" style="margin-top:8px" hidden>
-            <div class="section-title" style="margin:6px 0">Считать вагоны</div>
-            <select class="field" id="wgQty" aria-label="Как считать вагоны"></select>
+        </div>
+        <div class="section coll" id="wgCalcSec">
+          <button class="sec-head" type="button" aria-expanded="true"><span class="section-title">Считать</span><span class="sec-sum" id="wgCalcSum"></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+          <div class="sec-body">
+            <div class="calc-row"><select class="field" id="wgFn" aria-label="Действие"></select><select class="field" id="wgFnCol" aria-label="Столбец"></select></div>
+            <p class="hint" id="wgFnHint"></p>
           </div>
         </div>
         <div class="section">
           <div class="kpis">
-            <div class="kpi"><b class="mono" id="wkRows">—</b><span>вагонов</span></div>
+            <div class="kpi"><b class="mono" id="wkRows">—</b><span id="wkRowsL">вагонов</span></div>
             <div class="kpi"><b class="mono" id="wkSt">—</b><span>станций</span></div>
             <div class="kpi"><b class="mono" id="wkMiss">—</b><span>не на карте</span></div>
           </div>
@@ -642,20 +669,24 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
             <div class="seg" id="wgRestrMode"><button data-m="deny" aria-pressed="true" title="Перечень — запрещённые регионы">Запрещённые</button><button data-m="allow" aria-pressed="false" title="Перечень — разрешённые регионы (полигон)">Разрешённые</button></div>
           </div>
         </div>
-        <div class="section">
-          <div class="section-title">Фильтры по отчёту <button class="link-btn" id="wgReset">Сбросить</button></div>
+        <div class="section coll" id="wgFiltSec">
+          <div class="sec-row"><button class="sec-head" type="button" aria-expanded="true"><span class="section-title">Фильтры по отчёту</span><span class="sec-sum" id="wgFiltSum"></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button><button class="link-btn" id="wgReset">Сбросить</button></div>
+          <div class="sec-body">
           <div class="filters-grid">
             <input class="field mono" id="wgNum" type="search" inputmode="numeric" placeholder="№ вагона" aria-label="Номер вагона">
             <div class="filters-grid" id="wgDropdowns"></div>
             <select class="field" id="wgAddFilter" aria-label="Добавить фильтр"></select>
           </div>
+          </div>
         </div>
         <div class="section">
           <div class="section-title">Отображение</div>
           <div class="seg" id="wgView"><button data-v="circles" aria-pressed="true">Кружки</button><button data-v="heat" aria-pressed="false">Тепловая карта</button></div>
+          <label class="switch-row" id="wgDepRow" style="margin-top:6px">Предприятия ремонта вагонов <span class="switch"><input type="checkbox" id="depotsQuick2"><span></span></span></label>
         </div>
         <div class="section">
-          <div class="section-title">Станции по числу вагонов <button class="link-btn" id="wgFit" title="Приблизить карту ко всем станциям с вагонами">Все на карте</button></div>
+          <div class="section-title"><span id="wgTopTitle">Рейтинг</span> <button class="link-btn" id="wgFit" title="Приблизить карту ко всем станциям с вагонами">Все на карте</button></div>
+          <div class="seg seg4" id="wgGroup" role="radiogroup" aria-label="Группировка"><button data-g="st">Станции</button><button data-g="railway">Дороги</button><button data-g="region">Регионы</button><button data-g="country">Страны</button></div>
           <ol class="top" id="wgTop"></ol>
         </div>
         <div class="section" id="wgMissSec">
@@ -1275,12 +1306,12 @@ function updateLabels() {
   if (map.getLayer("wg-circle") && state.tab === "wagons" && W.loaded && W.view === "circles") {
     const z = map.getZoom(), k = z <= 3 ? 0.75 : z >= 8 ? 1 : 0.75 + (z - 3) * 0.05;
     for (const f of map.queryRenderedFeatures({ layers: ["wg-circle"] }).sort((a, b) => b.properties.n - a.properties.n).slice(0, 400)) {
-      if (f.properties.r * k < 10) continue;
-      const p = map.project(f.geometry.coordinates), hw = String(f.properties.n).length * 4 + 4;
+      if (f.properties.r * k < 10 || f.properties.dim) continue;
+      const p = map.project(f.geometry.coordinates), hw = String(f.properties.t).length * 4 + 4;
       const box = [p.x - hw, p.y - 8, p.x + hw, p.y + 8];
       if (!free(box)) continue;
       boxes.push(box);
-      const el = document.createElement("div"); el.className = "wg-count mono"; el.textContent = fmt(f.properties.n);
+      const el = document.createElement("div"); el.className = "wg-count mono"; el.textContent = f.properties.t;
       labelMarkers.push(new maplibregl.Marker({ element: el }).setLngLat(f.geometry.coordinates).addTo(map));
     }
   }
@@ -1404,7 +1435,7 @@ function refreshDepots() {
   depNearestCache = null;
   if (!showDepots) depotPopup.remove();
   renderDepotFilters(); updateLabels(); renderLegend();
-  if (state.tab === "wagons" && W.loaded) renderWagonStats();
+  if (W.loaded && W.agg) renderWagonStats();  // и с вкладки «Станции»: список вагонов готов к возврату на «Вагоны»
   if (state.selected && $("panel").classList.contains("show-detail")) selectStation(state.selected, { fly: false, push: false, keepScroll: true });
 }
 
@@ -1547,7 +1578,7 @@ function updateDepotMarkers() {
     const n = wg ? (W.agg.by.get(d.st.i)?.n || 0) : 0, label = z >= 10 ? depLabel(d) : "";
     if (!n && !label) continue;
     const el = document.createElement("div"); el.className = "depot-label";
-    if (n) { const b = document.createElement("span"); b.className = "depot-badge mono"; b.textContent = fmt(n); b.title = "Вагонов на станции примыкания по отчёту"; el.append(b); }
+    if (n) { const b = document.createElement("span"); b.className = "depot-badge mono"; b.textContent = fmtVal(n); b.title = fnTitle() + " на станции примыкания по отчёту"; el.append(b); }
     if (label) { const t = document.createElement("span"); t.className = "depot-name"; t.textContent = label; el.append(t); }
     const [ox, oy] = z >= 8 ? DEP_OFFSET(f.properties.k) : [0, 0], sc = z >= 10 ? 1 : 0.77;
     const q = map.project(f.geometry.coordinates), x0 = q.x + ox * sc + 16 * sc, y0 = q.y + oy * sc;
@@ -1563,11 +1594,12 @@ function renderDepotFilters() {
   const cnt = {}; for (const d of DEPOTS) if (d.st && d.st.has && (!depRepair || (depRepair === "ДР" ? d.dr : d.kr))) cnt[d.group] = (cnt[d.group] || 0) + 1;
   $("depGroups").innerHTML = DEP_GROUPS.map(([k, l, t]) => `<button class="chip" data-g="${k}" aria-pressed="${depGroups.has(k)}" title="${esc(t)}">${esc(l)}<span class="cnt mono">${fmt(cnt[k] || 0)}</span></button>`).join("");
   document.querySelectorAll("#depRepair button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.r === depRepair)));
-  $("depotsToggle").checked = $("depotsQuick").checked = showDepots;
+  $("depotsToggle").checked = $("depotsQuick").checked = $("depotsQuick2").checked = showDepots;
+  $("wgDepRow").hidden = !DEPOTS.length;
   $("depFilters").hidden = !showDepots;
   $("depotsQuick").closest(".section").hidden = !DEPOTS.length;
 }
-for (const id of ["depotsToggle", "depotsQuick"])
+for (const id of ["depotsToggle", "depotsQuick", "depotsQuick2"])
   $(id).addEventListener("change", e => { showDepots = e.target.checked; store.set("depots", showDepots ? "1" : "0"); refreshDepots(); });
 $("depGroups").addEventListener("click", e => {
   const b = e.target.closest("[data-g]"); if (!b) return;
@@ -1702,13 +1734,13 @@ $("resetFilters").addEventListener("click", () => {
 function renderLegend() {
   const wg = state.tab === "wagons" && W.loaded;
   $("colorBy").hidden = wg;
-  $("legendTitle").textContent = wg ? (W.view === "heat" ? "Плотность вагонов" : "Вагонов на станции") : "Раскраска точек";
+  $("legendTitle").textContent = wg ? (W.view === "heat" ? "Плотность: " + fnTitle().toLowerCase() : fnTitle() + " на станции") : "Раскраска точек";
   if (wg) {
     const max = W.agg ? [...W.agg.by.values()].reduce((m, o) => Math.max(m, o.n), 0) : 0;
     $("legendItems").innerHTML = W.view === "heat"
       ? `<div style="height:10px;border-radius:5px;background:linear-gradient(90deg,#fed976,#feb24c,#fd8d3c,#f03b20,#bd0026)"></div><div class="legend-item"><span class="t">меньше</span><span class="c">больше</span></div>`
-      : `<div class="legend-sizes">${[...new Set([max, Math.round(max / 4), 1])].filter(n => n > 0).map(n =>
-        `<div><i style="width:${2 * (4 + 26 * Math.sqrt(n / Math.max(max, 1)))}px;height:${2 * (4 + 26 * Math.sqrt(n / Math.max(max, 1)))}px"></i>${fmt(n)}</div>`).join("")}</div>
+      : `<div class="legend-sizes">${[...new Set(FN[W.fn].int ? [max, Math.round(max / 4), 1] : [max, max / 4, max / 20])].filter(n => n > 0).map(n =>
+        `<div><i style="width:${2 * (4 + 26 * Math.sqrt(n / max))}px;height:${2 * (4 + 26 * Math.sqrt(n / max))}px"></i>${fmtVal(n)}</div>`).join("")}</div>
         <div class="legend-item"><span class="t">Столбец: ${esc(activeCol().h)}</span></div>`;
     if (W.restr) $("legendItems").innerHTML += `<div class="legend-item"><span class="dot" style="background:${WG_DANGER}"></span><span class="t">Вагоны с нарушением</span><span class="c mono">${fmt(W.agg?.vTotal || 0)}</span></div>`
       + (W.showZones ? `<div class="legend-item"><span class="dot" style="border-radius:3px;border:1.5px solid ${WG_DANGER};background:repeating-linear-gradient(135deg,rgba(217,45,75,.5) 0 2px,transparent 2px 5px)"></span><span class="t">${W.restr.mode === "deny" ? "Запретная зона" : "Регион вне разрешённых"}</span></div>` : "");
@@ -2354,10 +2386,13 @@ function setReport(name, aoa) {
   }
   const rank = c => { const k = WG_CODE_ORDER.findIndex(x => c.label.toLowerCase().startsWith(x)); return k < 0 ? 50 + (c.kind === "name" ? 1 : 0) : k; };
   codeCols.sort((a, b) => rank(a) - rank(b) || b.matched - a.matched);
-  // числовые столбцы — кандидаты в «количество вагонов» (для сводных таблиц «станция; кол-во»)
-  const qtyCols = headers.map((h, idx) => ({ h, idx })).filter(c => c.idx !== wagonIdx && !codeCols.some(o => o.idx === c.idx)
-    && prof[c.idx].num >= 0.9 && prof[c.idx].wagon < 0.5);
-  const qtyAuto = wagonIdx < 0 ? qtyCols.find(c => /кол|количеств|шт|ваг|qty|count/i.test(c.h)) : null;
+  // числовые столбцы — для суммы, среднего, минимума и максимума (коды, номера, годы и месяцы — не величины)
+  const numCols = headers.map((h, idx) => ({ h, idx })).filter(c => c.idx !== wagonIdx && !codeCols.some(o => o.idx === c.idx)
+    && prof[c.idx].num >= 0.9 && prof[c.idx].wagon < 0.5 && !NOT_MEASURE.test(c.h));
+  // любые непустые столбцы — для «уникальных» и «заполненных»
+  const anyCols = headers.map((h, idx) => ({ h, idx })).filter(c => rows.some(r => cellStr(r[c.idx])));
+  // сводная таблица «станция; кол-во» — сразу сумма по столбцу количества
+  const qtyAuto = wagonIdx < 0 ? numCols.find(c => /кол|количеств|шт|ваг|qty|count/i.test(c.h)) : null;
   const restrIdx = PREVIEW ? headers.findIndex(h => RESTR_HEADER.test(h)) : -1;
   const cats = [];
   headers.forEach((h, idx) => {
@@ -2369,17 +2404,16 @@ function setReport(name, aoa) {
   const shown = WG_PREFERRED.map(h => cats.find(c => c.h === h)).filter(Boolean)
     .concat(cats.filter(c => !WG_PREFERRED.includes(c.h))).slice(0, 4).map(c => c.idx);
   W = { loaded: true, name, generated, headers, rows, codeCols, active: codeCols[0].idx, wagonIdx, cats, shown,
-    qtyCols, qty: qtyAuto ? qtyAuto.idx : -1, headerless, filters: new Map(), num: "", view: W.view || "circles",
+    numCols, anyCols, fn: qtyAuto ? "sum" : "rows", fnCol: qtyAuto ? qtyAuto.idx : -1, headerless, filters: new Map(), num: "", view: W.view || "circles", group: W.group || "st",
     restr: restrIdx >= 0 ? { idx: restrIdx, mode: restrMode(headers[restrIdx]) } : null, onlyViol: false, showZones: W.showZones ?? true };
   renderWagonPanel();
   aggregate();
   switchTab("wagons");
   applyWagons(true);
-  const total = W.qty >= 0 ? rows.reduce((a, r) => a + toNumber(r[W.qty]), 0) : rows.length;
-  toast(`Загружено: ${fmt(rows.length)} строк${W.qty >= 0 ? ", вагонов " + fmt(total) : ""}`);
+  toast(`Загружено: ${fmt(rows.length)} строк${W.fn === "sum" ? ", вагонов " + fmtVal(measure(rows)) : ""}`);
 }
 function clearReport() {
-  W = { loaded: false, view: W.view };
+  W = { loaded: false, view: W.view, group: W.group };
   $("wgLoaded").hidden = true; $("wgEmpty").hidden = false; $("wgBadge").textContent = "";
   if (map.getSource("wg")) map.getSource("wg").setData(emptyFC());
   applyModeStyling(); renderLegend(); updateLabels();
@@ -2397,21 +2431,21 @@ function wagonRows() {
 }
 function aggregate() {
   const rows = wagonRows(), col = activeCol();
-  const by = new Map(), miss = new Map(), byName = new Map(), vByRegion = new Map(), vByWhy = new Map(); let empty = 0, vTotal = 0;
+  const by = new Map(), miss = new Map(), byName = new Map(), vByRegion = new Map(), vByWhy = new Map(), emptyRows = []; let vTotal = 0;
   for (const r of rows) {
     const raw = cellStr(r[col.idx]);
-    const w = W.qty >= 0 ? toNumber(r[W.qty]) : 1;
-    if (!raw) { empty += w; continue; }
+    const w = weight(r);  // для нарушений: вагоны (при «сумме» — значение столбца)
+    if (!raw) { emptyRows.push(r); continue; }
     const s = rowStation(col, r);
-    if (s && col.kind === "code" && !resolveCell(col, raw)) { const o = byName.get(raw) || { code: raw, s, n: 0 }; o.n += w; byName.set(raw, o); }
+    if (s && col.kind === "code" && !resolveCell(col, raw)) { const o = byName.get(raw) || { code: raw, s, rows: [] }; o.rows.push(r); byName.set(raw, o); }
     if (!s) {
       const amb = (BY_NAME.get(norm(raw)) || []).length;
       const o = miss.get(raw) || { code: raw, name: col.nameIdx >= 0 ? cellStr(r[col.nameIdx])
-        : amb > 1 ? `несколько станций с таким названием (${amb}) — укажите код ЕСР` : /^\s*\d/.test(raw) ? "" : "не найдена в справочнике", n: 0 };
-      o.n += w; miss.set(raw, o); continue;
+        : amb > 1 ? `несколько станций с таким названием (${amb}) — укажите код ЕСР` : /^\s*\d/.test(raw) ? "" : "не найдена в справочнике", rows: [] };
+      o.rows.push(r); miss.set(raw, o); continue;
     }
     let o = by.get(s.i); if (!o) by.set(s.i, o = { s, n: 0, v: 0, rows: [] });
-    o.n += w; o.rows.push(r);
+    o.rows.push(r);
     const why = violation(r, s);
     if (why) {
       o.v += w; vTotal += w;
@@ -2432,15 +2466,18 @@ function aggregate() {
       for (const [reg, g] of vByRegion) if (zones.has(reg)) zones.set(reg, g.n);
     } else for (const [reg, g] of vByRegion) zones.set(reg, g.n);
   }
-  W.agg = { rows, by, miss, byName, empty, vTotal, vByRegion, vByWhy, zones };
+  for (const m of [by, miss, byName]) for (const o of m.values()) o.n = measure(o.rows);
+  W.agg = { rows, by, miss, byName, empty: emptyRows.length ? measure(emptyRows) : 0, total: measure(rows), vTotal, vByRegion, vByWhy, zones };
 }
 function wagonFeatures() {
   if (!W.loaded || state.tab !== "wagons") return emptyFC();
   const list = [...W.agg.by.values()].filter(o => o.s.has);
-  const max = list.reduce((m, o) => Math.max(m, o.n), 1);
+  const max = list.reduce((m, o) => Math.max(m, o.n), 0) || 1, q = o => Math.max(0, o.n) / max;
   return { type: "FeatureCollection", features: list.map(o => ({ type: "Feature", id: o.s.i,
     geometry: { type: "Point", coordinates: [o.s.lon, o.s.lat] },
-    properties: { i: o.s.i, n: o.n, v: o.v, w: o.n / max, r: 4 + 26 * Math.sqrt(o.n / max) } })) };
+    // раскрыта группа в рейтинге (дорога, регион, страна) — остальные станции приглушены
+    properties: { i: o.s.i, n: o.n, t: fmtVal(o.n), v: o.v, w: q(o), r: 4 + 26 * Math.sqrt(q(o)),
+      dim: W.group !== "st" && W.openGroup != null && grpKey(o.s) !== W.openGroup ? 1 : 0 } })) };
 }
 function addWagonLayers() {
   // запретные зоны — под линиями и точками; штриховка + пунктирный контур, регионы с нарушениями — плотнее
@@ -2463,7 +2500,8 @@ function addWagonLayers() {
     // станции с нарушениями — красные и поверх остальных
     layout: { visibility: W.view === "circles" ? "visible" : "none", "circle-sort-key": ["+", ["-", 0, ["get", "n"]], ["case", [">", ["get", "v"], 0], 1e7, 0]] }, paint: {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, ["*", ["get", "r"], 0.75], 8, ["get", "r"]],
-      "circle-color": ["case", [">", ["get", "v"], 0], WG_DANGER, WG_COLOR], "circle-opacity": ["case", [">", ["get", "v"], 0], 0.85, 0.6],
+      "circle-color": ["case", [">", ["get", "v"], 0], WG_DANGER, WG_COLOR], "circle-opacity": ["case", ["==", ["get", "dim"], 1], 0.12, [">", ["get", "v"], 0], 0.85, 0.6],
+      "circle-stroke-opacity": ["case", ["==", ["get", "dim"], 1], 0.2, 1],
       "circle-stroke-color": ["case", ["boolean", ["feature-state", "hover"], false], "#C2410C", POINT_STROKE[darkPref() ? "dark" : "light"]],
       "circle-stroke-width": ["case", ["boolean", ["feature-state", "hover"], false], 2.5, [">", ["get", "v"], 0], 2, POINT_STROKE.width] } }, "sel-pt");
   // в режиме тепловой карты нарушения видны отдельными точками
@@ -2754,6 +2792,90 @@ function switchTab(t) {
 }
 document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => switchTab(b.dataset.tab)));
 
+/* что считаем: действие над столбцом. Аддитивные меры (строки, заполненные, сумма) складываются по станциям
+   и дают доли; уникальные, среднее, минимум, максимум — нет, для них долей и итога «остальных» не показываем */
+const NOT_MEASURE = /код|№|номер|\bid\b|месяц|\bгод\b|год изг|заводской|плательщик|инн|окпо/i;
+const FN = {
+  rows:   { l: "1 строка = 1 вагон", kpi: "вагонов", title: "Вагонов", unit: "ваг.", add: true, int: true },
+  uniq:   { l: "Уникальных значений", kpi: "уникальных", title: "Уникальных", unit: "уник.", col: "any", int: true },
+  filled: { l: "Заполненных строк", kpi: "заполнено", title: "Заполнено", unit: "строк", col: "any", add: true, int: true },
+  sum:    { l: "Сумма", kpi: "сумма", title: "Сумма", unit: "", col: "num", add: true },
+  avg:    { l: "Среднее", kpi: "среднее", title: "Среднее", unit: "", col: "num" },
+  min:    { l: "Минимум", kpi: "минимум", title: "Минимум", unit: "", col: "num" },
+  max:    { l: "Максимум", kpi: "максимум", title: "Максимум", unit: "", col: "num" },
+};
+const fnCols = fn => FN[fn].col === "num" ? W.numCols : FN[fn].col === "any" ? W.anyCols : null;
+function measure(rows) {
+  const f = W.fn, c = W.fnCol;
+  if (f === "rows" || c < 0) return rows.length;
+  if (f === "uniq") { const u = new Set(); for (const r of rows) { const v = cellStr(r[c]); if (v) u.add(v); } return u.size; }
+  if (f === "filled") { let n = 0; for (const r of rows) if (cellStr(r[c])) n++; return n; }
+  let n = 0, sum = 0, mn = Infinity, mx = -Infinity;
+  for (const r of rows) { if (!isNumber(r[c])) continue; const v = toNumber(r[c]); n++; sum += v; if (v < mn) mn = v; if (v > mx) mx = v; }
+  return f === "sum" ? sum : !n ? 0 : f === "avg" ? sum / n : f === "min" ? mn : mx;
+}
+// вес строки для счётчиков нарушений: вагон, при «сумме» — значение столбца (сводные таблицы «станция; кол-во»)
+const weight = r => W.fn === "sum" && W.fnCol >= 0 ? toNumber(r[W.fnCol]) : 1;
+const fmtVal = n => FN[W.fn]?.int ? fmt(Math.round(n)) : n.toLocaleString("ru-RU", { maximumFractionDigits: Math.abs(n) >= 100 ? 0 : Math.abs(n) >= 10 ? 1 : 2 });
+const fnColName = () => W.fnCol >= 0 ? W.headers[W.fnCol] : "";
+const fnTitle = () => W.fn === "rows" ? "Вагонов" : `${FN[W.fn].title} «${fnColName()}»`;
+const fnUnit = () => FN[W.fn].unit || fnColName().toLowerCase();
+function renderCalc() {
+  $("wgFn").innerHTML = Object.entries(FN).filter(([k]) => !FN[k].col || fnCols(k).length)
+    .map(([k, f]) => `<option value="${k}" ${k === W.fn ? "selected" : ""}>${esc(f.l)}</option>`).join("");
+  const cols = fnCols(W.fn);
+  $("wgFnCol").hidden = !cols; $("wgFnCol").parentElement.classList.toggle("one", !cols);
+  if (cols) {
+    // № вагона — первым (уникальные вагоны, если строки повторяются), затем по алфавиту
+    const list = cols.slice().sort((a, b) => (b.idx === W.wagonIdx) - (a.idx === W.wagonIdx) || a.h.localeCompare(b.h, "ru"));
+    $("wgFnCol").innerHTML = list.map(c => `<option value="${c.idx}" ${c.idx === W.fnCol ? "selected" : ""}>${esc(c.h)}</option>`).join("");
+  }
+  $("wgFnHint").textContent = {
+    rows: "Каждая строка отчёта — один вагон.",
+    uniq: "Число разных значений: например, уникальных вагонов, если вагон встречается в нескольких строках.",
+    filled: "Строки, где в столбце есть значение.",
+    sum: "Сумма числового столбца — для сводных таблиц «станция; количество» и показателей (вес, пробег).",
+    avg: "Среднее по строкам, где в столбце число. Доли не показываются: среднее не складывается.",
+    min: "Наименьшее значение по станции.", max: "Наибольшее значение по станции.",
+  }[W.fn];
+  $("wgCalcSum").textContent = W.fn === "rows" ? FN.rows.l : `${FN[W.fn].l.toLowerCase()} · ${fnColName()}`;
+}
+/* рейтинг: станции или группы (дорога, регион, страна) — у группы раскрываются её станции, карта приближается к ним */
+const GROUPS = { st: "Станции", railway: "Дороги", region: "Регионы", country: "Страны" };
+const grpKey = st => st[W.group] || "—";
+function renderTop(list) {
+  const add = FN[W.fn].add, g = W.group || "st";
+  $("wgTopTitle").textContent = `${GROUPS[g]} · ${W.fn === "rows" ? "по числу вагонов" : fnTitle().toLowerCase()}`;
+  document.querySelectorAll("#wgGroup button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.g === g)));
+  let items = list;
+  if (g !== "st") {
+    const m = new Map();
+    for (const o of list) { const k = grpKey(o.s); let x = m.get(k); if (!x) m.set(k, x = { key: k, st: [], rows: [] }); x.st.push(o); for (const r of o.rows) x.rows.push(r); }
+    items = [...m.values()]; for (const x of items) x.n = measure(x.rows);
+  }
+  const all = items.sort((x, y) => y.n - x.n), max = Math.max(0, ...all.map(o => o.n)) || 1, sum = all.reduce((x, o) => x + o.n, 0) || 1;
+  const shown = Math.min(all.length, W.topN || 15, 2000), top = all.slice(0, shown);
+  const pc = n => !add ? "" : n / sum < 0.0005 ? "<0,1%" : (n / sum * 100).toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
+  const bar = n => `<div class="bar"><i style="width:${(Math.max(0, n) / max * 100).toFixed(1)}%"></i></div>`;
+  const stRow = (o, k) => `<li data-i="${o.s.i}"><span class="rk mono">${k + 1}</span>
+    <div class="tn"><div class="nm">${esc(o.s.name)}${o.s.has ? "" : ' <span class="badge">нет коорд.</span>'}</div>${bar(o.n)}${depLine(o.s)}</div>
+    <b class="mono">${fmtVal(o.n)}</b><span class="pc mono">${pc(o.n)}</span></li>`;
+  const grpRow = (x, k) => {
+    const open = W.openGroup === x.key, st = x.st.slice().sort((a, b) => b.n - a.n);
+    return `<li class="grp${open ? " open" : ""}" data-grp="${esc(x.key)}" aria-expanded="${open}"><span class="rk mono">${k + 1}</span>
+      <div class="tn"><div class="nm">${esc(x.key)}</div>${bar(x.n)}<div class="meta">${fmt(x.st.length)} ст. · ${open ? "свернуть" : "показать станции"}</div></div>
+      <b class="mono">${fmtVal(x.n)}</b><span class="pc mono">${pc(x.n)}</span></li>`
+      + (open ? `<li class="subwrap"><ol class="sub">${st.slice(0, 30).map(o => `<li data-i="${o.s.i}"><div class="tn"><div class="nm">${esc(o.s.name)}</div>${depLine(o.s)}</div><b class="mono">${fmtVal(o.n)}</b></li>`).join("")}
+        ${st.length > 30 ? `<li class="more">… ещё ${fmt(st.length - 30)} ст. — выберите станцию на карте</li>` : ""}</ol></li>` : "");
+  };
+  const restN = all.slice(shown).reduce((x, o) => x + o.n, 0), unit = { st: "ст.", railway: "дор.", region: "рег.", country: "стр." }[g];
+  $("wgTop").innerHTML = (top.map(g === "st" ? stRow : grpRow).join("")
+    + (all.length > shown ? `<li class="rest"><span class="txt">Остальные ${fmt(all.length - shown)} ${unit}${add ? ` — ${fmtVal(restN)} (${pc(restN)})` : ""}</span>
+      <button class="link-btn" data-more="50">Ещё 50</button><button class="link-btn" data-more="all">${all.length > 2000 ? "Первые 2000" : "Все"}</button></li>`
+      : all.length > 15 ? `<li class="rest"><span class="txt">Все ${fmt(all.length)} ${unit}</span><button class="link-btn" data-more="less">Свернуть</button></li>` : ""))
+    || '<div class="empty">Нет вагонов по фильтру</div>';
+}
+
 /* панель вагонов */
 function renderWagonPanel() {
   $("wgEmpty").hidden = true; $("wgLoaded").hidden = false;
@@ -2766,9 +2888,7 @@ function renderWagonPanel() {
   const other = W.headers.map((h, idx) => ({ h, idx })).filter(c => c.idx !== W.wagonIdx && !W.codeCols.some(o => o.idx === c.idx));
   $("wgOtherCol").innerHTML = `<option value="">＋ Взять станцию из другого столбца…</option>` + other.map(c => `<option value="${c.idx}">${esc(c.h)}</option>`).join("");
   $("wgOtherCol").hidden = !other.length;
-  $("wgQtyBox").hidden = !W.qtyCols.length;
-  $("wgQty").innerHTML = `<option value="-1">1 строка = 1 вагон</option>` + W.qtyCols.map(c =>
-    `<option value="${c.idx}" ${c.idx === W.qty ? "selected" : ""}>Сумма по столбцу «${esc(c.h)}»</option>`).join("");
+  renderCalc();
   renderWagonDropdowns();
 }
 function renderWagonDropdowns() {
@@ -2779,9 +2899,10 @@ function renderWagonDropdowns() {
   $("wgAddFilter").hidden = !rest.length;
 }
 function wagonDropdown(idx) {
-  const el = document.createElement("div"); el.className = "dd"; el.dataset.wg = idx;
+  const el = document.createElement("div"); el.className = "dd wgdd"; el.dataset.wg = idx;
   el.innerHTML = `<button class="dd-btn" aria-haspopup="listbox" aria-expanded="false"><span class="lbl">${esc(W.headers[idx])}</span><span class="val">Все</span>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+    <button class="icon-btn dd-x" data-act="remove" title="Убрать фильтр «${esc(W.headers[idx])}»" aria-label="Убрать фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     <div class="dd-menu"><input type="search" placeholder="Найти…" aria-label="Поиск в списке"><div class="dd-list" role="listbox"></div>
     <div class="dd-foot"><button class="link-btn" data-act="remove">Убрать фильтр</button><button class="link-btn" data-act="close">Готово</button></div></div>`;
   const btn = el.querySelector(".dd-btn"), list = el.querySelector(".dd-list"), inp = el.querySelector("input");
@@ -2806,9 +2927,9 @@ function wagonDropdown(idx) {
     const s = W.filters.get(idx) || new Set(); e.target.checked ? s.add(e.target.value) : s.delete(e.target.value);
     W.filters.set(idx, s); el.renderLabel(); applyWagons(); scheduleFit(fitWagons);
   });
-  el.querySelector('[data-act="remove"]').addEventListener("click", () => {
+  el.querySelectorAll('[data-act="remove"]').forEach(x => x.addEventListener("click", () => {
     W.filters.delete(idx); W.shown = W.shown.filter(x => x !== idx); renderWagonDropdowns(); applyWagons(); scheduleFit(fitWagons);
-  });
+  }));
   el.querySelector('[data-act="close"]').addEventListener("click", () => el.classList.remove("open"));
   el.renderLabel();
   return el;
@@ -2818,36 +2939,26 @@ function renderWagonStats() {
   const onMap = [...a.by.values()].filter(o => o.s.has);
   const noCoord = [...a.by.values()].filter(o => !o.s.has);
   const offMap = a.empty + [...a.miss.values()].reduce((x, o) => x + o.n, 0) + noCoord.reduce((x, o) => x + o.n, 0);
-  const total = W.qty >= 0 ? a.rows.reduce((x, r) => x + toNumber(r[W.qty]), 0) : a.rows.length;
-  $("wgBadge").textContent = fmt(total);
-  $("wkRows").textContent = fmt(total);
+  $("wgBadge").textContent = fmtVal(a.total);
+  $("wkRows").textContent = fmtVal(a.total); $("wkRowsL").textContent = FN[W.fn].kpi;
   $("wkSt").textContent = fmt(onMap.length);
   $("wkMiss").textContent = fmt(offMap);
   const bn = [...a.byName.values()];
   $("wgColHint").textContent = `«${col.h}» (${col.kind === "name" ? "по названию" : "по коду ЕСР"}): заполнен у ${fmt(col.filled)} из ${fmt(W.rows.length)} строк, на карте ${fmt(col.matched)}`
     + (bn.length ? `. По названию станции (кода нет в справочнике): ${bn.map(o => `${o.code} → ${o.s.name}, ${fmt(o.n)} ваг.`).join("; ")}` : "");
   document.querySelectorAll("#wgCols .chip").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.col === W.active)));
-  // первые 15 станций, дальше — по кнопке; строка-итог показывает, сколько вагонов на остальных
-  const all = onMap.concat(noCoord).sort((x, y) => y.n - x.n), max = all[0]?.n || 1, sum = all.reduce((x, o) => x + o.n, 0) || 1;
-  const shown = Math.min(all.length, W.topN || 15, 2000), top = all.slice(0, shown);
-  const pc = n => n / sum < 0.0005 ? "<0,1%" : (n / sum * 100).toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
-  const restN = all.slice(shown).reduce((x, o) => x + o.n, 0);
-  $("wgTop").innerHTML = (top.map((o, k) => `<li data-i="${o.s.i}"><span class="rk mono">${k + 1}</span>
-    <div class="tn"><div class="nm">${esc(o.s.name)}${o.s.has ? "" : ' <span class="badge">нет коорд.</span>'}</div><div class="bar"><i style="width:${(o.n / max * 100).toFixed(1)}%"></i></div>${depLine(o.s)}</div>
-    ${depShort(o.s)}<b class="mono">${fmt(o.n)}</b><span class="pc mono">${pc(o.n)}</span></li>`).join("")
-    + (all.length > shown ? `<li class="rest"><span class="txt">Остальные ${fmt(all.length - shown)} ст. — ${fmt(restN)} ваг. (${pc(restN)})</span>
-      <button class="link-btn" data-more="50">Ещё 50</button><button class="link-btn" data-more="all">${all.length > 2000 ? "Первые 2000" : "Все"}</button></li>`
-      : all.length > 15 ? `<li class="rest"><span class="txt">Все ${fmt(all.length)} ст. — ${fmt(sum)} ваг.</span><button class="link-btn" data-more="less">Свернуть</button></li>` : ""))
-    || '<div class="empty">Нет вагонов по фильтру</div>';
+  renderTop(onMap.concat(noCoord));
   const miss = [...a.miss.values()].sort((x, y) => y.n - x.n).map(o =>
-    `<li title="Кода нет в справочнике ЕСР"><span class="mono">${esc(o.code)}</span><span class="n">${esc(o.name || "нет в справочнике")}</span><b class="mono">${fmt(o.n)}</b></li>`)
+    `<li title="Кода нет в справочнике ЕСР"><span class="mono">${esc(o.code)}</span><span class="n">${esc(o.name || "нет в справочнике")}</span><b class="mono">${fmtVal(o.n)}</b></li>`)
     .concat(noCoord.sort((x, y) => y.n - x.n).map(o =>
-      `<li data-i="${o.s.i}" title="Станция есть в справочнике, но без координат"><span class="mono">${o.s.esr}</span><span class="n">${esc(o.s.name)} · без координат</span><b class="mono">${fmt(o.n)}</b></li>`));
-  if (a.empty) miss.push(`<li><span class="n">Столбец не заполнен</span><b class="mono">${fmt(a.empty)}</b></li>`);
+      `<li data-i="${o.s.i}" title="Станция есть в справочнике, но без координат"><span class="mono">${o.s.esr}</span><span class="n">${esc(o.s.name)} · без координат</span><b class="mono">${fmtVal(o.n)}</b></li>`));
+  if (a.empty) miss.push(`<li><span class="n">Столбец не заполнен</span><b class="mono">${fmtVal(a.empty)}</b></li>`);
   $("wgMiss").innerHTML = miss.join("");
   $("wgMissSec").hidden = !miss.length;
   renderRestr();
   document.querySelectorAll("#wgDropdowns .dd").forEach(el => el.renderLabel && el.renderLabel());
+  const nf = [...W.filters.values()].filter(x => x.size).length + (W.num ? 1 : 0);
+  $("wgFiltSum").textContent = nf ? `активно: ${nf} · ${fmtVal(a.total)} из ${fmtVal(measure(W.rows))}` : "нет";
 }
 
 /* блок вагонов в карточке станции */
@@ -2855,7 +2966,7 @@ function wagonSection(s) {
   if (!W.loaded) return "";
   const col = activeCol(), o = W.agg.by.get(s.i);
   const rows = wagonRows();
-  const per = W.codeCols.map(c => [c, rows.reduce((n, r) => n + (rowStation(c, r) === s ? (W.qty >= 0 ? toNumber(r[W.qty]) : 1) : 0), 0)]).filter(([, n]) => n);
+  const per = W.codeCols.map(c => { const rs = rows.filter(r => rowStation(c, r) === s); return [c, rs.length ? measure(rs) : 0, rs.length]; }).filter(x => x[2]);
   if (!o && !per.length) return "";
   let lc = WG_LIST_COLS.map(h => W.headers.indexOf(h)).filter(i => i >= 0).slice(0, 3);
   if (!lc.length) lc = W.headers.map((_, i) => i).filter(i => i !== W.wagonIdx && i !== W.active).slice(0, 3);
@@ -2871,9 +2982,9 @@ function wagonSection(s) {
   return `<div class="section">
     <div class="section-title">Вагоны из отчёта</div>
     <div class="chips" style="margin-bottom:8px">${per.map(([c, n]) =>
-      `<button class="chip wg" data-wcol="${c.idx}" aria-pressed="${c.idx === W.active}" title="${esc(c.h)}">${esc(c.label)}<span class="cnt mono">${fmt(n)}</span></button>`).join("")}</div>
+      `<button class="chip wg" data-wcol="${c.idx}" aria-pressed="${c.idx === W.active}" title="${esc(c.h)}">${esc(c.label)}<span class="cnt mono">${fmtVal(n)}</span></button>`).join("")}</div>
     ${o && o.v ? `<div class="restr-card">${ICON_WARN}<div><b>${fmt(o.v)} ваг. — нарушение ограничений</b><br>${esc([...new Set(vio.filter(Boolean))].join("; "))}</div></div>` : ""}
-    ${o ? `<p class="hint" style="margin:0 0 6px">По столбцу «${esc(col.h)}»: <b>${fmt(o.n)}</b> ваг.${brIdx !== undefined ? " · " + esc(W.headers[brIdx]) + ":" : ""}</p>${bars}
+    ${o ? `<p class="hint" style="margin:0 0 6px">По столбцу «${esc(col.h)}»: <b>${fmtVal(o.n)}</b> ${esc(fnUnit())}${brIdx !== undefined ? " · " + esc(W.headers[brIdx]) + ":" : ""}</p>${bars}
     <div class="wtable-wrap"><table class="wtable"><thead><tr>${W.wagonIdx >= 0 ? "<th>№ вагона</th>" : ""}${lc.map(i => `<th>${esc(W.headers[i])}</th>`).join("")}${W.restr ? "<th>Ограничение</th>" : ""}</tr></thead>
       <tbody>${order.slice(0, 300).map(k => { const r = o.rows[k]; return `<tr${vio[k] ? ' class="viol"' : ""}>${W.wagonIdx >= 0 ? `<td class="mono">${esc(cellStr(r[W.wagonIdx]))}</td>` : ""}${lc.map(i => `<td>${esc(cellStr(r[i]))}</td>`).join("")}${W.restr ? `<td class="${vio[k] ? "viol" : ""}">${vio[k] ? "⚠ " + esc(vio[k]) : parseRestr(r[W.restr.idx]).length ? "соблюдено" : "—"}</td>` : ""}</tr>`; }).join("")}</tbody></table></div>
     ${o.rows.length > 300 ? `<p class="hint">Показаны первые 300 из ${fmt(o.rows.length)}</p>` : ""}
@@ -2893,7 +3004,7 @@ function exportWagonSummary() {
   const rows = [...a.by.values()].sort((x, y) => y.n - x.n).map(o => [o.s.esr, o.s.name, o.s.lat ?? "", o.s.lon ?? "", o.s.railway, o.s.region, o.n, ...dep(o.s)]);
   for (const o of a.miss.values()) rows.push([o.code, o.name, "", "", "", "нет в справочнике ЕСР", o.n, "", "", "", ""]);
   download(`wagons_by_station_${new Date().toISOString().slice(0, 10)}.csv`, new Blob([toCSV(
-    ["Код ЕСР", "Станция", "Широта", "Долгота", "Дорога", "Регион", "Вагонов (" + col.h + ")",
+    ["Код ЕСР", "Станция", "Широта", "Долгота", "Дорога", "Регион", fnTitle() + " (" + col.h + ")",
      "Ближайшее предприятие ремонта (код)", "Ближайшее предприятие ремонта", "Станция предприятия", "Расстояние по сети, км"], rows)], { type: "text/csv;charset=utf-8" }));
 }
 function exportStationWagons(i) {
@@ -2915,7 +3026,13 @@ $("wgOtherCol").addEventListener("change", e => {
   renderWagonPanel(); applyWagons(true);
   if (!col.matched) toast("В этом столбце не найдено ни кодов ЕСР, ни названий станций");
 });
-$("wgQty").addEventListener("change", e => { W.qty = +e.target.value; applyWagons(); });
+$("wgFn").addEventListener("change", e => {
+  W.fn = e.target.value;
+  const cols = fnCols(W.fn);
+  if (cols && !cols.some(c => c.idx === W.fnCol)) W.fnCol = cols.find(c => c.idx === W.wagonIdx)?.idx ?? cols[0]?.idx ?? -1;
+  renderCalc(); applyWagons();
+});
+$("wgFnCol").addEventListener("change", e => { W.fnCol = +e.target.value; renderCalc(); applyWagons(); });
 $("wgTemplate").addEventListener("click", () => download("шаблон_вагоны_станции.csv", new Blob([toCSV(
   ["№ вагона", "Код станции", "Станция"], [["53347787", "648400", "Круглое Поле"], ["58776618", "780904", "Звезда"]])], { type: "text/csv;charset=utf-8" })));
 // вставка из Excel: Ctrl+V на вкладке «Вагоны» (ячейки приходят как текст с табуляцией)
@@ -2941,14 +3058,33 @@ $("wgView").addEventListener("click", e => {
   applyModeStyling(); renderLegend(); updateLabels();
 });
 $("wgFit").addEventListener("click", fitWagons);
+$("wgGroup").addEventListener("click", e => {
+  const b = e.target.closest("[data-g]"); if (!b) return;
+  W.group = b.dataset.g; W.openGroup = null; W.topN = 15; store.set("wgGroup", W.group); renderWagonStats();
+  if (map.getSource("wg")) map.getSource("wg").setData(wagonFeatures()); updateLabels();
+});
+// сворачиваемые разделы: состояние запоминается
+document.querySelectorAll("#wagonsView .coll").forEach(sec => {
+  const head = sec.querySelector(".sec-head");  // «Сбросить» — рядом с заголовком, не внутри кнопки
+  const set = closed => { sec.classList.toggle("closed", closed); head.setAttribute("aria-expanded", String(!closed)); };
+  set(store.get("coll." + sec.id) === "1");
+  head.addEventListener("click", () => { const c = !sec.classList.contains("closed"); set(c); store.set("coll." + sec.id, c ? "1" : "0"); });
+});
 $("wgTop").addEventListener("click", e => {
   const m = e.target.closest("[data-more]");
   if (m) { const v = m.dataset.more; W.topN = v === "all" ? 2000 : v === "less" ? 15 : (W.topN || 15) + 50; renderWagonStats(); return; }
-  const li = e.target.closest("[data-i]"); if (li) selectStation(S[+li.dataset.i]);
+  const li = e.target.closest("[data-i]"); if (li) return selectStation(S[+li.dataset.i]);
+  const g = e.target.closest("[data-grp]");
+  if (g) {
+    const k = g.dataset.grp; W.openGroup = W.openGroup === k ? null : k; renderWagonStats();
+    if (map.getSource("wg")) map.getSource("wg").setData(wagonFeatures()); updateLabels();
+    if (W.openGroup) fitPoints([...W.agg.by.values()].filter(o => o.s.has && grpKey(o.s) === k).map(o => [o.s.lon, o.s.lat]), 10);
+  }
 });
 $("wgMiss").addEventListener("click", e => { const li = e.target.closest("[data-i]"); if (li) selectStation(S[+li.dataset.i]); });
 $("wgExport").addEventListener("click", exportWagonSummary);
 W.view = store.get("wgView") === "heat" ? "heat" : "circles";
+W.group = GROUPS[store.get("wgGroup")] ? store.get("wgGroup") : "st";
 document.querySelectorAll("#wgView button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === W.view)));
 
 /* перетаскивание файла на страницу */
@@ -2970,7 +3106,7 @@ map.on("mousemove", "wg-circle", e => {
   if (wgHover !== null) map.setFeatureState({ source: "wg", id: wgHover }, { hover: false });
   wgHover = f.id; map.setFeatureState({ source: "wg", id: wgHover }, { hover: true });
   const s = S[f.properties.i];
-  tip.setLngLat([s.lon, s.lat]).setHTML(`<div class="tip"><b>${esc(s.name)}</b> <span class="mono">${s.esr}</span><br><b class="mono">${fmt(f.properties.n)}</b> <span>ваг. · ${esc(activeCol().label.toLowerCase())}</span></div>`).addTo(map);
+  tip.setLngLat([s.lon, s.lat]).setHTML(`<div class="tip"><b>${esc(s.name)}</b> <span class="mono">${s.esr}</span><br><b class="mono">${esc(f.properties.t)}</b> <span>${esc(fnUnit())} · ${esc(activeCol().label.toLowerCase())}</span></div>`).addTo(map);
 });
 map.on("mouseleave", "wg-circle", () => {
   map.getCanvas().style.cursor = "";
