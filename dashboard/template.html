@@ -473,11 +473,14 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .sec-head { width: 100%; display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 0; margin: 0 0 8px; text-align: left; cursor: pointer; color: inherit; }
 .sec-head .section-title { margin: 0; flex: none; }
 .sec-head .sec-sum { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sec-head .chev { width: 26px; height: 26px; padding: 4px; margin: -4px -4px -4px 0; border-radius: 8px; color: var(--faint); flex: none; transition: transform .15s, background .15s; }
-.sec-head:hover .chev { background: var(--hover); color: var(--text); }
-.sec-head:focus-visible { outline: none; } .sec-head:focus-visible .chev { box-shadow: 0 0 0 3px var(--accent-soft); color: var(--text); }
+.sec-head .chev, .sec-toggle .chev { width: 26px; height: 26px; padding: 4px; margin: -4px -4px -4px 0; border-radius: 8px; color: var(--faint); flex: none; transition: transform .15s, background .15s; }
+.sec-head:hover .chev, .sec-toggle:hover .chev, .sec-head:hover ~ .sec-toggle .chev { background: var(--hover); color: var(--text); }
+.sec-head:focus-visible, .sec-toggle:focus-visible { outline: none; }
+.sec-head:focus-visible .chev, .sec-toggle:focus-visible .chev { box-shadow: 0 0 0 3px var(--accent-soft); color: var(--text); }
+/* раздел с действием в заголовке («Сбросить»): стрелка — отдельной кнопкой последней, у края, как в остальных разделах */
+.sec-toggle { display: flex; border: 0; background: none; padding: 0; margin-left: -4px; cursor: pointer; color: inherit; flex: none; }
 .coll.closed .sec-head { margin-bottom: 0; }
-.coll.closed .sec-head .chev { transform: rotate(-90deg); }
+.coll.closed .chev { transform: rotate(-90deg); }
 .coll.closed .sec-body { display: none; }
 .calc-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .calc-row .field { padding: 0 6px; font-size: 13px; }
@@ -691,7 +694,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
           </div>
         </div>
         <div class="section coll" id="wgFiltSec">
-          <div class="sec-row"><button class="sec-head" type="button" aria-expanded="true"><span class="section-title">Фильтры по отчёту</span><span class="sec-sum" id="wgFiltSum"></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button><button class="link-btn" id="wgReset">Сбросить</button></div>
+          <div class="sec-row"><button class="sec-head" type="button" aria-expanded="true"><span class="section-title">Фильтры по отчёту</span><span class="sec-sum" id="wgFiltSum"></span></button><button class="link-btn" id="wgReset">Сбросить</button><button class="sec-toggle" type="button" aria-expanded="true" aria-label="Свернуть или развернуть раздел"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button></div>
           <div class="sec-body">
           <div class="filters-grid">
             <input class="field mono" id="wgNum" type="search" inputmode="numeric" placeholder="№ вагона" aria-label="Номер вагона">
@@ -3129,10 +3132,11 @@ $("wgGroup").addEventListener("click", e => {
 });
 // сворачиваемые разделы: состояние запоминается
 document.querySelectorAll("#wagonsView .coll").forEach(sec => {
-  const head = sec.querySelector(".sec-head");  // «Сбросить» — рядом с заголовком, не внутри кнопки
-  const set = closed => { sec.classList.toggle("closed", closed); head.setAttribute("aria-expanded", String(!closed)); };
+  // заголовок и отдельная кнопка-стрелка (в разделах с «Сбросить» — после неё, у края) сворачивают раздел
+  const btns = sec.querySelectorAll(":scope > .sec-head, :scope > .sec-row > .sec-head, :scope > .sec-row > .sec-toggle");
+  const set = closed => { sec.classList.toggle("closed", closed); btns.forEach(b => b.setAttribute("aria-expanded", String(!closed))); };
   set(store.get("coll." + sec.id) === "1");
-  head.addEventListener("click", () => { const c = !sec.classList.contains("closed"); set(c); store.set("coll." + sec.id, c ? "1" : "0"); });
+  btns.forEach(b => b.addEventListener("click", () => { const c = !sec.classList.contains("closed"); set(c); store.set("coll." + sec.id, c ? "1" : "0"); }));
 });
 $("wgTop").addEventListener("click", e => {
   const m = e.target.closest("[data-more]");
