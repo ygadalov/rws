@@ -463,11 +463,14 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .coll.closed .sec-head { margin-bottom: 0; }
 .coll.closed .sec-head .chev { transform: rotate(-90deg); }
 .coll.closed .sec-body { display: none; }
-.calc-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 6px; }
-.calc-row.one { grid-template-columns: 1fr; }
+.calc-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .calc-row .field { padding: 0 6px; font-size: 13px; }
 .sec-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; } .sec-row .sec-head { flex: 1; min-width: 0; margin: 0; }
 .coll.closed .sec-row { margin-bottom: 0; }
+/* в раскрытом разделе выбор и так виден — краткое значение в заголовке только у свёрнутого */
+#wgCalcSec:not(.closed) .sec-sum, #wgStSec:not(.closed) .sec-sum { visibility: hidden; }
+.chip-g { display: inline-flex; align-items: center; } .chip-x { width: 22px; height: 22px; margin-left: -2px; color: var(--faint); }
+.chip-x svg { width: 14px; height: 14px; } .chip-x:hover { color: #D92D4B; }
 .dd.wgdd { display: flex; gap: 4px; } .dd.wgdd .dd-btn { flex: 1; min-width: 0; }
 .dd .dd-x { width: 28px; height: 36px; flex: none; border-radius: 10px; color: var(--faint); }
 .dd .dd-x:hover { color: var(--danger, #D92D4B); background: var(--hover); }
@@ -634,11 +637,13 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
             <button class="icon-btn" id="wgClear" title="Убрать отчёт" aria-label="Убрать отчёт"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
           </div>
         </div>
-        <div class="section">
-          <div class="section-title">Станция на карте</div>
-          <div class="chips" id="wgCols" role="radiogroup" aria-label="Столбец с кодом станции"></div>
-          <p class="hint" id="wgColHint"></p>
-          <select class="field" id="wgOtherCol" style="margin-top:8px" aria-label="Другой столбец как станция"></select>
+        <div class="section coll" id="wgStSec">
+          <button class="sec-head" type="button" aria-expanded="true"><span class="section-title">Станция на карте</span><span class="sec-sum" id="wgStSum"></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+          <div class="sec-body">
+            <div class="chips" id="wgCols" role="radiogroup" aria-label="Столбец с кодом станции"></div>
+            <p class="hint" id="wgColHint"></p>
+            <select class="field" id="wgOtherCol" style="margin-top:8px" aria-label="Другой столбец как станция"></select>
+          </div>
         </div>
         <div class="section coll" id="wgCalcSec">
           <button class="sec-head" type="button" aria-expanded="true"><span class="section-title">Считать</span><span class="sec-sum" id="wgCalcSum"></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
@@ -1365,6 +1370,12 @@ function offlineLabels(boxes, free) {
 }
 // после перемещения точки на новом масштабе дорисовываются не сразу — повторяем, когда карта «успокоится»
 let labelsPending = false;
+// новые данные в слое вагонов: числа в кружках берутся из отрисованных объектов, а они обновляются
+// только после перерисовки — подписи пересчитываем, когда карта «успокоится» (иначе остаются старые цифры)
+function setWgData() {
+  if (!map.getSource("wg")) return;
+  map.getSource("wg").setData(wagonFeatures()); labelsPending = true; map.triggerRepaint();
+}
 map.on("moveend", () => { updateLabels(); labelsPending = true; });
 map.on("idle", () => { if (labelsPending) { labelsPending = false; updateLabels(); } });
 
@@ -2521,7 +2532,7 @@ function applyModeStyling() {
 }
 function applyWagons(fit) {
   aggregate();
-  if (map.getSource("wg")) map.getSource("wg").setData(wagonFeatures());
+  setWgData();
   if (map.getSource("zones")) map.getSource("zones").setData(zoneFeatures());
   applyModeStyling();
   renderWagonStats(); renderLegend(); updateLabels();
@@ -2786,7 +2797,7 @@ function switchTab(t) {
   state.tab = t;
   $("panel").classList.toggle("tab-wagons", t === "wagons");
   document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
-  if (W.loaded && map.getSource("wg")) map.getSource("wg").setData(wagonFeatures());
+  if (W.loaded) setWgData();
   if ($("panel").classList.contains("show-detail")) closeDetail();
   applyModeStyling(); renderLegend(); updateLabels();
 }
@@ -2797,8 +2808,8 @@ document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () =>
 const NOT_MEASURE = /код|№|номер|\bid\b|месяц|\bгод\b|год изг|заводской|плательщик|инн|окпо/i;
 const FN = {
   rows:   { l: "1 строка = 1 вагон", kpi: "вагонов", title: "Вагонов", unit: "ваг.", add: true, int: true },
-  uniq:   { l: "Уникальных значений", kpi: "уникальных", title: "Уникальных", unit: "уник.", col: "any", int: true },
-  filled: { l: "Заполненных строк", kpi: "заполнено", title: "Заполнено", unit: "строк", col: "any", add: true, int: true },
+  uniq:   { l: "Уникальные значения", kpi: "уникальных", title: "Уникальных", unit: "уник.", col: "any", int: true },
+  filled: { l: "Заполненные строки", kpi: "заполнено", title: "Заполнено", unit: "строк", col: "any", add: true, int: true },
   sum:    { l: "Сумма", kpi: "сумма", title: "Сумма", unit: "", col: "num", add: true },
   avg:    { l: "Среднее", kpi: "среднее", title: "Среднее", unit: "", col: "num" },
   min:    { l: "Минимум", kpi: "минимум", title: "Минимум", unit: "", col: "num" },
@@ -2824,7 +2835,7 @@ function renderCalc() {
   $("wgFn").innerHTML = Object.entries(FN).filter(([k]) => !FN[k].col || fnCols(k).length)
     .map(([k, f]) => `<option value="${k}" ${k === W.fn ? "selected" : ""}>${esc(f.l)}</option>`).join("");
   const cols = fnCols(W.fn);
-  $("wgFnCol").hidden = !cols; $("wgFnCol").parentElement.classList.toggle("one", !cols);
+  $("wgFnCol").hidden = !cols;
   if (cols) {
     // № вагона — первым (уникальные вагоны, если строки повторяются), затем по алфавиту
     const list = cols.slice().sort((a, b) => (b.idx === W.wagonIdx) - (a.idx === W.wagonIdx) || a.h.localeCompare(b.h, "ru"));
@@ -2838,7 +2849,7 @@ function renderCalc() {
     avg: "Среднее по строкам, где в столбце число. Доли не показываются: среднее не складывается.",
     min: "Наименьшее значение по станции.", max: "Наибольшее значение по станции.",
   }[W.fn];
-  $("wgCalcSum").textContent = W.fn === "rows" ? FN.rows.l : `${FN[W.fn].l.toLowerCase()} · ${fnColName()}`;
+  $("wgCalcSum").textContent = FN[W.fn].l; $("wgCalcSum").title = W.fn === "rows" ? "" : `${FN[W.fn].l} · ${fnColName()}`;
 }
 /* рейтинг: станции или группы (дорога, регион, страна) — у группы раскрываются её станции, карта приближается к ним */
 const GROUPS = { st: "Станции", railway: "Дороги", region: "Регионы", country: "Страны" };
@@ -2883,13 +2894,18 @@ function renderWagonPanel() {
   $("wgFileMeta").textContent = `${fmt(W.rows.length)} строк · ${W.headers.length} столбцов` + (W.headerless ? " · без заголовков" : "")
     + (W.generated ? ` · сформирован ${W.generated}` : "");
   $("wgNum").value = ""; $("wgNum").hidden = W.wagonIdx < 0;
+  renderCols();
+  renderCalc();
+  renderWagonDropdowns();
+}
+function renderCols() {
+  // столбцы, назначенные станцией вручную, можно убрать: по ошибке выбранный столбец не остаётся в списке
   $("wgCols").innerHTML = W.codeCols.map(c =>
-    `<button class="chip wg" role="radio" data-col="${c.idx}" aria-pressed="${c.idx === W.active}" title="${esc(c.h)} · ${c.kind === "name" ? "по названию" : "по коду"}">${esc(c.label)}<span class="cnt mono">${fmt(c.filled)}</span></button>`).join("");
+    `<span class="chip-g"><button class="chip wg" role="radio" data-col="${c.idx}" aria-pressed="${c.idx === W.active}" title="${esc(c.h)} · ${c.kind === "name" ? "по названию" : "по коду"}">${esc(c.label)}<span class="cnt mono">${fmt(c.filled)}</span></button>${c.custom
+      ? `<button class="icon-btn chip-x" data-rmcol="${c.idx}" title="Убрать «${esc(c.h)}» из столбцов станции" aria-label="Убрать столбец"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>` : ""}</span>`).join("");
   const other = W.headers.map((h, idx) => ({ h, idx })).filter(c => c.idx !== W.wagonIdx && !W.codeCols.some(o => o.idx === c.idx));
   $("wgOtherCol").innerHTML = `<option value="">＋ Взять станцию из другого столбца…</option>` + other.map(c => `<option value="${c.idx}">${esc(c.h)}</option>`).join("");
   $("wgOtherCol").hidden = !other.length;
-  renderCalc();
-  renderWagonDropdowns();
 }
 function renderWagonDropdowns() {
   const box = $("wgDropdowns"); box.innerHTML = "";
@@ -2947,7 +2963,9 @@ function renderWagonStats() {
   $("wgColHint").textContent = `«${col.h}» (${col.kind === "name" ? "по названию" : "по коду ЕСР"}): заполнен у ${fmt(col.filled)} из ${fmt(W.rows.length)} строк, на карте ${fmt(col.matched)}`
     + (bn.length ? `. По названию станции (кода нет в справочнике): ${bn.map(o => `${o.code} → ${o.s.name}, ${fmt(o.n)} ваг.`).join("; ")}` : "");
   document.querySelectorAll("#wgCols .chip").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.col === W.active)));
+  $("wgStSum").textContent = col.label; $("wgStSum").title = col.h;
   renderTop(onMap.concat(noCoord));
+  $("wgExport").lastChild.textContent = `Сводка по ${{ st: "станциям", railway: "дорогам", region: "регионам", country: "странам" }[W.group || "st"]} (CSV)`;
   const miss = [...a.miss.values()].sort((x, y) => y.n - x.n).map(o =>
     `<li title="Кода нет в справочнике ЕСР"><span class="mono">${esc(o.code)}</span><span class="n">${esc(o.name || "нет в справочнике")}</span><b class="mono">${fmtVal(o.n)}</b></li>`)
     .concat(noCoord.sort((x, y) => y.n - x.n).map(o =>
@@ -2998,14 +3016,35 @@ function toCSV(header, rows) {
   const q = v => { const s = String(v ?? ""); return /[;"\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
   return "﻿" + [header, ...rows].map(r => r.map(q).join(";")).join("\r\n");
 }
+// сводка — на уровне текущей группировки рейтинга (станции, дороги, регионы, страны) и по выбранной мере:
+// строк отчёта, значение меры, доля (для складываемых мер), нарушения, у станций — ближайшее предприятие ремонта
 function exportWagonSummary() {
-  const col = activeCol(), a = W.agg;
-  const dep = s => { const x = showDepots ? nearestDepotFor(s) : null; return x ? [x.d.code, depLabel(x.d), x.d.st.name, Math.round(x.km)] : ["", "", "", ""]; };
-  const rows = [...a.by.values()].sort((x, y) => y.n - x.n).map(o => [o.s.esr, o.s.name, o.s.lat ?? "", o.s.lon ?? "", o.s.railway, o.s.region, o.n, ...dep(o.s)]);
-  for (const o of a.miss.values()) rows.push([o.code, o.name, "", "", "", "нет в справочнике ЕСР", o.n, "", "", "", ""]);
-  download(`wagons_by_station_${new Date().toISOString().slice(0, 10)}.csv`, new Blob([toCSV(
-    ["Код ЕСР", "Станция", "Широта", "Долгота", "Дорога", "Регион", fnTitle() + " (" + col.h + ")",
-     "Ближайшее предприятие ремонта (код)", "Ближайшее предприятие ремонта", "Станция предприятия", "Расстояние по сети, км"], rows)], { type: "text/csv;charset=utf-8" }));
+  const col = activeCol(), a = W.agg, g = W.group || "st", add = FN[W.fn].add, m = W.fn !== "rows";
+  const all = [...a.by.values()], tot = all.reduce((x, o) => x + o.n, 0) || 1;
+  // дробные — с запятой: Excel с русскими настройками иначе читает «4.98» как дату или текст
+  const dec = n => String(n).replace(".", ",");
+  const share = n => add ? dec(+(n / tot * 100).toFixed(2)) : "";
+  const mHead = m ? [`${FN[W.fn].l} «${fnColName()}»`] : [];
+  const vHead = W.restr ? ["С нарушением ограничений"] : [];
+  const num = n => Number.isInteger(n) ? n : dec(+n.toFixed(2));
+  let header, rows;
+  if (g === "st") {
+    const dep = s => { const x = showDepots ? nearestDepotFor(s) : null; return x ? [x.d.code, depLabel(x.d), x.d.st.name, Math.round(x.km)] : ["", "", "", ""]; };
+    header = ["Код ЕСР", "Станция", "Широта", "Долгота", "Дорога", "Регион", "Страна", "Строк отчёта", ...mHead, ...(add ? ["Доля, %"] : []), ...vHead,
+      ...(showDepots ? ["Ближайшее предприятие ремонта (код)", "Ближайшее предприятие ремонта", "Станция предприятия", "Расстояние по сети, км"] : [])];
+    rows = all.sort((x, y) => y.n - x.n).map(o => [o.s.esr, o.s.name, o.s.has ? dec(o.s.lat) : "", o.s.has ? dec(o.s.lon) : "", o.s.railway, o.s.region, o.s.country, o.rows.length,
+      ...(m ? [num(o.n)] : []), ...(add ? [share(o.n)] : []), ...(W.restr ? [o.v] : []), ...(showDepots ? dep(o.s) : [])]);
+    for (const o of a.miss.values()) rows.push([o.code, o.name, "", "", "", "нет в справочнике ЕСР", "", o.rows.length, ...(m ? [num(o.n)] : []), ...(add ? [""] : []), ...(W.restr ? [""] : [])]);
+  } else {
+    const grp = new Map();
+    for (const o of all) { const k = grpKey(o.s); let x = grp.get(k); if (!x) grp.set(k, x = { st: 0, rows: [], v: 0, top: o }); x.st++; x.v += o.v; for (const r of o.rows) x.rows.push(r); if (o.n > x.top.n) x.top = o; }
+    header = [{ railway: "Дорога", region: "Регион", country: "Страна" }[g], "Станций", "Строк отчёта", ...mHead, ...(add ? ["Доля, %"] : []), ...vHead, "Станция с наибольшим значением", "Её значение"];
+    rows = [...grp].map(([k, x]) => [k, x.st, x.rows.length, measure(x.rows), x]).sort((p, q) => q[3] - p[3])
+      .map(([k, st, n, v, x]) => [k, st, n, ...(m ? [num(v)] : []), ...(add ? [share(v)] : []), ...(W.restr ? [x.v] : []), x.top.s.name, num(x.top.n)]);
+  }
+  const level = { st: "stations", railway: "railways", region: "regions", country: "countries" }[g];
+  download(`wagons_by_${level}_${new Date().toISOString().slice(0, 10)}.csv`, new Blob([toCSV(header, rows)], { type: "text/csv;charset=utf-8" }));
+  toast(`Сводка: ${GROUPS[g].toLowerCase()}, столбец станции «${col.h}»${m ? ", " + FN[W.fn].l.toLowerCase() + " «" + fnColName() + "»" : ""}${[...W.filters.values()].some(x => x.size) || W.num ? ", с учётом фильтров" : ""}`);
 }
 function exportStationWagons(i) {
   const o = W.agg.by.get(i); if (!o) return;
@@ -3017,13 +3056,22 @@ $("wgPick").addEventListener("click", () => $("wgInput").click());
 $("wgReplace").addEventListener("click", () => $("wgInput").click());
 $("wgInput").addEventListener("change", e => { loadReport(e.target.files[0]); e.target.value = ""; });
 $("wgClear").addEventListener("click", clearReport);
-$("wgCols").addEventListener("click", e => { const b = e.target.closest("[data-col]"); if (b) { W.active = +b.dataset.col; applyWagons(true); } });
+$("wgCols").addEventListener("click", e => {
+  const x = e.target.closest("[data-rmcol]");
+  if (x) {
+    const idx = +x.dataset.rmcol; W.codeCols = W.codeCols.filter(c => c.idx !== idx);
+    if (W.active === idx) W.active = W.codeCols[0].idx;
+    // столбец снова доступен как фильтр, если он категориальный
+    renderCols(); renderWagonDropdowns(); applyWagons(true); return;
+  }
+  const b = e.target.closest("[data-col]"); if (b) { W.active = +b.dataset.col; applyWagons(true); }
+});
 $("wgOtherCol").addEventListener("change", e => {
   if (!e.target.value) return;
   const idx = +e.target.value, p = profileColumn(W.rows, idx);
   const col = stationColumn(W.headers, W.rows, idx, p.name > p.code ? "name" : "code");
-  W.codeCols.push(col); W.active = idx; W.filters.delete(idx); W.shown = W.shown.filter(x => x !== idx);
-  renderWagonPanel(); applyWagons(true);
+  col.custom = true; W.codeCols.push(col); W.active = idx; W.filters.delete(idx); W.shown = W.shown.filter(x => x !== idx);
+  renderCols(); renderWagonDropdowns(); applyWagons(true);
   if (!col.matched) toast("В этом столбце не найдено ни кодов ЕСР, ни названий станций");
 });
 $("wgFn").addEventListener("change", e => {
@@ -3061,7 +3109,7 @@ $("wgFit").addEventListener("click", fitWagons);
 $("wgGroup").addEventListener("click", e => {
   const b = e.target.closest("[data-g]"); if (!b) return;
   W.group = b.dataset.g; W.openGroup = null; W.topN = 15; store.set("wgGroup", W.group); renderWagonStats();
-  if (map.getSource("wg")) map.getSource("wg").setData(wagonFeatures()); updateLabels();
+  setWgData();
 });
 // сворачиваемые разделы: состояние запоминается
 document.querySelectorAll("#wagonsView .coll").forEach(sec => {
@@ -3077,7 +3125,7 @@ $("wgTop").addEventListener("click", e => {
   const g = e.target.closest("[data-grp]");
   if (g) {
     const k = g.dataset.grp; W.openGroup = W.openGroup === k ? null : k; renderWagonStats();
-    if (map.getSource("wg")) map.getSource("wg").setData(wagonFeatures()); updateLabels();
+    setWgData();
     if (W.openGroup) fitPoints([...W.agg.by.values()].filter(o => o.s.has && grpKey(o.s) === k).map(o => [o.s.lon, o.s.lat]), 10);
   }
 });
