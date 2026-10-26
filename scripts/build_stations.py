@@ -13,6 +13,7 @@
 
 Запуск: python3 scripts/build_stations.py
 """
+import json
 import math
 import re
 from pathlib import Path
@@ -145,7 +146,47 @@ def load():
     osm = osm.apply(lambda c: c.str.strip())
     osm["lat"] = osm["lat"].astype(float)
     osm["lon"] = osm["lon"].astype(float)
-    return ref, osm
+    return ref, drop_retagged(ref, osm)
+
+
+def drop_retagged(ref, osm):
+    """Привязки старой выгрузки, которые в свежем OSM исправлены: объект теперь несёт другой код ЕСР, а его название
+    не похоже на нашу станцию (780302 «Екатеринбург-Товарный» стоял на точке «Звезда», в свежем OSM это 780904)."""
+    fresh_path = RAW / "osm_esr_fresh.csv"
+    if not fresh_path.exists():
+        return osm
+    fresh = pd.read_csv(fresh_path, sep=";", dtype=str, keep_default_na=False)
+    tags = fresh[fresh.osm_type == "node"].groupby("osm_id").esr.apply(set).to_dict()
+    names = dict(zip(ref["esr"], ref["name"]))
+    bad = [i for i, r in osm.iterrows() if r.osm_id in tags and r.esr not in tags[r.osm_id]
+           and name_sim(names.get(r.esr, ""), [r["name"], r.alt_name, r.old_name, r.official_name]) < NAME_OK]
+    if bad:
+        print(f"устаревшие привязки OSM (в свежем OSM объект с другим кодом и названием): {len(bad)} —",
+              ", ".join(f"{osm.at[i, 'esr']} «{osm.at[i, 'name']}»" for i in bad))
+    return osm.drop(index=bad)
+
+
+def apply_manual(st):
+    """Ручные уточнения координат (data/raw/stations_manual.csv: esr;lat;lon;source;note) — приоритет над всеми
+    источниками. Для станций, которых нет в OSM с кодом ЕСР и которые не удаётся поставить по участкам."""
+    path = RAW / "stations_manual.csv"
+    if not path.exists():
+        return st, 0
+    man = pd.read_csv(path, sep=";", dtype=str, keep_default_na=False, comment="#", index_col=False)
+    n = 0
+    for _, m in man.iterrows():
+        i = st.index[st.esr == m.esr]
+        if not len(i):
+            print(f"  stations_manual.csv: код {m.esr!r} не найден — проверьте строку (лишняя «;» в примечании?)")
+            continue
+        st.loc[i, ["lat", "lon"]] = float(m.lat), float(m.lon)
+        st.loc[i, "coord_quality"] = "B"
+        st.loc[i, "coord_precision_km"] = 1.0
+        st.loc[i, "coord_source"] = "вручную: " + m.source
+        st.loc[i, "coord_note"] = m.note
+        n += len(i)
+    print(f"ручные уточнения координат: {n}")
+    return st, n
 
 
 def enrich_ref(ref):
@@ -475,6 +516,7 @@ COLUMNS = [
     "lat", "lon", "has_coords", "coord_quality", "coord_quality_label", "coord_source",
     "coord_precision_km", "coord_note", "geo_country_mismatch", "section_conflict",
     "transit_checks", "transit_violations", "transit_conflict",
+    "ext_check", "ext_osm_km", "ext_wd_km", "osm_fresh", "wikidata",
     "osm_id", "osm_type", "osm_url", "osm_status", "osm_railway", "osm_name", "osm_alt_name", "osm_old_name",
     "osm_official_name", "osm_name_sim", "nbr_dist_km", "osm_candidates", "osm_places",
     "osm_spread_km", "choice_margin",
@@ -512,6 +554,8 @@ RU_HEADERS = {
     "section_conflict": "Противоречит расстояниям участка ТР №4",
     "transit_checks": "Проверок по транзитным пунктам", "transit_violations": "Нарушений тарифных расстояний",
     "transit_conflict": "Противоречит тарифным расстояниям",
+    "ext_check": "Сверка с OSM и Викиданными", "ext_osm_km": "До точки свежего OSM, км",
+    "ext_wd_km": "До точки Викиданных, км", "osm_fresh": "Объект свежего OSM", "wikidata": "Викиданные (QID)",
     "osm_id": "OSM id", "osm_type": "OSM тип объекта", "osm_url": "Ссылка OSM", "osm_status": "OSM статус привязки",
     "osm_railway": "OSM railway", "osm_name": "OSM название", "osm_alt_name": "OSM alt_name",
     "osm_old_name": "OSM old_name", "osm_official_name": "OSM official_name",
@@ -529,7 +573,7 @@ def write_tr4_extras(st, tr):
     tr["cities"].to_csv(OUT / "tr4_cities.csv", sep=";", index=False, encoding="utf-8-sig")
 
 
-def write_outputs(st, cand, interp_check):
+def write_outputs(st, cand, interp_check, verification=None):
     OUT.mkdir(parents=True, exist_ok=True)
     st = st[COLUMNS]
     st.to_csv(OUT / "stations.csv", sep=";", index=False, encoding="utf-8-sig")
@@ -556,6 +600,10 @@ def write_outputs(st, cand, interp_check):
 
     summary = build_summary(st)
     summary["Проверка интерполяции"] = interp_check
+    if verification:
+        summary["Сверка OSM и Викиданные"] = pd.DataFrame(verification["classes"]).rename(columns={
+            "class": "Класс до сверки", "checked": "Сверено", "median_km": "Медиана расхождения, км",
+            "confirmed": "Подтверждено", "replaced": "Заменено", "conflict": "Расхождение (ручная проверка)"})
     multi = set(cand.loc[cand.dist_from_chosen_km > SAME_PLACE_KM, "esr"])
     with pd.ExcelWriter(OUT / "stations.xlsx", engine="openpyxl") as xw:
         st.rename(columns=RU_HEADERS).to_excel(xw, sheet_name="Справочник", index=False)
@@ -615,6 +663,8 @@ def build_summary(st):
 def main():
     import extra_sources as xs
     import tr4_2026 as t26
+    import verify_sources as vs
+    import name_match as nm
 
     ref, osm = load()
     tr = t26.load()
@@ -656,6 +706,16 @@ def main():
     st.loc[drop, ["lat", "lon", "coord_precision_km"]] = np.nan
     st.loc[drop, ["coord_quality", "coord_source", "coord_note"]] = ""
     st, n_transit = xs.fill_by_transit(st)
+    # узлы и крайние станции участков — только оставшиеся без координат (прежние оценки не трогаем)
+    st, n_end, n_end_rej = t26.fill_by_section_end(st, sec)
+    # сверка со свежим OSM и Викиданными (scripts/fetch_sources.py): подтверждение, уточнение, замена по большинству
+    before = st[["esr", "coord_quality"]].copy()
+    st, ext_cnt, ext_meta = vs.verify_external(st)
+    # оставшиеся без координат — по названию среди всех станций и платформ OSM
+    st, name_cnt = nm.fill_by_osm_name(st, sec)
+    st, n_manual = apply_manual(st)
+    verification = vs.verification_stats(before, st, ext_meta)
+    verification["by_name"] = {k: v for k, v in name_cnt.items() if k in ("B", "C")}
     st["has_coords_tmp"] = st["coord_quality"] != ""
     st = xs.check_transit(st)
     st = xs.merge_express(st)
@@ -674,8 +734,11 @@ def main():
     interp_check = pd.concat([
         validate_interpolation(st).assign(Метод="по соседним кодам ЕСР"),
         t26.validate_sections(st, sec).assign(Метод="по участкам ТР №4 (Книга 1)"),
+        t26.validate_section_end(st, sec).assign(Метод="край участка ТР №4 (узлы, до 3 км от соседа)"),
         xs.validate_transit_pair(st).assign(Метод="между двумя транзитными пунктами ТР №4")], ignore_index=True)
-    summary = write_outputs(st, cand, interp_check)
+    summary = write_outputs(st, cand, interp_check, verification)
+    n_review = vs.write_review(st)
+    (OUT / "verification.json").write_text(json.dumps(verification, ensure_ascii=False, indent=1), encoding="utf-8")
     write_tr4_extras(st, tr)
 
     print(f"Кодов ЕСР: {len(st)}; строк OSM: {len(osm)} ({osm.esr.nunique()} кодов)")
@@ -683,13 +746,17 @@ def main():
     print(interp_check.to_string(index=False))
     print(f"новых кодов из ТР №4 2026: {len(new_rows)}, из них с координатами: "
           f"{(st.is_new_tr4 & (st.coord_quality != '')).sum()}")
-    print(f"новые коды по старой нумерации: {n_recoded}; участки: понижено до C {n_sec_bad}, одноимённые по участку {n_sec_name}, {sec_cnt}")
+    print(f"новые коды по старой нумерации: {n_recoded}; участки: понижено до C {n_sec_bad}, одноимённые по участку {n_sec_name}, {sec_cnt}, край участка {n_end} (отклонено вне своего региона или без региона: {n_end_rej})")
     print(f"Крым (старый↔новый код): {n_crimea}, по одноимённым: {n_name}, интерполяцией: {n_interp}, "
           f"снято E по тарифу: {drop.sum()}, по транзитному пункту: {n_transit}")
     print(f"в тарифном списке ТР №4: {st.in_tariff_list.sum()}; противоречат тарифу: "
           + st[st.transit_conflict].groupby("coord_quality").size().to_dict().__repr__())
     print(f"точек среди станций другой страны: {st.geo_country_mismatch.sum()}")
     print(f"атрибуты достроены по соседям: {(st.admin_inferred != '').sum()}")
+    print(f"сверка OSM {ext_meta['osm_base']} и Викиданных: {ext_cnt}; на ручную проверку: {n_review}")
+    print(f"по названию среди станций OSM: {name_cnt}")
+    print(json.dumps({k: v for k, v in verification.items() if k != "classes"}, ensure_ascii=False))
+    print(pd.DataFrame(verification["classes"]).to_string(index=False))
 
 
 if __name__ == "__main__":

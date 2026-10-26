@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-"""Сборка самодостаточного HTML-дашборда: dashboard/template.html + данные → dashboard/rws1520.html.
+"""Сборка самодостаточного HTML-дашборда: dashboard/template.html + данные → dashboard/rws1520_v<версия>.html.
 
 Данные встраиваются в страницу компактно (повторяющиеся строки — через словари),
-поэтому rws1520.html открывается двойным щелчком, без сервера.
+поэтому файл открывается двойным щелчком, без сервера. Версия — из файла VERSION в корне (см. CHANGELOG.md);
+файлы прежних версий в dashboard/ удаляются (история — в git).
 
 Запуск (после build_stations.py): python3 scripts/build_dashboard.py
+Пробная сборка с функциями в разработке (ограничения курсирования, справка о нарушениях):
+  python3 scripts/build_dashboard.py --preview  → dashboard/rws1520_v<версия>_preview.html (в git не хранится)
 """
 import json
+import re
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -15,7 +20,9 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "data" / "output" / "stations.csv"
 TEMPLATE = ROOT / "dashboard" / "template.html"
-OUT = ROOT / "dashboard" / "rws1520.html"
+VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+PREVIEW = "--preview" in sys.argv
+OUT = ROOT / "dashboard" / f"rws1520_v{VERSION}{'_preview' if PREVIEW else ''}.html"
 
 # (колонка в stations.csv, ключ в странице, кодирование: s — строка, d — словарь, n — число, b — флаг)
 FIELDS = [
@@ -37,9 +44,55 @@ FIELDS = [
     ("admin_inferred", "inferred", "d"),
     ("is_new_tr4", "newcode", "b"), ("tr4_date", "tr4date", "d"), ("tr4_excluded", "excluded", "b"),
     ("tr4_sections", "sections", "s"), ("tr4_port", "port", "s"), ("section_conflict", "sconf", "b"),
+    ("ext_check", "xcheck", "d"), ("ext_osm_km", "xosm", "n"), ("ext_wd_km", "xwd", "n"), ("wikidata", "wd", "s"),
 ]
 SECTIONS = ROOT / "data" / "output" / "tr4_sections.csv"
 CITIES = ROOT / "data" / "output" / "tr4_cities.csv"
+VERIFY = ROOT / "data" / "output" / "verification.json"
+DEPOTS = ROOT / "data" / "output" / "depots.csv"
+GRAPH = ROOT / "data" / "output" / "rail_graph.json"
+SNAP_MAX_KM = 50  # станция вне тарифных участков привязывается к ближайшему узлу графа не дальше этого
+
+
+def rail_graph(st):
+    """Граф для расстояний по сети (scripts/build_rail_graph.py) + привязка каждой станции к узлу графа."""
+    if not GRAPH.exists():
+        return None, None, None
+    import numpy as np
+    from scipy.spatial import cKDTree
+    g = json.loads(GRAPH.read_text(encoding="utf-8"))
+    idx = {e: i for i, e in enumerate(g["nodes"])}
+    lat = pd.to_numeric(st.lat, errors="coerce").values
+    lon = pd.to_numeric(st.lon, errors="coerce").values
+    node_of = [idx.get(e, -1) for e in st.esr]
+    have = [(i, node_of[i]) for i in range(len(st)) if node_of[i] >= 0 and not np.isnan(lat[i])]
+    tree = cKDTree(np.radians([[lat[i], lon[i]] for i, _ in have]))
+    gnode, gsnap = [], []
+    for i in range(len(st)):
+        if node_of[i] >= 0:
+            gnode.append(node_of[i]); gsnap.append(0)
+        elif not np.isnan(lat[i]):
+            d, k = tree.query(np.radians([lat[i], lon[i]]))
+            km = float(d) * 6371
+            ok = km <= SNAP_MAX_KM
+            gnode.append(have[k][1] if ok else -1); gsnap.append(round(km * 1.2, 1) if ok else 0)
+        else:
+            gnode.append(-1); gsnap.append(0)
+    e = g["edges"]
+    graph = {"n": len(g["nodes"]), "a": [x[0] for x in e], "b": [x[1] for x in e], "w": [x[2] for x in e], "check": g.get("check")}
+    return graph, gnode, gsnap
+
+
+def depots(st):
+    """Предприятия ремонта с местоположением (scripts/build_depots.py): [код, название, кратко, тип, владелец,
+    индекс станции, ТР, ДР, КР, прочие виды ремонта]."""
+    if not DEPOTS.exists():
+        return []
+    d = pd.read_csv(DEPOTS, sep=";", dtype=str, keep_default_na=False)
+    row = {e: i for i, e in enumerate(st.esr)}
+    d = d[d.esr.isin(row)]
+    t = lambda v: 1 if v == "True" else 0
+    return [[r.code, r.name, r.short_name, r.kind, r.owner, row[r.esr], t(r.tr), t(r.dr), t(r.kr), r.extra] for r in d.itertuples()]
 
 
 def section_lines():
@@ -69,6 +122,31 @@ def section_lines():
     return out
 
 
+VENDOR = ROOT / "dashboard" / "vendor"
+
+
+def vendor(name):
+    """Библиотека для встраивания в <script>/<style>: без ссылки на source map и без «</script»."""
+    text = (VENDOR / name).read_text(encoding="utf-8")
+    text = re.sub(r"\n?//# sourceMappingURL=\S+\s*$", "", text)
+    text = re.sub(r"\n?/\*# sourceMappingURL=\S+ \*/\s*$", "", text)
+    low = text.lower()
+    if name.endswith(".js"):  # внутри <script> опасны только «</script» и пара «<!--» + «<script»
+        assert "</script" not in low and not ("<!--" in low and "<script" in low), name
+    else:
+        assert "</style" not in low, name
+    return text
+
+
+def glyphs():
+    """{шрифт: {диапазон: base64 PBF}} — подписи на своей карте без загрузки шрифтов из интернета."""
+    import base64
+    out = {}
+    for f in sorted((VENDOR / "glyphs").glob("*/*.pbf")):
+        out.setdefault(f.parent.name, {})[f.stem] = base64.b64encode(f.read_bytes()).decode()
+    return out
+
+
 def cities():
     c = pd.read_csv(CITIES, sep=";", dtype={"esr": str}, keep_default_na=False)
     return c[["city", "region", "esr", "km"]].values.tolist()
@@ -91,7 +169,9 @@ def main():
             cols.append((v == "True").astype(int).tolist())
         else:
             cols.append(v.tolist())
+    graph, gnode, gsnap = rail_graph(st)
     data = {
+        "version": VERSION,
         "built": date.today().isoformat(),
         "fields": [k for _, k, _ in FIELDS],
         "kinds": [t for _, _, t in FIELDS],
@@ -99,9 +179,32 @@ def main():
         "columns": cols,  # по колонкам — так JSON заметно меньше
         "lines": section_lines(),
         "cities": cities(),
+        # офлайн-подложка (Natural Earth 1:50m), см. scripts/build_offline_basemap.mjs
+        "basemap": json.loads((VENDOR / "basemap-offline.json").read_text(encoding="utf-8")),
+        # подписи и вода офлайн-схемы (Natural Earth), см. scripts/build_offline_labels.py
+        "labels": json.loads((VENDOR / "basemap-labels.json").read_text(encoding="utf-8")),
+        # своя карта из файла PMTiles: стиль Protomaps (русские подписи) и встроенные шрифты Noto Sans
+        "pmstyle": json.loads((VENDOR / "protomaps-style.json").read_text(encoding="utf-8")),
+        "glyphs": glyphs(),
+        # предприятия ремонта вагонов и граф сети для расстояний «по железной дороге»
+        "depots": depots(st),
+        "graph": graph, "gnode": gnode, "gsnap": gsnap,
+        # сверка со свежим OSM и Викиданными (scripts/verify_sources.py)
+        "verify": json.loads(VERIFY.read_text(encoding="utf-8")) if VERIFY.exists() else None,
+        # контуры регионов для запретных зон (ограничения курсирования, только в пробной сборке), см. scripts/build_region_shapes.py
+        "regionShapes": json.loads((VENDOR / "region-shapes.json").read_text(encoding="utf-8")) if PREVIEW else {},
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-    html = TEMPLATE.read_text(encoding="utf-8").replace("/*__DATA__*/null", payload)
+    # только в шаблоне, до встраивания библиотек
+    html = TEMPLATE.read_text(encoding="utf-8").replace("__VERSION__", VERSION + (" превью" if PREVIEW else ""))
+    html = html.replace("/*__PREVIEW__*/false", "true" if PREVIEW else "false")
+    for key, name in (("MAPLIBRE_JS", "maplibre-gl.js"), ("MAPLIBRE_CSS", "maplibre-gl.css"), ("XLSX_JS", "xlsx.full.min.js"),
+                      ("PMTILES_JS", "pmtiles.js"), ("INFO_TIP_CSS", "info-tooltip.css"), ("INFO_TIP_JS", "info-tooltip.js")):
+        html = html.replace(f"/*__{key}__*/", vendor(name), 1)
+    html = html.replace("/*__DATA__*/null", payload)
+    for old in OUT.parent.glob("rws1520_v*_preview.html" if PREVIEW else "rws1520*.html"):
+        if old != OUT and (PREVIEW or not old.stem.endswith("_preview")):
+            old.unlink()
     OUT.write_text(html, encoding="utf-8")
     print(f"{OUT.relative_to(ROOT)}: {len(st)} станций, {OUT.stat().st_size / 1e6:.1f} МБ")
 
