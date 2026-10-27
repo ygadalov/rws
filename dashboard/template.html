@@ -190,6 +190,11 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .search.has-text .clear { display: grid; } .search.has-text .kbd { display: none; }
 
 .panel-body { flex: 1; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
+/* подвал панели: подпись Gadalov BI — справа, 11 px, серым, знак 12 px (цвет знака — от текста, активная ячейка Steel) */
+.panel-foot { flex: none; display: flex; justify-content: flex-end; padding: 7px 14px 8px; border-top: 1px solid var(--line); }
+.gbi-sign { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; line-height: 1.4; color: var(--muted); white-space: nowrap; }
+.gbi-sign svg { width: 12px; height: 12px; flex: none; fill: currentColor; } .gbi-sign .act { fill: #4F86BF; }
+.gbi-sign b { font-weight: 600; }
 .section { padding: 12px 14px; border-bottom: 1px solid var(--line); }
 .section:last-child { border-bottom: 0; }
 .section-title { display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); margin-bottom: 8px; }
@@ -529,6 +534,7 @@ dd .muted { color: var(--muted); }
   body.panel-hidden .maplibregl-ctrl-bottom-right { bottom: 64px; }
   body.sheet-collapsed:not(.panel-hidden) .maplibregl-ctrl-bottom-right { bottom: 172px; }
   .panel.collapsed { height: 172px; }
+  .panel.collapsed .panel-foot { display: none; }  /* в свёрнутой шторке — только поиск */
   .panel.expanded { height: 88vh; }
   .sheet-handle { display: block; width: 100%; height: 22px; border: 0; background: none; padding: 0; flex: none; }
   .sheet-handle::before { content: ""; display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--line-strong); margin: 8px auto 0; }
@@ -728,6 +734,10 @@ dd .muted { color: var(--muted); }
 
     <div class="detail" id="detail" aria-live="polite"></div>
   </div>
+  <!-- подпись разработчика — по брендбуку Gadalov BI (BRAND.md, раздел 7): строка не переводится и не меняется -->
+  <footer class="panel-foot">
+    <span class="gbi-sign"><svg viewBox="0 0 65.28 65.28" aria-hidden="true"><path d="M0 0h10v10H0zM13.82 0h10v10h-10zM27.64 0h10v10h-10zM41.46 0h10v10h-10zM55.28 0h10v10h-10zM0 13.82h10v10H0zM0 27.64h10v10H0zM0 41.46h10v10H0zM0 55.28h10v10H0zM13.82 55.28h10v10h-10zM27.64 55.28h10v10h-10zM41.46 55.28h10v10h-10zM55.28 55.28h10v10h-10zM55.28 41.46h10v10h-10zM55.28 27.64h10v10h-10z"/><path class="act" d="M41.46 27.64h10v10h-10z"/></svg><span>Developed by <b>Gadalov BI</b> · Built with AI</span></span>
+  </footer>
 </aside>
 
 <button class="tb-btn panel-show" id="panelShow" aria-label="Показать панель поиска и фильтров">
