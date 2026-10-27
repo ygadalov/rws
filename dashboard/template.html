@@ -795,7 +795,8 @@ dd .muted { color: var(--muted); }
     <option value="ops">Операции (ТР №4)</option>
     <option value="railway">Железная дорога</option>
     <option value="country">Страна</option>
-    <option value="ml">Магистраль</option>
+    <option value="ml">Широтные магистрали</option>
+    <option value="mlm">Меридиональные магистрали</option>
   </select>
   <div class="legend-items" id="legendItems"></div>
   <label class="legend-toggle">Тарифные участки (линии) <span class="switch"><input type="checkbox" id="linesToggle2"><span></span></span></label>
@@ -930,16 +931,23 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 const fmt = n => n.toLocaleString("ru-RU");
 const $ = id => document.getElementById(id);
 
-const ML_COLORS = { TS: "#C026D3", BAM: "#0891B2", YS: "#A16207", TK: "#059669", NK: "#7C3AED" };  // ≥ 3:1 на светлой и тёмной подложке
+// ≥ 3:1 на светлой и тёмной подложке; похожие оттенки — у магистралей, далёких друг от друга на карте
+const ML_COLORS = {
+  TS: "#C026D3", BAM: "#0891B2", YS: "#A16207", TK: "#059669", NK: "#7C3AED", YH: "#2F6FEB", KZ: "#0F766E",
+  TM: "#BE185D", TC: "#B45309", SH: "#0284C7", SS: "#4D7C0F",
+  OK: "#DB2777", PC: "#7C3AED", SK: "#059669", AY: "#A16207", NS: "#2F6FEB" };
 const S = decode(RAW);
 const BY_ESR = new Map(S.map(s => [s.esr, s]));
 /* главные широтные магистрали (scripts/build_mainlines.py): у станции — список магистралей (узлы — на двух сразу)
    и километраж от начала магистрали. Цвета — вне палитр типов и точности: красный занят нарушениями, оранжевый — данными */
-const ML = (RAW.mainlines?.lines || []).map(([code, name, desc]) => ({ code, name, desc, color: ML_COLORS[code] || "#64748B" }));
+const ML = (RAW.mainlines?.lines || []).map(([code, name, desc, group]) => ({ code, name, desc, group: group || "широтная", color: ML_COLORS[code] || "#64748B" }));
+const ML_BY = new Map(ML.map(l => [l.name, l]));
+// раскраска: «ml» — широтные магистрали, «mlm» — меридиональные (16 цветов на одной карте не различить)
+const ML_GROUP = { ml: "широтная", mlm: "меридиональная" };
 const ML_NONE = "Не на магистрали";
 for (const s of S) { s.ml = []; s.mlkm = []; }
 for (const [i, li, km, oi] of RAW.mainlines?.st || []) { S[i].ml.push(ML[li].name); S[i].mlkm.push([ML[li].name, km, RAW.mainlines.origins[oi]]); }
-for (const s of S) s.mlText = s.ml.join(", ");
+for (const s of S) { s.mlText = s.ml.join(", "); s.mlg = { ml: s.ml.filter(n => ML_BY.get(n).group === "широтная"), mlm: s.ml.filter(n => ML_BY.get(n).group === "меридиональная") }; }
 
 /* ================= состояние ================= */
 const state = {
@@ -952,6 +960,7 @@ let filtered = S;
 
 // значения станции для фильтра: у магистралей — список (узел на двух магистралях попадает в обе)
 const vals = (s, k) => k === "ml" ? (s.ml.length ? s.ml : [ML_NONE]) : [s[k] || "—"];
+const mlVals = (s, by) => s.mlg[by].length ? s.mlg[by] : [ML_NONE];  // для раскраски: магистрали своей группы
 function passes(s, skip) {
   if (state.hideVirt && s.virt) return false;
   if (state.tariff && !s.tariff) return false;
@@ -981,7 +990,7 @@ for (const k of ["railway", "country"]) {
 }
 const ML_GRAY = "#B8C1CC";  // станции вне магистралей — фоном
 function colorOf(s, by = state.colorBy) {
-  if (by === "ml") return s.ml.length ? ML.find(l => l.name === s.ml[0]).color : ML_GRAY;
+  if (ML_GROUP[by]) return s.mlg[by].length ? ML_BY.get(s.mlg[by][0]).color : ML_GRAY;
   if (by === "q") return qColor(s.q);
   if (by === "type") return typeColor(s.type);
   if (by === "ops") return opsColor(s.ops);
@@ -1115,7 +1124,7 @@ map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
 function pointShape(s) {
   const by = state.colorBy;
   if (by === "ops") return { h: OPS_STYLES[s.ops].hollow ? 1 : 0, rd: OPS_STYLES[s.ops].radiusDelta || 0 };
-  if (by === "ml") return { h: 0, rd: s.ml.length ? 0.5 : -1.5 };
+  if (ML_GROUP[by]) return { h: 0, rd: s.mlg[by].length ? 0.5 : -1.5 };
   return { h: 0, rd: by === "type" && s.type === "условный пункт" ? -1.5 : 0 };
 }
 function stationFeatures() {
@@ -1124,7 +1133,7 @@ function stationFeatures() {
     if (!s.has) continue;
     feats.push({ type: "Feature", id: s.i, geometry: { type: "Point", coordinates: [s.lon, s.lat] },
       // порядок отрисовки: при раскраске по магистралям станции магистралей — поверх остальных
-      properties: { i: s.i, c: colorOf(s), k: state.colorBy === "ml" ? (s.ml.length ? 10 : 0) : Q_ORDER[s.q] || 0, e: s.q === "E" ? 1 : 0, ...pointShape(s) } });
+      properties: { i: s.i, c: colorOf(s), k: ML_GROUP[state.colorBy] ? (s.mlg[state.colorBy].length ? 10 : 0) : Q_ORDER[s.q] || 0, e: s.q === "E" ? 1 : 0, ...pointShape(s) } });
   }
   return { type: "FeatureCollection", features: feats };
 }
@@ -1805,17 +1814,17 @@ function renderLegend() {
     return;
   }
   const by = state.colorBy, cnt = new Map();
-  filtered.forEach(s => { if (!s.has) return; for (const k of by === "q" ? [s.q] : by === "ops" ? [s.ops] : vals(s, by)) cnt.set(k, (cnt.get(k) || 0) + 1); });
+  filtered.forEach(s => { if (!s.has) return; for (const k of by === "q" ? [s.q] : by === "ops" ? [s.ops] : ML_GROUP[by] ? mlVals(s, by) : vals(s, by)) cnt.set(k, (cnt.get(k) || 0) + 1); });
   let items;
-  if (by === "ml") items = [...ML.map(l => [l.name, l.color, cnt.get(l.name) || 0, false, l.desc]), [ML_NONE, ML_GRAY, cnt.get(ML_NONE) || 0]];
+  if (ML_GROUP[by]) items = [...ML.filter(l => l.group === ML_GROUP[by]).map(l => [l.name, l.color, cnt.get(l.name) || 0, false, l.desc]), [ML_NONE, ML_GRAY, cnt.get(ML_NONE) || 0]];
   else if (by === "q") items = Object.entries(QUALITY).map(([k, v]) => [v.label, qColor(k), cnt.get(k) || 0]);
   else if (by === "ops") items = OPS_CLASSES.map(([k, l]) => [l, opsColor(k), cnt.get(k) || 0, OPS_STYLES[k].hollow]);
   else if (by === "type") items = [...cnt.keys()].map(k => [k, typeColor(k), cnt.get(k)]);
   else items = [...cnt.keys()].map(k => [k, hashColor(by + k), cnt.get(k)]);
-  if (by !== "q" && by !== "ops" && by !== "ml") items.sort((a, b) => b[2] - a[2]);
+  if (by !== "q" && by !== "ops" && !ML_GROUP[by]) items.sort((a, b) => b[2] - a[2]);
   $("legendItems").innerHTML = items.map(([l, c, n, hollow, tip]) =>
     `<div class="legend-item"><span class="dot" style="${hollow ? `background:transparent;box-shadow:inset 0 0 0 2.5px ${c}` : `background:${c}`}"></span><span class="t" title="${esc(tip || l)}">${esc(l)}</span><span class="c mono">${fmt(n)}</span></div>`).join("")
-    + (by === "ml" ? '<p class="legend-note">Узловые станции — на двух магистралях, цвет по первой. Ход — по тарифным участкам ТР №4.</p>' : "");
+    + (ML_GROUP[by] ? '<p class="legend-note">Узловые станции — на нескольких магистралях, цвет по первой. Ход — по тарифным участкам ТР №4; подробности — при наведении на название.</p>' : "");
   if (showDepots && DEPOTS.length) $("legendItems").insertAdjacentHTML("beforeend", depotLegendItem());
 }
 $("colorBy").addEventListener("change", e => {
@@ -2007,7 +2016,7 @@ function selectStation(s, { fly = true, push = true, keepScroll = false } = {}) 
     <div class="section">
       <div class="section-title">Справочник</div>
       <dl class="kv">
-        ${row("Страна", esc(s.country))}${row("Регион", esc(s.region))}${row("Дорога", esc(s.railway))}${row("Отделение", esc(s.division))}${s.mlkm.length ? row("Магистраль", s.mlkm.map(([n, km, from]) => `<span title="${esc(ML.find(l => l.name === n).desc)}">${esc(n)}</span> <span class="muted">· ${fmt(km)} км от ст. ${esc(from)}</span>`).join("<br>")) : ""}
+        ${row("Страна", esc(s.country))}${row("Регион", esc(s.region))}${row("Дорога", esc(s.railway))}${row("Отделение", esc(s.division))}${s.mlkm.length ? row("Магистраль", s.mlkm.map(([n, km, from]) => `<span title="${esc(ML_BY.get(n).desc)}">${esc(n)}</span> <span class="muted">· ${fmt(km)} км от ст. ${esc(from)}</span>`).join("<br>")) : ""}
         ${row("Тип пункта", esc(s.type))}${row("Код ЕСР (5 зн.)", `<span class="mono">${s.esr.slice(0, 5)}</span>`)}
         ${row("Основной код", s.dup ? stationLink(s.dup) : "")}
         ${row("Старый код (Крым)", s.crold ? stationLink(s.crold) : "")}${row("Новый код (Крым)", s.crnew ? stationLink(s.crnew) : "")}

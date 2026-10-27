@@ -98,7 +98,7 @@ def depots(st):
 
 
 def mainlines(st):
-    """Главные широтные магистрали (scripts/build_mainlines.py): линии [код, название, описание] и станции
+    """Главные магистрали (scripts/build_mainlines.py): линии [код, название, описание, группа] и станции
     [индекс станции, индекс линии, км от начала части, индекс названия начала]."""
     if not MAINLINES.exists():
         return None
@@ -108,7 +108,7 @@ def mainlines(st):
     row = {e: i for i, e in enumerate(st.esr)}
     codes = [c for c, *_ in LINES]
     origins = sorted(set(m["from"]))
-    return {"lines": [[c, n, d] for c, n, d, *_ in LINES], "origins": origins,
+    return {"lines": [[c, n, d, grp] for c, n, d, _, _, grp in LINES], "origins": origins,
             "st": [[row[r.esr], codes.index(r.line), int(r.km), origins.index(r._4)] for r in m.itertuples() if r.esr in row]}
 
 
@@ -205,7 +205,7 @@ def main():
         "glyphs": glyphs(),
         # предприятия ремонта вагонов и граф сети для расстояний «по железной дороге»
         "depots": depots(st),
-        # главные широтные магистрали (Транссиб, БАМ, Южсиб, Турксиб, Северный коридор ТАЖМ)
+        # главные магистрали: широтные (Транссиб, БАМ, Южсиб, …) и меридиональные (Москва — Санкт-Петербург, Печорская, …)
         "mainlines": mainlines(st),
         "graph": graph, "gnode": gnode, "gsnap": gsnap,
         # сверка со свежим OSM и Викиданными (scripts/verify_sources.py)
