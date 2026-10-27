@@ -311,6 +311,8 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .legend-item .c { color: var(--faint); flex: none; }
 .legend .collapse { position: absolute; right: 6px; top: 6px; width: 26px; height: 26px; }
 .legend.min .legend-items, .legend.min select { display: none; }
+.legend-note { margin: 6px 0 0; font-size: 11px; line-height: 1.35; color: var(--muted); } .legend.min .legend-note { display: none; }
+dd .muted { color: var(--muted); }
 .legend.min .legend-title { margin: 0; line-height: 26px; padding-right: 28px; }
 .legend.min { padding-top: 6px; padding-bottom: 6px; }
 .legend.min .collapse { top: 50%; transform: translateY(-50%) rotate(180deg); }
@@ -783,6 +785,7 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
     <option value="ops">Операции (ТР №4)</option>
     <option value="railway">Железная дорога</option>
     <option value="country">Страна</option>
+    <option value="ml">Магистраль</option>
   </select>
   <div class="legend-items" id="legendItems"></div>
   <label class="legend-toggle">Тарифные участки (линии) <span class="switch"><input type="checkbox" id="linesToggle2"><span></span></span></label>
@@ -917,24 +920,34 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 const fmt = n => n.toLocaleString("ru-RU");
 const $ = id => document.getElementById(id);
 
+const ML_COLORS = { TS: "#C026D3", BAM: "#0891B2", YS: "#A16207", TK: "#059669", NK: "#7C3AED" };  // ≥ 3:1 на светлой и тёмной подложке
 const S = decode(RAW);
 const BY_ESR = new Map(S.map(s => [s.esr, s]));
+/* главные широтные магистрали (scripts/build_mainlines.py): у станции — список магистралей (узлы — на двух сразу)
+   и километраж от начала магистрали. Цвета — вне палитр типов и точности: красный занят нарушениями, оранжевый — данными */
+const ML = (RAW.mainlines?.lines || []).map(([code, name, desc]) => ({ code, name, desc, color: ML_COLORS[code] || "#64748B" }));
+const ML_NONE = "Не на магистрали";
+for (const s of S) { s.ml = []; s.mlkm = []; }
+for (const [i, li, km, oi] of RAW.mainlines?.st || []) { S[i].ml.push(ML[li].name); S[i].mlkm.push([ML[li].name, km, RAW.mainlines.origins[oi]]); }
+for (const s of S) s.mlText = s.ml.join(", ");
 
 /* ================= состояние ================= */
 const state = {
   quality: new Set(Object.keys(QUALITY)),
-  sets: { country: new Set(), railway: new Set(), region: new Set(), type: new Set() },
+  sets: { country: new Set(), railway: new Set(), region: new Set(), type: new Set(), ml: new Set() },
   tariff: false, pass: false, freight: false, hideVirt: true,
   colorBy: "q", selected: null, tab: "stations",
 };
 let filtered = S;
 
+// значения станции для фильтра: у магистралей — список (узел на двух магистралях попадает в обе)
+const vals = (s, k) => k === "ml" ? (s.ml.length ? s.ml : [ML_NONE]) : [s[k] || "—"];
 function passes(s, skip) {
   if (state.hideVirt && s.virt) return false;
   if (state.tariff && !s.tariff) return false;
   if (state.pass && !(s.ops === "both" || s.ops === "pass")) return false;
   if (state.freight && !(s.ops === "both" || s.ops === "freight")) return false;
-  for (const k in state.sets) if (k !== skip && state.sets[k].size && !state.sets[k].has(s[k] || "—")) return false;
+  for (const k in state.sets) if (k !== skip && state.sets[k].size && !vals(s, k).some(v => state.sets[k].has(v))) return false;
   if (skip !== "q" && s.has && !state.quality.has(s.q)) return false;
   return true;
 }
@@ -956,7 +969,9 @@ for (const k of ["railway", "country"]) {
   S.forEach(s => cnt[s[k] || "—"] = (cnt[s[k] || "—"] || 0) + 1);
   Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]).forEach(v => hashColor(k + v));
 }
+const ML_GRAY = "#B8C1CC";  // станции вне магистралей — фоном
 function colorOf(s, by = state.colorBy) {
+  if (by === "ml") return s.ml.length ? ML.find(l => l.name === s.ml[0]).color : ML_GRAY;
   if (by === "q") return qColor(s.q);
   if (by === "type") return typeColor(s.type);
   if (by === "ops") return opsColor(s.ops);
@@ -1090,6 +1105,7 @@ map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
 function pointShape(s) {
   const by = state.colorBy;
   if (by === "ops") return { h: OPS_STYLES[s.ops].hollow ? 1 : 0, rd: OPS_STYLES[s.ops].radiusDelta || 0 };
+  if (by === "ml") return { h: 0, rd: s.ml.length ? 0.5 : -1.5 };
   return { h: 0, rd: by === "type" && s.type === "условный пункт" ? -1.5 : 0 };
 }
 function stationFeatures() {
@@ -1097,7 +1113,8 @@ function stationFeatures() {
   for (const s of filtered) {
     if (!s.has) continue;
     feats.push({ type: "Feature", id: s.i, geometry: { type: "Point", coordinates: [s.lon, s.lat] },
-      properties: { i: s.i, c: colorOf(s), k: Q_ORDER[s.q] || 0, e: s.q === "E" ? 1 : 0, ...pointShape(s) } });
+      // порядок отрисовки: при раскраске по магистралям станции магистралей — поверх остальных
+      properties: { i: s.i, c: colorOf(s), k: state.colorBy === "ml" ? (s.ml.length ? 10 : 0) : Q_ORDER[s.q] || 0, e: s.q === "E" ? 1 : 0, ...pointShape(s) } });
   }
   return { type: "FeatureCollection", features: feats };
 }
@@ -1701,6 +1718,7 @@ const DD = [
   { key: "railway", label: "Дорога", search: true },
   { key: "region", label: "Регион", search: true },
   { key: "type", label: "Тип пункта", search: false },
+  ...(ML.length ? [{ key: "ml", label: "Магистраль", search: false }] : []),
 ];
 function buildDropdowns() {
   $("dropdowns").innerHTML = DD.map(d => `
@@ -1716,7 +1734,7 @@ function buildDropdowns() {
     const key = dd.dataset.dd;
     const btn = dd.querySelector(".dd-btn"), list = dd.querySelector(".dd-list"), inp = dd.querySelector("input[type=search]");
     const render = () => {
-      const cnt = {}; S.forEach(s => { if (passes(s, key)) { const v = s[key] || "—"; cnt[v] = (cnt[v] || 0) + 1; } });
+      const cnt = {}; S.forEach(s => { if (passes(s, key)) for (const v of vals(s, key)) cnt[v] = (cnt[v] || 0) + 1; });
       state.sets[key].forEach(v => cnt[v] = cnt[v] || 0);
       const f = norm(inp?.value || "");
       list.innerHTML = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || a.localeCompare(b, "ru"))
@@ -1777,15 +1795,17 @@ function renderLegend() {
     return;
   }
   const by = state.colorBy, cnt = new Map();
-  filtered.forEach(s => { if (!s.has) return; const k = by === "q" ? s.q : by === "ops" ? s.ops : (s[by] || "—"); cnt.set(k, (cnt.get(k) || 0) + 1); });
+  filtered.forEach(s => { if (!s.has) return; for (const k of by === "q" ? [s.q] : by === "ops" ? [s.ops] : vals(s, by)) cnt.set(k, (cnt.get(k) || 0) + 1); });
   let items;
-  if (by === "q") items = Object.entries(QUALITY).map(([k, v]) => [v.label, qColor(k), cnt.get(k) || 0]);
+  if (by === "ml") items = [...ML.map(l => [l.name, l.color, cnt.get(l.name) || 0, false, l.desc]), [ML_NONE, ML_GRAY, cnt.get(ML_NONE) || 0]];
+  else if (by === "q") items = Object.entries(QUALITY).map(([k, v]) => [v.label, qColor(k), cnt.get(k) || 0]);
   else if (by === "ops") items = OPS_CLASSES.map(([k, l]) => [l, opsColor(k), cnt.get(k) || 0, OPS_STYLES[k].hollow]);
   else if (by === "type") items = [...cnt.keys()].map(k => [k, typeColor(k), cnt.get(k)]);
   else items = [...cnt.keys()].map(k => [k, hashColor(by + k), cnt.get(k)]);
-  if (by !== "q" && by !== "ops") items.sort((a, b) => b[2] - a[2]);
-  $("legendItems").innerHTML = items.map(([l, c, n, hollow]) =>
-    `<div class="legend-item"><span class="dot" style="${hollow ? `background:transparent;box-shadow:inset 0 0 0 2.5px ${c}` : `background:${c}`}"></span><span class="t" title="${esc(l)}">${esc(l)}</span><span class="c mono">${fmt(n)}</span></div>`).join("");
+  if (by !== "q" && by !== "ops" && by !== "ml") items.sort((a, b) => b[2] - a[2]);
+  $("legendItems").innerHTML = items.map(([l, c, n, hollow, tip]) =>
+    `<div class="legend-item"><span class="dot" style="${hollow ? `background:transparent;box-shadow:inset 0 0 0 2.5px ${c}` : `background:${c}`}"></span><span class="t" title="${esc(tip || l)}">${esc(l)}</span><span class="c mono">${fmt(n)}</span></div>`).join("")
+    + (by === "ml" ? '<p class="legend-note">Узловые станции — на двух магистралях, цвет по первой. Ход — по тарифным участкам ТР №4.</p>' : "");
   if (showDepots && DEPOTS.length) $("legendItems").insertAdjacentHTML("beforeend", depotLegendItem());
 }
 $("colorBy").addEventListener("change", e => {
@@ -1977,7 +1997,7 @@ function selectStation(s, { fly = true, push = true, keepScroll = false } = {}) 
     <div class="section">
       <div class="section-title">Справочник</div>
       <dl class="kv">
-        ${row("Страна", esc(s.country))}${row("Регион", esc(s.region))}${row("Дорога", esc(s.railway))}${row("Отделение", esc(s.division))}
+        ${row("Страна", esc(s.country))}${row("Регион", esc(s.region))}${row("Дорога", esc(s.railway))}${row("Отделение", esc(s.division))}${s.mlkm.length ? row("Магистраль", s.mlkm.map(([n, km, from]) => `<span title="${esc(ML.find(l => l.name === n).desc)}">${esc(n)}</span> <span class="muted">· ${fmt(km)} км от ст. ${esc(from)}</span>`).join("<br>")) : ""}
         ${row("Тип пункта", esc(s.type))}${row("Код ЕСР (5 зн.)", `<span class="mono">${s.esr.slice(0, 5)}</span>`)}
         ${row("Основной код", s.dup ? stationLink(s.dup) : "")}
         ${row("Старый код (Крым)", s.crold ? stationLink(s.crold) : "")}${row("Новый код (Крым)", s.crnew ? stationLink(s.crnew) : "")}
@@ -2052,7 +2072,7 @@ const EXPORT_COLS = [
   ["express", "Код Экспресс"], ["exname", "Название Экспресс"], ["dup", "Основной код"],
   ["crold", "Старый код (Крым)"], ["crnew", "Новый код (Крым)"], ["tariff", "В ТР №4"], ["owner", "Владелец (ТР №4)"],
   ["pops", "Пасс. операции"], ["fops", "Груз. операции (§)"], ["transit", "Транзитный пункт"], ["transitkm", "До транзитного пункта, км"],
-  ["former", "Бывшее название"], ["osm", "OSM id"],
+  ["former", "Бывшее название"], ["mlText", "Магистраль"], ["osm", "OSM id"],
   ["xcheck", "Сверка с OSM и Викиданными"], ["xosm", "До точки свежего OSM, км"], ["xwd", "До точки Викиданных, км"], ["wd", "Викиданные"],
 ];
 function cell(s, k) {

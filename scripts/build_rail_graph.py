@@ -113,10 +113,31 @@ def build():
     gb["lat"], gb["lon"] = gb.lat.astype(float), gb.lon.astype(float)
     rel = gb[gb.coord_quality.isin(["A", "B"]) | (gb.coord_quality.eq("D") & ~gb.coord_source.str.startswith("одноимённая"))]
     n_border = link_countries(adj, rel, link) + link_borders(adj, rel, link)
+    link_dead_ends(adj, rel, link)
     return adj, st, sec, n_dup, n_name, n_border
 
 
 CROSSING_SPACING_KM = 30
+DEAD_END_KM = 10
+DEAD_END_DETOUR_KM = 300  # вокзалы-тупики Москвы и Петербурга по сети связаны (через узел) — их не трогаем
+
+
+def link_dead_ends(adj, g, link):
+    """Оборванный стык участков: участок кончается пунктом дорожного стыка, а соседний начинается другим кодом
+    («Тайга — Ост. пункт 3704 км» и «Мариинск — Ачинск I»: 7 км друг от друга, общего кода нет). Тупики (одна связь)
+    с надёжными точками ближе DEAD_END_KM, между которыми по графу нет пути в пределах DEAD_END_DETOUR_KM, связываем
+    ребром «прямая × 1,2». Городские вокзалы-тупики рядом друг с другом по сети связаны — их не трогаем."""
+    pos = {e: (a, b) for e, a, b in zip(g.esr, g.lat, g.lon)}
+    ends = [e for e in adj if len(adj[e]) == 1 and e in pos]
+    found = []
+    for i, a in enumerate(ends):
+        for b in ends[i + 1:]:
+            h = float(haversine(*pos[a], *pos[b]))
+            if h <= DEAD_END_KM and b not in dijkstra(adj, a, limit=DEAD_END_DETOUR_KM):
+                found.append((a, b, h))
+    for a, b, h in found:
+        link(a, b, round(h * 1.2, 1))
+    print(f"оборванные стыки участков связаны: {len(found)}" + "".join(f"; {a}—{b} ({h:.1f} км)" for a, b, h in found))
 
 
 def link_countries(adj, g, link):

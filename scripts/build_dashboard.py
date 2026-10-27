@@ -50,6 +50,7 @@ SECTIONS = ROOT / "data" / "output" / "tr4_sections.csv"
 CITIES = ROOT / "data" / "output" / "tr4_cities.csv"
 VERIFY = ROOT / "data" / "output" / "verification.json"
 DEPOTS = ROOT / "data" / "output" / "depots.csv"
+MAINLINES = ROOT / "data" / "output" / "mainlines.csv"
 GRAPH = ROOT / "data" / "output" / "rail_graph.json"
 SNAP_MAX_KM = 50  # станция вне тарифных участков привязывается к ближайшему узлу графа не дальше этого
 
@@ -93,6 +94,21 @@ def depots(st):
     d = d[d.esr.isin(row)]
     t = lambda v: 1 if v == "True" else 0
     return [[r.code, r.name, r.short_name, r.kind, r.owner, row[r.esr], t(r.tr), t(r.dr), t(r.kr), r.extra] for r in d.itertuples()]
+
+
+def mainlines(st):
+    """Главные широтные магистрали (scripts/build_mainlines.py): линии [код, название, описание] и станции
+    [индекс станции, индекс линии, км от начала части, индекс названия начала]."""
+    if not MAINLINES.exists():
+        return None
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from build_mainlines import MAINLINES as LINES
+    m = pd.read_csv(MAINLINES, sep=";", dtype={"esr": str}, keep_default_na=False)
+    row = {e: i for i, e in enumerate(st.esr)}
+    codes = [c for c, *_ in LINES]
+    origins = sorted(set(m["from"]))
+    return {"lines": [[c, n, d] for c, n, d, *_ in LINES], "origins": origins,
+            "st": [[row[r.esr], codes.index(r.line), int(r.km), origins.index(r._4)] for r in m.itertuples() if r.esr in row]}
 
 
 def section_lines():
@@ -188,6 +204,8 @@ def main():
         "glyphs": glyphs(),
         # предприятия ремонта вагонов и граф сети для расстояний «по железной дороге»
         "depots": depots(st),
+        # главные широтные магистрали (Транссиб, БАМ, Южсиб, Турксиб, Северный коридор ТАЖМ)
+        "mainlines": mainlines(st),
         "graph": graph, "gnode": gnode, "gsnap": gsnap,
         # сверка со свежим OSM и Викиданными (scripts/verify_sources.py)
         "verify": json.loads(VERIFY.read_text(encoding="utf-8")) if VERIFY.exists() else None,
