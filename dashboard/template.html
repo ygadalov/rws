@@ -1991,7 +1991,7 @@ function selectStation(s, { fly = true, push = true, keepScroll = false } = {}) 
           <label class="switch" title="Показывать зону на карте"><input type="checkbox" class="prec-toggle-card" aria-label="Показывать зону погрешности на карте" ${showPrec ? "checked" : ""}><span></span></label></div>` : ""}
         ${s.tconf ? '<div class="note" style="color:var(--danger)">Противоречит тарифным расстояниям ТР №4</div>' : ""}
         ${s.osm ? `<div class="note"><a target="_blank" rel="noopener" href="https://www.openstreetmap.org/${s.osmtype || "node"}/${s.osm}">Объект OSM ${s.osm}</a>${s.osmname && s.osmname !== s.name ? " · «" + esc(s.osmname) + "»" : ""}</div>` : ""}
-        ${xcheckNote(s)}</div></div>`
+        ${xcheckNote(s)}${kmCheckNote(s)}</div></div>`
       : `<div class="qbox"><span class="dot" style="border:1.5px dashed var(--faint)"></span><div><b>Координат нет</b><div class="note">Станция есть в справочнике ЕСР, но надёжно определить её положение не удалось</div></div></div>`}
     </div>
     <div class="section">
@@ -2241,6 +2241,14 @@ function xcheckNote(s) {
   return `<div class="note${s.xcheck === "расхождение" ? " xbad" : ""}">Сверка ${d}${label ? ": " + label : ""}${parts ? " (" + was + parts + ")" : ""}`
     + `${s.wd ? ` · <a target="_blank" rel="noopener" href="https://www.wikidata.org/wiki/${esc(s.wd)}">Викиданные</a>` : ""}</div>`;
 }
+// сверка с километражом участков ТР №4 (scripts/tr4_2026.py, km_check): строка в карточке и абзац в «О данных»
+function kmCheckNote(s) {
+  if (!s.kmchk) return "";
+  const dev = s.kmdev == null ? "" : fmtKm((+s.kmdev).toFixed(1)) + " км";
+  const t = s.kmchk === "согласуется" ? `согласуется (${dev} от положения по участку)`
+    : s.kmchk.startsWith("переставлено") ? "точка была не на своём месте — поставлена по участку" : `${dev} от положения по участку — класс понижен до C`;
+  return `<div class="note${s.kmchk === "согласуется" ? "" : " xbad"}">Километраж участка ТР №4: ${t}</div>`;
+}
 (function renderDepotInfo() {
   if (!DEPOTS.length) return;
   const c = RAW.graph && RAW.graph.check;
@@ -2264,7 +2272,14 @@ function xcheckNote(s) {
     ${fmt(V.conflict)} расхождений больше 5 км оставлены как есть и вынесены в список для ручной проверки.</p>
     <table class="vt"><tr><th>Класс до сверки</th><th class="n">Сверено</th><th class="n">Медиана, км</th><th class="n">Подтверждено</th><th class="n">Заменено</th><th class="n">Расхождения</th></tr>
     ${V.classes.map(c => `<tr><td title="${esc(QUALITY[c.class]?.label || c.class)}"><span class="dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:${qColor(c.class)}"></span>${esc(c.class)}</td><td class="n mono">${fmt(c.checked)}</td><td class="n mono">${c.median_km == null ? "—" : fmtKm(c.median_km)}</td>
-      <td class="n mono">${fmt(c.confirmed)}</td><td class="n mono">${fmt(c.replaced)}</td><td class="n mono">${fmt(c.conflict)}</td></tr>`).join("")}</table>`;
+      <td class="n mono">${fmt(c.confirmed)}</td><td class="n mono">${fmt(c.replaced)}</td><td class="n mono">${fmt(c.conflict)}</td></tr>`).join("")}</table>`
+    + (V.km_check ? `<h3>Сверка с километражом участков ТР №4</h3>
+    <p>Последний шаг сборки: положение каждой станции тарифного участка по километражу между ближайшими надёжными
+    станциями (класс A, сами согласуются с километражом) сравнивается с её координатами. Допуск — 5 км или 30% расстояния
+    между опорами (запас на изгибы линии). Проверено ${fmt(V.km_check.checked)} станций, согласуются ${fmt(V.km_check.agree)}
+    (${(V.km_check.agree / V.km_check.checked * 100).toFixed(1).replace(".", ",")}%). Не на своём месте: ${fmt(V.km_check.moved)} точек
+    переставлено по участку (оценки и точки OSM, привязанные к одноимённому объекту в другом месте), у ${fmt(V.km_check.demoted)}
+    точек OSM с умеренным расхождением класс понижен до C. Ручные уточнения не проверяются.</p>` : "");
 })();
 $("builtAt").textContent = "Версия " + RAW.version + " · сборка данных: " + RAW.built + " · станций в справочнике: " + fmt(S.length);
 

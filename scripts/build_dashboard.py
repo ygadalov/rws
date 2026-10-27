@@ -45,6 +45,7 @@ FIELDS = [
     ("is_new_tr4", "newcode", "b"), ("tr4_date", "tr4date", "d"), ("tr4_excluded", "excluded", "b"),
     ("tr4_sections", "sections", "s"), ("tr4_port", "port", "s"), ("section_conflict", "sconf", "b"),
     ("ext_check", "xcheck", "d"), ("ext_osm_km", "xosm", "n"), ("ext_wd_km", "xwd", "n"), ("wikidata", "wd", "s"),
+    ("km_check", "kmchk", "d"), ("km_check_dev", "kmdev", "n"),
 ]
 SECTIONS = ROOT / "data" / "output" / "tr4_sections.csv"
 CITIES = ROOT / "data" / "output" / "tr4_cities.csv"
