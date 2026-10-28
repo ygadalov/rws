@@ -410,6 +410,7 @@ dd .muted { color: var(--muted); }
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--danger) 55%, transparent) 0 2px, transparent 2px 5px); }
 .kz-sw.lv1 { border-color: #64748B; background: repeating-linear-gradient(135deg, rgba(100,116,139,.55) 0 2px, transparent 2px 5px); }
 .kz-sw.lv0 { border: 1.5px dashed var(--accent); background: none; }
+.kz-sw.veil { border: 0; background: rgba(31,41,55,.35); }
 .kpi.red b { color: var(--danger); }
 .kurs .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
 .drop { margin: 14px; padding: 26px 18px; border: 1.5px dashed var(--line-strong); border-radius: 14px; text-align: center; color: var(--muted); }
@@ -539,9 +540,10 @@ dd .muted { color: var(--muted); }
 .dep-near b { font-size: 12.5px; white-space: nowrap; text-align: right; }
 .dep-near b small { display: block; font: 400 10.5px/1.3 Inter, system-ui, sans-serif; color: var(--muted); }
 .top .dep { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.zone-label { pointer-events: none; font-size: 11.5px; font-weight: 650; color: var(--danger); white-space: nowrap;
-  text-shadow: 0 0 3px var(--label-halo), 0 0 3px var(--label-halo), 0 0 2px var(--label-halo); }
-.zone-label span { font-weight: 500; opacity: .85; }
+/* подпись зоны — плашка: читается поверх штриховки, заливки и сети дорог */
+.zone-label { pointer-events: none; font-size: 11.5px; font-weight: 600; color: var(--text); white-space: nowrap; padding: 3px 9px; border-radius: 999px;
+  background: var(--panel-solid); border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); box-shadow: 0 1px 4px rgba(16,24,40,.25); }
+.zone-label span { font-weight: 700; color: var(--danger); }
 .wg-count { pointer-events: none; font-size: 11.5px; font-weight: 700; color: #fff; text-shadow: 0 0 3px rgba(124,45,18,.9); }
 .drop-overlay { position: fixed; inset: 0; z-index: 90; display: none; place-items: center; background: var(--data-soft); border: 3px dashed var(--data); font-size: 18px; font-weight: 600; color: var(--data-text); pointer-events: none; }
 .drop-overlay.show { display: grid; }
@@ -761,7 +763,7 @@ dd .muted { color: var(--muted); }
         <div class="restr-card none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg><div>Отчёт по вагонам не загружен. Зоны можно настроить заранее — проверка начнётся, как только отчёт появится. <button class="link-btn" id="kLoad">Загрузить отчёт</button></div></div>
       </div>
       <div class="section">
-        <div class="section-title"><span>Режим<button class="info-tip" type="button" aria-label="Про режимы"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8.01"/></svg><span class="info-bubble" role="tooltip"><b>Запрещённые зоны</b> — нарушение, если вагон в зоне со статусом «запрет». <b>Разрешены только</b> — нарушение везде вне перечисленных зон. Если зоны пересекаются, действует более точная: регион важнее дороги, дорога важнее страны — так задаются исключения.</span></button></span></div>
+        <div class="section-title"><span>Режим<button class="info-tip" type="button" aria-label="Про режимы"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8.01"/></svg><span class="info-bubble" role="tooltip" id="kModeTip"></span></button></span></div>
         <div class="seg" id="kMode"><button data-m="deny" aria-pressed="true">Запрещённые зоны</button><button data-m="allow" aria-pressed="false">Разрешены только</button></div>
       </div>
       <div class="section">
@@ -781,6 +783,7 @@ dd .muted { color: var(--muted); }
       </div>
       <div class="section">
         <label class="switch-row">Зоны на карте <span class="switch"><input type="checkbox" id="kShow" checked><span></span></span></label>
+        <label class="switch-row" id="kDepRow">Предприятия ремонта вагонов <span class="switch"><input type="checkbox" id="depotsQuick3"><span></span></span></label>
         <button class="btn" id="kExport" style="width:100%"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Выгрузить нарушения (CSV)</button>
         <div class="btn-row">
           <button class="btn" id="kSave" title="Сохранить набор зон в файл — чтобы передать коллегам или загрузить позже">Сохранить набор</button>
@@ -1734,12 +1737,12 @@ function renderDepotFilters() {
   const cnt = {}; for (const d of DEPOTS) if (d.st && d.st.has && (!depRepair || (depRepair === "ДР" ? d.dr : d.kr))) cnt[d.group] = (cnt[d.group] || 0) + 1;
   $("depGroups").innerHTML = DEP_GROUPS.map(([k, l, t]) => `<button class="chip" data-g="${k}" aria-pressed="${depGroups.has(k)}" title="${esc(t)}">${esc(l)}<span class="cnt mono">${fmt(cnt[k] || 0)}</span></button>`).join("");
   document.querySelectorAll("#depRepair button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.r === depRepair)));
-  $("depotsToggle").checked = $("depotsQuick").checked = $("depotsQuick2").checked = showDepots;
-  $("wgDepRow").hidden = !DEPOTS.length;
+  $("depotsToggle").checked = $("depotsQuick").checked = $("depotsQuick2").checked = $("depotsQuick3").checked = showDepots;
+  $("wgDepRow").hidden = $("kDepRow").hidden = !DEPOTS.length;
   $("depFilters").hidden = !showDepots;
   $("depotsQuick").closest(".section").hidden = !DEPOTS.length;
 }
-for (const id of ["depotsToggle", "depotsQuick", "depotsQuick2"])
+for (const id of ["depotsToggle", "depotsQuick", "depotsQuick2", "depotsQuick3"])
   $(id).addEventListener("change", e => { showDepots = e.target.checked; store.set("depots", showDepots ? "1" : "0"); refreshDepots(); });
 $("depGroups").addEventListener("click", e => {
   const b = e.target.closest("[data-g]"); if (!b) return;
@@ -2654,16 +2657,21 @@ function addWagonLayers() {
   map.addLayer({ id: "zone-hot", type: "fill", source: "zones", filter: hot, paint: { "fill-color": WG_DANGER, "fill-opacity": 0.1 } }, "lines");
   map.addLayer({ id: "zone-line", type: "line", source: "zones", paint: { "line-color": WG_DANGER,
     "line-width": ["case", hot, 1.8, 1], "line-opacity": ["case", hot, 0.9, 0.55], "line-dasharray": [3, 2] } }, "lines");
-  // зоны курсирования: запрет — красная штриховка, предстоящий запрет и квота — серая, разрешённые — синий пунктир
+  // зоны курсирования (как на авиакартах запретные зоны): кайма по внутренней стороне границы и контур;
+  // запрет — красные, предстоящий запрет и квота — серые со штриховкой; регионы с нарушениями слегка залиты;
+  // «Разрешены только» — всё вне разрешённых зон затемнено
   map.addSource("kzones", { type: "geojson", data: kZoneFeatures() });
   if (!map.hasImage("hatch-g")) map.addImage("hatch-g", hatchImage("rgba(100,116,139,.5)"), { pixelRatio: 2 });
-  const lv = ["get", "lv"], khot = ["==", ["get", "hot"], 1];
-  map.addLayer({ id: "kz-fill", type: "fill", source: "kzones", filter: [">", lv, 0], layout: { visibility: "none" },
-    paint: { "fill-pattern": ["case", ["==", lv, 2], "hatch", "hatch-g"], "fill-opacity": ["case", khot, 1, 0.6] } }, "lines");
-  map.addLayer({ id: "kz-hot", type: "fill", source: "kzones", filter: khot, layout: { visibility: "none" }, paint: { "fill-color": WG_DANGER, "fill-opacity": 0.1 } }, "lines");
-  map.addLayer({ id: "kz-line", type: "line", source: "kzones", layout: { visibility: "none" }, paint: {
-    "line-color": ["match", lv, 2, WG_DANGER, 1, K_GRAY, cssVar("--accent")],
-    "line-width": ["case", khot, 1.8, ["==", lv, 0], 0.8, 1.2], "line-opacity": ["case", khot, 0.9, ["==", lv, 0], 0.45, 0.7], "line-dasharray": [3, 2] } }, "lines");
+  const lv = ["get", "lv"], khot = ["==", ["get", "hot"], 1], kcol = ["match", lv, 2, WG_DANGER, K_GRAY], zone = ["all", ["==", ["get", "veil"], 0], [">", lv, 0]];
+  map.addLayer({ id: "kz-veil", type: "fill", source: "kzones", filter: ["==", ["get", "veil"], 1], layout: { visibility: "none" },
+    paint: { "fill-color": "#1F2937", "fill-opacity": 0.3 } }, "lines");
+  map.addLayer({ id: "kz-fill", type: "fill", source: "kzones", filter: ["all", zone, ["==", lv, 1]], layout: { visibility: "none" },
+    paint: { "fill-pattern": "hatch-g", "fill-opacity": 0.5 } }, "lines");
+  map.addLayer({ id: "kz-hot", type: "fill", source: "kzones", filter: ["all", zone, khot], layout: { visibility: "none" }, paint: { "fill-color": WG_DANGER, "fill-opacity": 0.12 } }, "lines");
+  map.addLayer({ id: "kz-band", type: "line", source: "kzones", filter: zone, layout: { visibility: "none" },
+    paint: { "line-color": kcol, "line-width": 7, "line-offset": 3.5, "line-opacity": 0.28 } }, "lines");
+  map.addLayer({ id: "kz-line", type: "line", source: "kzones", filter: zone, layout: { visibility: "none" },
+    paint: { "line-color": kcol, "line-width": 1.5, "line-opacity": 0.9 } }, "lines");
   map.addSource("wg", { type: "geojson", data: W.loaded ? wagonFeatures() : emptyFC() });
   map.addLayer({ id: "wg-heat", type: "heatmap", source: "wg", layout: { visibility: W.view === "heat" ? "visible" : "none" }, paint: {
     "heatmap-weight": ["get", "w"],
@@ -2693,7 +2701,13 @@ function applyModeStyling() {
     map.setLayoutProperty(id, "visibility", w && (W.view === "heat") === (id === "wg-heat") ? "visible" : "none");
   if (map.getLayer("wg-viol")) map.setLayoutProperty("wg-viol", "visibility", w && W.view === "heat" && (state.tab === "kurs" ? K.res?.red : W.restr) ? "visible" : "none");
   const kz = state.tab === "kurs" && K.show && K.items.length ? "visible" : "none";
-  for (const id of ["kz-fill", "kz-hot", "kz-line"]) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", kz);
+  for (const id of K_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", kz);
+  // на вкладке «Курсирование» сеть дорог — фоном: на первом плане зоны и вагоны
+  const kt = state.tab === "kurs";
+  if (map.getLayer("lines")) map.setPaintProperty("lines", "line-opacity", ["match", ["get", "k"], "Основной тарифный участок", kt ? 0.3 : 0.75, kt ? 0.2 : 0.45]);
+  if (map.getLayer("orm")) map.setPaintProperty("orm", "raster-opacity", kt ? 0.35 : 0.85);
+  // затемнение вне разрешённых зон: на тёмной подложке — чёрным и плотнее
+  if (map.getLayer("kz-veil")) { const dk = darkPref(); map.setPaintProperty("kz-veil", "fill-color", dk ? "#000000" : "#1F2937"); map.setPaintProperty("kz-veil", "fill-opacity", dk ? 0.5 : 0.3); }
   const z = state.tab === "wagons" && W.loaded && W.restr && W.showZones ? "visible" : "none";
   for (const id of ["zone-fill", "zone-hot", "zone-line"]) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", z);
 }
@@ -2966,6 +2980,7 @@ $("repPrint").addEventListener("click", () => reportPrint().catch(e => toast("Н
    запрет, запрет с даты, квота (вагонов на каждую часть набора или на весь набор), разрешено.
    Пересекающиеся зоны: действует самая точная (регион > дорога > страна) — так задаются исключения. */
 const K_SPEC = { country: 1, railway: 2, region: 3 };
+const K_LAYERS = ["kz-veil", "kz-fill", "kz-hot", "kz-band", "kz-line"];
 const K_ST = { deny: "Запрет", soon: "Запрет с даты", quota: "Квота", allow: "Разрешено" };
 const K_PRESETS = [
   ["Прибалтика", ["Латвия", "Литва", "Эстония"].map(c => ["country", c])],
@@ -3058,10 +3073,20 @@ function kZoneFeatures() {
       lv = Math.max(lv, kLevel(it, z, v, cnt));
     } });
     const v = K.res?.byReg.get(reg) || 0;
+    // «Разрешены только»: затемняем регионы пространства 1520 вне разрешённых зон
+    // (не «весь мир минус разрешённое» — полигон с сотнями дыр слишком тяжёл для отрисовки)
+    if (K.mode === "allow" && (lv < 0 || lv === 2)) feats.push({ type: "Feature", properties: { reg, lv: 2, hot: 0, veil: 1 }, geometry: { type: "MultiPolygon", coordinates: kRings(reg) } });
     if (lv < 0 && !v) continue;
-    feats.push({ type: "Feature", properties: { reg, lv: lv < 0 ? 2 : lv, hot: v ? 1 : 0 }, geometry: { type: "MultiPolygon", coordinates: REGION_SHAPES[reg] } });
+    feats.push({ type: "Feature", properties: { reg, lv: lv < 0 ? 2 : lv, hot: v ? 1 : 0, veil: 0 }, geometry: { type: "MultiPolygon", coordinates: kRings(reg) } });
   }
   return { type: "FeatureCollection", features: feats };
+}
+// контур региона с кольцами в одном направлении (внешние — против часовой стрелки, дыры — по ней):
+// кайма со сдвигом line-offset тогда всегда ложится внутрь региона
+const kRingCache = new Map();
+function kRings(reg) {
+  if (!kRingCache.has(reg)) kRingCache.set(reg, (REGION_SHAPES[reg] || []).map(poly => poly.map((r, k) => (ringArea(r) > 0) === (k === 0) ? r : [...r].reverse())));
+  return kRingCache.get(reg);
 }
 function kItemLevel(it, z) {
   if (it.st === "quota") return K.res?.items[z]?.lv[2] ? 2 : 1;
@@ -3086,6 +3111,10 @@ function renderKurs() {
   const R = K.res;
   $("kNoRep").hidden = W.loaded;
   document.querySelectorAll("#kMode button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === K.mode)));
+  $("kModeTip").innerHTML = (K.mode === "deny"
+    ? "<b>Запрещённые зоны.</b> Перечислите зоны, где вагонам находиться нельзя. Нарушение — вагон в зоне со статусом «запрет», в зоне с наступившей датой запрета или сверх квоты. Вне перечисленных зон ограничений нет."
+    : "<b>Разрешены только.</b> Перечислите зоны, где вагонам находиться можно. Нарушение — любой вагон вне этих зон; на карте всё, что вне разрешённого, затемнено. Внутри разрешённых зон можно задать запрет или квоту для части территории.")
+    + " Если зоны пересекаются, действует более точная: регион важнее дороги, дорога важнее страны — так задаются исключения.";
   $("kShow").checked = K.show;
   $("kClear").hidden = !K.items.length;
   const unit = it => it.keys.every(k => k[0] === "country") ? "на каждую страну" : it.keys.every(k => k[0] === "region") ? "на каждый регион" : "на каждую часть";
@@ -3119,7 +3148,6 @@ function renderKurs() {
 }
 function kRender() {
   if (map.getSource("kzones")) map.getSource("kzones").setData(kZoneFeatures());
-  if (map.getLayer("kz-line")) map.setPaintProperty("kz-line", "line-color", ["match", ["get", "lv"], 2, WG_DANGER, 1, K_GRAY, cssVar("--accent")]);
   renderKurs();
 }
 // изменение набора зон: пересчёт, карта, панель, легенда
@@ -3138,8 +3166,9 @@ function kLegend() {
   if (K.show && K.items.length) {
     const lvs = new Set(K.items.map(kItemLevel));
     if (R?.red && K.mode === "allow") lvs.add(2);
-    h += [[2, K.mode === "allow" ? "Запрет или вне разрешённых" : "Запрет"], [1, "Предстоящий запрет, квота"], [0, "Разрешено"]]
-      .filter(([l]) => lvs.has(l)).map(([l, t]) => `<div class="legend-item">${sw(l)}<span class="t">${t}</span></div>`).join("");
+    h += [[2, K.mode === "allow" ? "Запрет, нарушения вне разрешённых" : "Запрет"], [1, "Предстоящий запрет, квота"]]
+      .filter(([l]) => lvs.has(l)).map(([l, t]) => `<div class="legend-item">${sw(l)}<span class="t">${t}</span></div>`).join("")
+      + (K.mode === "allow" ? `<div class="legend-item"><span class="kz-sw veil"></span><span class="t">Вне разрешённых зон</span></div>` : "");
   }
   $("legendItems").innerHTML = h || '<p class="legend-note" style="display:block">Добавьте зоны на вкладке «Курсирование».</p>';
 }
