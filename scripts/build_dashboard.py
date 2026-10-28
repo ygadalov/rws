@@ -211,7 +211,7 @@ def main():
         # сверка со свежим OSM и Викиданными (scripts/verify_sources.py)
         "verify": json.loads(VERIFY.read_text(encoding="utf-8")) if VERIFY.exists() else None,
         # контуры регионов для запретных зон (ограничения курсирования, только в пробной сборке), см. scripts/build_region_shapes.py
-        "regionShapes": json.loads((VENDOR / "region-shapes.json").read_text(encoding="utf-8")) if PREVIEW else {},
+        "regionShapes": json.loads((VENDOR / "region-shapes.json").read_text(encoding="utf-8")),
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     # только в шаблоне, до встраивания библиотек

@@ -381,7 +381,7 @@ dd .muted { color: var(--muted); }
 .note.xbad { color: var(--danger); }
 
 /* ---------- вкладки и вагоны ---------- */
-.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 3px; background: var(--hover); border-radius: 11px; margin-bottom: 10px; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr 1.25fr; gap: 4px; padding: 3px; background: var(--hover); border-radius: 11px; margin-bottom: 10px; }
 .tab { height: 32px; border: 0; border-radius: 8px; background: none; font-weight: 550; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .tab[aria-selected="true"] { background: var(--panel-solid); color: var(--text); box-shadow: 0 1px 3px rgba(16,24,40,.12); }
 .tab .tab-badge { font-size: 11px; font-weight: 600; padding: 0 6px; border-radius: 999px; background: var(--data-strong); color: #fff; line-height: 17px; }
@@ -390,6 +390,28 @@ dd .muted { color: var(--muted); }
 .panel.tab-wagons .browse { display: none; }
 .panel.tab-wagons .wagons { display: block; }
 .panel.show-detail .wagons { display: none !important; }
+.kurs { display: none; }
+.panel.tab-kurs .browse { display: none; }
+.panel.tab-kurs .kurs { display: block; }
+.panel.show-detail .kurs { display: none !important; }
+/* курсирование: перечень зон */
+.kz-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.kz-list li { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; gap: 6px; }
+.kz-list .kz-h { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.kz-list .kz-h .t { flex: 1; min-width: 0; font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kz-list .kz-h .icon-btn { width: 24px; height: 24px; flex: none; }
+.kz-list .kz-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+.kz-list .kz-row .field { height: 30px; font-size: 12.5px; }
+.kz-list .kz-row.one { grid-template-columns: minmax(0, 1fr); }
+.kz-list .kz-s { font-size: 12px; color: var(--muted); }
+.kz-list .kz-s b { font-weight: 600; }
+.kz-list .kz-s b.red { color: var(--danger); } .kz-list .kz-s b.gray { color: var(--text); }
+.kz-sw { width: 12px; height: 12px; border-radius: 3px; flex: none; border: 1.5px solid var(--danger);
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--danger) 55%, transparent) 0 2px, transparent 2px 5px); }
+.kz-sw.lv1 { border-color: #64748B; background: repeating-linear-gradient(135deg, rgba(100,116,139,.55) 0 2px, transparent 2px 5px); }
+.kz-sw.lv0 { border: 1.5px dashed var(--accent); background: none; }
+.kpi.red b { color: var(--danger); }
+.kurs .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
 .drop { margin: 14px; padding: 26px 18px; border: 1.5px dashed var(--line-strong); border-radius: 14px; text-align: center; color: var(--muted); }
 .drop.over { border-color: var(--data); background: var(--data-soft); }
 .drop > svg { width: 34px; height: 34px; color: var(--data); margin-bottom: 8px; }
@@ -601,6 +623,7 @@ dd .muted { color: var(--muted); }
     <div class="tabs" role="tablist" aria-label="Режим">
       <button class="tab" role="tab" data-tab="stations" aria-selected="true">Станции</button>
       <button class="tab" role="tab" data-tab="wagons" aria-selected="false">Вагоны <span class="tab-badge mono" id="wgBadge"></span></button>
+      <button class="tab" role="tab" data-tab="kurs" aria-selected="false">Курсирование <span class="tab-badge mono" id="kBadge" style="background:var(--danger)"></span></button>
     </div>
     <div class="search" id="searchBox">
       <svg class="s-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -731,6 +754,40 @@ dd .muted { color: var(--muted); }
         </div>
       </div>
       <input type="file" id="wgInput" accept=".xlsx,.xls,.xlsm,.csv,.txt" hidden>
+    </div>
+
+    <div class="kurs" id="kursView">
+      <div class="section" id="kNoRep">
+        <div class="restr-card none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg><div>Отчёт по вагонам не загружен. Зоны можно настроить заранее — проверка начнётся, как только отчёт появится. <button class="link-btn" id="kLoad">Загрузить отчёт</button></div></div>
+      </div>
+      <div class="section">
+        <div class="section-title"><span>Режим<button class="info-tip" type="button" aria-label="Про режимы"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8.01"/></svg><span class="info-bubble" role="tooltip"><b>Запрещённые зоны</b> — нарушение, если вагон в зоне со статусом «запрет». <b>Разрешены только</b> — нарушение везде вне перечисленных зон. Если зоны пересекаются, действует более точная: регион важнее дороги, дорога важнее страны — так задаются исключения.</span></button></span></div>
+        <div class="seg" id="kMode"><button data-m="deny" aria-pressed="true">Запрещённые зоны</button><button data-m="allow" aria-pressed="false">Разрешены только</button></div>
+      </div>
+      <div class="section">
+        <div class="section-title"><span>Зоны</span> <button class="link-btn" id="kClear">Очистить</button></div>
+        <ul class="kz-list" id="kList"></ul>
+        <select class="field" id="kAdd" aria-label="Добавить зону"></select>
+        <p class="hint" id="kHint"></p>
+      </div>
+      <div class="section" id="kResSec">
+        <div class="kpis">
+          <div class="kpi red"><b class="mono" id="kkRed">—</b><span>в нарушении</span></div>
+          <div class="kpi"><b class="mono" id="kkGray">—</b><span>в серой зоне</span></div>
+          <div class="kpi"><b class="mono" id="kkSt">—</b><span>станций</span></div>
+        </div>
+        <p class="hint" id="kResHint"></p>
+        <ul class="restr-list" id="kStList"></ul>
+      </div>
+      <div class="section">
+        <label class="switch-row">Зоны на карте <span class="switch"><input type="checkbox" id="kShow" checked><span></span></span></label>
+        <button class="btn" id="kExport" style="width:100%"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Выгрузить нарушения (CSV)</button>
+        <div class="btn-row">
+          <button class="btn" id="kSave" title="Сохранить набор зон в файл — чтобы передать коллегам или загрузить позже">Сохранить набор</button>
+          <button class="btn" id="kOpen" title="Загрузить набор зон из файла">Загрузить набор</button>
+        </div>
+        <input type="file" id="kInput" accept=".json" hidden>
+      </div>
     </div>
 
     <div class="detail" id="detail" aria-live="polite"></div>
@@ -902,6 +959,10 @@ const OPS_CLASSES = [
   ["freight", "Только грузовые"], ["none", "Без операций (Х)"], ["out", "Нет в ТР №4"],
 ];
 const WG_COLOR = "#F97316";
+const K_GRAY = "#64748B";  // курсирование: серая зона (предстоящий запрет, квота не исчерпана)
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || "#2457D6";
+// вагоны отчёта на карте — на вкладках «Вагоны» и «Курсирование»
+const wgTab = () => state.tab === "wagons" || state.tab === "kurs";
 const HEAT_RAMP = ["#FED976", "#FEB24C", "#FD8D3C", "#F03B20", "#BD0026"];
 const RAIL_LINE = { light: "#5B6F8F", dark: "#8FA4C4" };
 const resolveColor = c => (c === "BRAND" ? brand(darkPref()) : c);
@@ -1314,7 +1375,7 @@ map.on("mouseleave", "st", () => {
 });
 map.on("click", e => {
   const pad = 6, p = e.point;
-  const wg = map.getLayer("wg-circle") && state.tab === "wagons" ? map.queryRenderedFeatures(p, { layers: ["wg-circle"] }) : [];
+  const wg = map.getLayer("wg-circle") && wgTab() ? map.queryRenderedFeatures(p, { layers: ["wg-circle"] }) : [];
   // кружок вагонов важнее значка предприятия: на обзоре значок стоит в центре станции, под кружком;
   // с масштаба 8 значок сдвинут в сторону — по нему попадаем только точным кликом
   const dp = wg.length ? (map.getZoom() >= 8 ? depotIconAt(p) : null) : depotAt(p);
@@ -1364,7 +1425,19 @@ function updateLabels() {
       labelMarkers.push(new maplibregl.Marker({ element: el }).setLngLat(pt).addTo(map));
     }
   }
-  if (map.getLayer("wg-circle") && state.tab === "wagons" && W.loaded && W.view === "circles") {
+  if (state.tab === "kurs" && K.show && K.res) {
+    for (const [reg, v] of [...K.res.byReg].sort((a, b) => b[1] - a[1])) {
+      const pt = labelPoint(reg); if (!pt) continue;
+      const p = map.project(pt), w = reg.length * 6.2 + 60;
+      if (p.x < 0 || p.y < 0 || p.x > innerWidth || p.y > innerHeight) continue;
+      const box = [p.x - w / 2, p.y - 9, p.x + w / 2, p.y + 9];
+      if (!free(box)) continue;
+      boxes.push(box);
+      const el = document.createElement("div"); el.className = "zone-label"; el.innerHTML = `${esc(reg)} <span>· ${fmtVal(v)} ваг.</span>`;
+      labelMarkers.push(new maplibregl.Marker({ element: el }).setLngLat(pt).addTo(map));
+    }
+  }
+  if (map.getLayer("wg-circle") && wgTab() && W.loaded && W.view === "circles") {
     const z = map.getZoom(), k = z <= 3 ? 0.75 : z >= 8 ? 1 : 0.75 + (z - 3) * 0.05;
     for (const f of map.queryRenderedFeatures({ layers: ["wg-circle"] }).sort((a, b) => b.properties.n - a.properties.n).slice(0, 400)) {
       if (f.properties.r * k < 10 || f.properties.dim) continue;
@@ -1610,7 +1683,7 @@ document.addEventListener("click", e => {
 });
 map.on("mousemove", "depots", e => {
   const f = e.features[0]; if (!f) return;
-  if (map.getZoom() < 8 && state.tab === "wagons" && map.getLayer("wg-circle") && map.queryRenderedFeatures(e.point, { layers: ["wg-circle"] }).length) return tip.remove();
+  if (map.getZoom() < 8 && wgTab() && map.getLayer("wg-circle") && map.queryRenderedFeatures(e.point, { layers: ["wg-circle"] }).length) return tip.remove();
   map.getCanvas().style.cursor = "pointer";
   const d = DEPOTS[f.properties.j];
   tip.setLngLat(f.geometry.coordinates).setHTML(`<div class="tip"><b>${esc(depLabel(d))}</b><br><span>${esc(d.kind)}${d.owner ? " · " + esc(d.owner) : ""}</span></div>`).addTo(map);
@@ -1637,7 +1710,7 @@ let depotMarkers = [];
 function updateDepotMarkers() {
   depotMarkers.forEach(m => m.remove()); depotMarkers = [];
   if (!showDepots || !map.getLayer("depots")) return;
-  const z = map.getZoom(), wg = state.tab === "wagons" && W.loaded && W.agg;
+  const z = map.getZoom(), wg = wgTab() && W.loaded && W.agg;
   if (z < 6 || (!wg && z < 10)) return;
   const boxes = [];
   for (const f of map.queryRenderedFeatures({ layers: ["depots"] }).slice(0, 300)) {
@@ -1800,6 +1873,7 @@ $("resetFilters").addEventListener("click", () => {
 
 /* ================= легенда ================= */
 function renderLegend() {
+  if (state.tab === "kurs") return kLegend();
   const wg = state.tab === "wagons" && W.loaded;
   $("colorBy").hidden = wg;
   $("legendTitle").textContent = wg ? (W.view === "heat" ? "Плотность: " + fnTitle().toLowerCase() : fnTitle() + " на станции") : "Раскраска точек";
@@ -2507,6 +2581,7 @@ function clearReport() {
   W = { loaded: false, view: W.view, group: W.group };
   $("wgLoaded").hidden = true; $("wgEmpty").hidden = false; $("wgBadge").textContent = "";
   if (map.getSource("wg")) map.getSource("wg").setData(emptyFC());
+  kEval(); kRender();
   applyModeStyling(); renderLegend(); updateLabels();
   if (state.selected) selectStation(state.selected, { fly: false, push: false });
 }
@@ -2561,14 +2636,14 @@ function aggregate() {
   W.agg = { rows, by, miss, byName, empty: emptyRows.length ? measure(emptyRows) : 0, total: measure(rows), vTotal, vByRegion, vByWhy, zones };
 }
 function wagonFeatures() {
-  if (!W.loaded || state.tab !== "wagons") return emptyFC();
-  const list = [...W.agg.by.values()].filter(o => o.s.has);
+  if (!W.loaded || !wgTab()) return emptyFC();
+  const list = [...W.agg.by.values()].filter(o => o.s.has), kurs = state.tab === "kurs";
   const max = list.reduce((m, o) => Math.max(m, o.n), 0) || 1, q = o => Math.max(0, o.n) / max;
   return { type: "FeatureCollection", features: list.map(o => ({ type: "Feature", id: o.s.i,
     geometry: { type: "Point", coordinates: [o.s.lon, o.s.lat] },
     // раскрыта группа в рейтинге (дорога, регион, страна) — остальные станции приглушены
-    properties: { i: o.s.i, n: o.n, t: fmtVal(o.n), v: o.v, w: q(o), r: 4 + 26 * Math.sqrt(q(o)),
-      dim: W.group !== "st" && W.openGroup != null && grpKey(o.s) !== W.openGroup ? 1 : 0 } })) };
+    properties: { i: o.s.i, n: o.n, t: fmtVal(o.n), w: q(o), r: 4 + 26 * Math.sqrt(q(o)), ...(kurs ? kProps(o.s.i) : { v: o.v, g: 0,
+      dim: W.group !== "st" && W.openGroup != null && grpKey(o.s) !== W.openGroup ? 1 : 0 }) } })) };
 }
 function addWagonLayers() {
   // запретные зоны — под линиями и точками; штриховка + пунктирный контур, регионы с нарушениями — плотнее
@@ -2579,6 +2654,16 @@ function addWagonLayers() {
   map.addLayer({ id: "zone-hot", type: "fill", source: "zones", filter: hot, paint: { "fill-color": WG_DANGER, "fill-opacity": 0.1 } }, "lines");
   map.addLayer({ id: "zone-line", type: "line", source: "zones", paint: { "line-color": WG_DANGER,
     "line-width": ["case", hot, 1.8, 1], "line-opacity": ["case", hot, 0.9, 0.55], "line-dasharray": [3, 2] } }, "lines");
+  // зоны курсирования: запрет — красная штриховка, предстоящий запрет и квота — серая, разрешённые — синий пунктир
+  map.addSource("kzones", { type: "geojson", data: kZoneFeatures() });
+  if (!map.hasImage("hatch-g")) map.addImage("hatch-g", hatchImage("rgba(100,116,139,.5)"), { pixelRatio: 2 });
+  const lv = ["get", "lv"], khot = ["==", ["get", "hot"], 1];
+  map.addLayer({ id: "kz-fill", type: "fill", source: "kzones", filter: [">", lv, 0], layout: { visibility: "none" },
+    paint: { "fill-pattern": ["case", ["==", lv, 2], "hatch", "hatch-g"], "fill-opacity": ["case", khot, 1, 0.6] } }, "lines");
+  map.addLayer({ id: "kz-hot", type: "fill", source: "kzones", filter: khot, layout: { visibility: "none" }, paint: { "fill-color": WG_DANGER, "fill-opacity": 0.1 } }, "lines");
+  map.addLayer({ id: "kz-line", type: "line", source: "kzones", layout: { visibility: "none" }, paint: {
+    "line-color": ["match", lv, 2, WG_DANGER, 1, K_GRAY, cssVar("--accent")],
+    "line-width": ["case", khot, 1.8, ["==", lv, 0], 0.8, 1.2], "line-opacity": ["case", khot, 0.9, ["==", lv, 0], 0.45, 0.7], "line-dasharray": [3, 2] } }, "lines");
   map.addSource("wg", { type: "geojson", data: W.loaded ? wagonFeatures() : emptyFC() });
   map.addLayer({ id: "wg-heat", type: "heatmap", source: "wg", layout: { visibility: W.view === "heat" ? "visible" : "none" }, paint: {
     "heatmap-weight": ["get", "w"],
@@ -2589,9 +2674,9 @@ function addWagonLayers() {
       0.35, HEAT_RAMP[1], 0.55, HEAT_RAMP[2], 0.75, HEAT_RAMP[3], 1, HEAT_RAMP[4]] } }, "sel-pt");
   map.addLayer({ id: "wg-circle", type: "circle", source: "wg",
     // станции с нарушениями — красные и поверх остальных
-    layout: { visibility: W.view === "circles" ? "visible" : "none", "circle-sort-key": ["+", ["-", 0, ["get", "n"]], ["case", [">", ["get", "v"], 0], 1e7, 0]] }, paint: {
+    layout: { visibility: W.view === "circles" ? "visible" : "none", "circle-sort-key": ["+", ["-", 0, ["get", "n"]], ["case", [">", ["get", "v"], 0], 1e7, [">", ["get", "g"], 0], 5e6, 0]] }, paint: {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, ["*", ["get", "r"], 0.75], 8, ["get", "r"]],
-      "circle-color": ["case", [">", ["get", "v"], 0], WG_DANGER, WG_COLOR], "circle-opacity": ["case", ["==", ["get", "dim"], 1], 0.12, [">", ["get", "v"], 0], 0.85, 0.6],
+      "circle-color": ["case", [">", ["get", "v"], 0], WG_DANGER, [">", ["get", "g"], 0], K_GRAY, WG_COLOR], "circle-opacity": ["case", ["==", ["get", "dim"], 1], 0.12, [">", ["get", "v"], 0], 0.85, [">", ["get", "g"], 0], 0.8, 0.6],
       "circle-stroke-opacity": ["case", ["==", ["get", "dim"], 1], 0.2, 1],
       "circle-stroke-color": ["case", ["boolean", ["feature-state", "hover"], false], "#C2410C", POINT_STROKE[darkPref() ? "dark" : "light"]],
       "circle-stroke-width": ["case", ["boolean", ["feature-state", "hover"], false], 2.5, [">", ["get", "v"], 0], 2, POINT_STROKE.width] } }, "sel-pt");
@@ -2602,18 +2687,21 @@ function addWagonLayers() {
 }
 function applyModeStyling() {
   if (!map.getLayer("st")) return;
-  const w = state.tab === "wagons" && W.loaded;
+  const w = wgTab() && W.loaded;
   map.setPaintProperty("st", "circle-opacity", w ? 0.25 : ["case", ["==", ["get", "e"], 1], 0.6, 0.92]);
   for (const id of ["wg-heat", "wg-circle"]) if (map.getLayer(id))
     map.setLayoutProperty(id, "visibility", w && (W.view === "heat") === (id === "wg-heat") ? "visible" : "none");
-  if (map.getLayer("wg-viol")) map.setLayoutProperty("wg-viol", "visibility", w && W.view === "heat" && W.restr ? "visible" : "none");
-  const z = w && W.restr && W.showZones ? "visible" : "none";
+  if (map.getLayer("wg-viol")) map.setLayoutProperty("wg-viol", "visibility", w && W.view === "heat" && (state.tab === "kurs" ? K.res?.red : W.restr) ? "visible" : "none");
+  const kz = state.tab === "kurs" && K.show && K.items.length ? "visible" : "none";
+  for (const id of ["kz-fill", "kz-hot", "kz-line"]) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", kz);
+  const z = state.tab === "wagons" && W.loaded && W.restr && W.showZones ? "visible" : "none";
   for (const id of ["zone-fill", "zone-hot", "zone-line"]) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", z);
 }
 function applyWagons(fit) {
-  aggregate();
+  aggregate(); kEval();
   setWgData();
   if (map.getSource("zones")) map.getSource("zones").setData(zoneFeatures());
+  kRender();
   applyModeStyling();
   renderWagonStats(); renderLegend(); updateLabels();
   if (state.selected && $("panel").classList.contains("show-detail")) selectStation(state.selected, { fly: false, push: false, keepScroll: true });
@@ -2676,9 +2764,9 @@ function zoneFeatures() {
   return { type: "FeatureCollection", features: [...W.agg.zones].filter(([reg]) => REGION_SHAPES[reg]).map(([reg, v]) => ({ type: "Feature",
     properties: { reg, v }, geometry: { type: "MultiPolygon", coordinates: REGION_SHAPES[reg] } })) };
 }
-function hatchImage() {
+function hatchImage(color = "rgba(217,45,75,.45)") {
   const n = 16, c = document.createElement("canvas"); c.width = c.height = n;
-  const x = c.getContext("2d"); x.strokeStyle = "rgba(217,45,75,.45)"; x.lineWidth = 2.2;
+  const x = c.getContext("2d"); x.strokeStyle = color; x.lineWidth = 2.2;
   for (const o of [-n, 0, n]) { x.beginPath(); x.moveTo(o, n); x.lineTo(o + n, 0); x.stroke(); }
   return x.getImageData(0, 0, n, n);
 }
@@ -2873,11 +2961,252 @@ $("repModal").addEventListener("click", e => { if (e.target === $("repModal")) $
 $("repXlsx").addEventListener("click", () => reportXlsx().catch(e => toast("Не удалось сформировать Excel: " + (e.message || e))));
 $("repPrint").addEventListener("click", () => reportPrint().catch(e => toast("Не удалось сформировать справку: " + (e.message || e))));
 
+/* ================= курсирование ================= */
+/* Режим 1: один набор зон на весь парк. Зона — страна, дорога, регион или набор из них; у зоны статус:
+   запрет, запрет с даты, квота (вагонов на каждую часть набора или на весь набор), разрешено.
+   Пересекающиеся зоны: действует самая точная (регион > дорога > страна) — так задаются исключения. */
+const K_SPEC = { country: 1, railway: 2, region: 3 };
+const K_ST = { deny: "Запрет", soon: "Запрет с даты", quota: "Квота", allow: "Разрешено" };
+const K_PRESETS = [
+  ["Прибалтика", ["Латвия", "Литва", "Эстония"].map(c => ["country", c])],
+  ["Средняя Азия", ["Казахстан", "Узбекистан", "Киргизия", "Таджикистан", "Туркменистан"].map(c => ["country", c])],
+  ["Закавказье", ["Грузия", "Азербайджан", "Армения"].map(c => ["country", c])],
+  ["Донецкая, Луганская, Запорожская, Херсонская обл. и Крым", ["Донецкая область", "Луганская область", "Запорожская область", "Херсонская область",
+    "Республика Крым (Россия)", "Республика Крым (Украина)"].map(r => ["region", r])],
+];
+const K_SPECIAL = [["Крым (коды ЕСР России и Украины)", [["region", "Республика Крым (Россия)"], ["region", "Республика Крым (Украина)"]]]];
+// регион → число станций по странам (зона-страна закрашивает регион, если в нём ≥25% её станций)
+const REG_CNT = (() => { const m = new Map(); for (const s of S) if (s.region) { let o = m.get(s.region); if (!o) m.set(s.region, o = { n: 0, c: new Map() }); o.n++; o.c.set(s.country, (o.c.get(s.country) || 0) + 1); } return m; })();
+const K_OPTS = (() => {
+  const cnt = k => { const m = new Map(); for (const s of S) if (s[k]) m.set(s[k], (m.get(s[k]) || 0) + 1); return m; };
+  const ru = (a, b) => a.localeCompare(b, "ru");
+  return [
+    ["Готовые наборы", K_PRESETS.map(([label, keys]) => ({ label, keys }))],
+    ["Страны", [...cnt("country")].sort((a, b) => b[1] - a[1]).map(([c]) => ({ label: c, keys: [["country", c]] }))],
+    ["Особые территории", K_SPECIAL.map(([label, keys]) => ({ label, keys }))],
+    ["Дороги", [...cnt("railway").keys()].sort(ru).map(r => ({ label: r + " ж. д.", keys: [["railway", r]] }))],
+    ["Регионы", [...cnt("region").keys()].sort(ru).map(r => ({ label: r, keys: [["region", r]] }))],
+  ];
+})();
+let K = (() => {
+  try { const o = JSON.parse(store.get("kurs") || "null"); if (o && Array.isArray(o.items)) return { mode: o.mode === "allow" ? "allow" : "deny", items: o.items, show: o.show !== false, res: null }; } catch {}
+  return { mode: "deny", items: [], show: true, res: null };
+})();
+const kStore = () => store.set("kurs", JSON.stringify({ mode: K.mode, items: K.items, show: K.show }));
+const kToday = () => new Date().toLocaleDateString("sv");  // ГГГГ-ММ-ДД по местному времени
+const kDate = d => d ? d.split("-").reverse().join(".") : "";
+const kHit = (s, [k, v]) => k === "country" ? s.country === v : k === "region" ? s.region === v : s.railway === v;
+function kMatch(s) {  // самые точные зоны станции: [{ z, key }]
+  let best = 0, out = [];
+  K.items.forEach((it, z) => { for (const key of it.keys) if (kHit(s, key)) {
+    const sp = K_SPEC[key[0]]; if (sp < best) continue;
+    if (sp > best) { best = sp; out = []; }
+    if (!out.some(m => m.z === z)) out.push({ z, key: key[1] });
+  } });
+  return out;
+}
+const kCount = (z, key) => K.res?.cnt[z]?.get(K.items[z].scope === "each" ? key : "*") || 0;
+// уровень: 2 — нарушение, 1 — серая зона, 0 — разрешено
+function kLevel(it, z, key, cnt) {
+  if (it.st === "allow") return 0;
+  if (it.st === "soon") return it.date && it.date <= kToday() ? 2 : 1;
+  if (it.st === "quota") return (cnt[z]?.get(it.scope === "each" ? key : "*") || 0) > (+it.n || 0) ? 2 : 1;
+  return 2;
+}
+function kWhy(it, l, key, cnt) {
+  const where = it.st === "quota" && it.scope === "each" && it.keys.length > 1 ? key : it.label;
+  if (it.st === "soon") return `${it.label}: запрет с ${kDate(it.date) || "—"}`;
+  if (it.st === "quota") { const c = cnt.get(it.scope === "each" ? key : "*") || 0; return `${where}: ${l === 2 ? "квота превышена" : "в пределах квоты"} (${fmtVal(c)} из ${fmt(+it.n || 0)})`; }
+  return it.label;
+}
+function kEval() {
+  K.res = null; if (!W.loaded || !W.agg) return;
+  const cnt = K.items.map(() => new Map()), list = [];
+  let total = 0;
+  for (const o of W.agg.by.values()) {
+    const w = o.rows.reduce((x, r) => x + weight(r), 0), m = kMatch(o.s);
+    total += w; list.push([o, w, m]);
+    for (const { z, key } of m) for (const k of new Set([key, "*"])) cnt[z].set(k, (cnt[z].get(k) || 0) + w);
+  }
+  const by = new Map(), items = K.items.map(() => ({ w: 0, st: 0, lv: [0, 0, 0] })), byReg = new Map();
+  let red = 0, gray = 0;
+  for (const [o, w, m] of list) {
+    let lv = -1, why = "";
+    for (const { z, key } of m) {
+      const l = kLevel(K.items[z], z, key, cnt);
+      items[z].w += w; items[z].st++; items[z].lv[l] += w;
+      if (l > lv) { lv = l; why = kWhy(K.items[z], l, key, cnt[z]); }
+    }
+    if (!m.length && K.mode === "allow" && K.items.length) { lv = 2; why = "вне разрешённых зон"; }
+    if (lv < 1) continue;
+    by.set(o.s.i, { lv, why, w });
+    if (lv === 2) { red += w; const r = o.s.region || "—"; byReg.set(r, (byReg.get(r) || 0) + w); } else gray += w;
+  }
+  K.res = { by, items, cnt, red, gray, total, byReg };
+}
+const kProps = i => { const x = K.res?.by.get(i); return { v: x?.lv === 2 ? x.w : 0, g: x?.lv === 1 ? x.w : 0, dim: 0 }; };
+function kZoneFeatures() {
+  if (!K.items.length) return emptyFC();
+  const cnt = K.res?.cnt || [], feats = [];
+  for (const reg in REGION_SHAPES) {
+    const info = REG_CNT.get(reg); if (!info) continue;
+    let best = 0, lv = -1;
+    K.items.forEach((it, z) => { for (const [k, v] of it.keys) {
+      if (!(k === "region" ? v === reg : k === "country" && (info.c.get(v) || 0) >= 0.25 * info.n)) continue;
+      const sp = K_SPEC[k]; if (sp < best) continue;
+      if (sp > best) { best = sp; lv = -1; }
+      lv = Math.max(lv, kLevel(it, z, v, cnt));
+    } });
+    const v = K.res?.byReg.get(reg) || 0;
+    if (lv < 0 && !v) continue;
+    feats.push({ type: "Feature", properties: { reg, lv: lv < 0 ? 2 : lv, hot: v ? 1 : 0 }, geometry: { type: "MultiPolygon", coordinates: REGION_SHAPES[reg] } });
+  }
+  return { type: "FeatureCollection", features: feats };
+}
+function kItemLevel(it, z) {
+  if (it.st === "quota") return K.res?.items[z]?.lv[2] ? 2 : 1;
+  return kLevel(it, z, "", []);
+}
+function kStats(it, z) {
+  const R = K.res;
+  if (!R) return it.keys.length > 1 ? esc(it.keys.map(k => k[1]).join(", ")) : "";
+  const x = R.items[z]; if (!x.st) return "вагонов нет";
+  let t = `${fmtVal(x.w)} ваг. · ${fmt(x.st)} ст.`;
+  if (x.lv[2] && it.st !== "allow") t += ` · <b class="red">нарушение ${fmtVal(x.lv[2])}</b>`;
+  else if (x.lv[1]) t += ` · <b class="gray">серая зона ${fmtVal(x.lv[1])}</b>`;
+  if (it.st === "quota") {
+    if (it.scope === "each" && it.keys.length > 1) {
+      const over = it.keys.map(k => [k[1], R.cnt[z].get(k[1]) || 0]).filter(([, c]) => c > (+it.n || 0));
+      t += over.length ? `<br>Превышено: ${over.map(([k, c]) => `${esc(k)} (${fmtVal(c)} из ${fmt(+it.n || 0)})`).join(", ")}` : `<br>Квота ${fmt(+it.n || 0)} ваг. на каждую часть не превышена`;
+    } else t += `<br>Занято ${fmtVal(R.cnt[z].get("*") || 0)} из ${fmt(+it.n || 0)} ваг.`;
+  }
+  return t;
+}
+function renderKurs() {
+  const R = K.res;
+  $("kNoRep").hidden = W.loaded;
+  document.querySelectorAll("#kMode button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === K.mode)));
+  $("kShow").checked = K.show;
+  $("kClear").hidden = !K.items.length;
+  const unit = it => it.keys.every(k => k[0] === "country") ? "на каждую страну" : it.keys.every(k => k[0] === "region") ? "на каждый регион" : "на каждую часть";
+  $("kList").innerHTML = K.items.map((it, z) => `<li data-z="${z}">
+    <div class="kz-h"><span class="kz-sw lv${kItemLevel(it, z)}"></span><span class="t" title="${esc(it.keys.map(k => k[1]).join(", "))}">${esc(it.label)}</span><button class="icon-btn" data-kdel aria-label="Убрать зону"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="kz-row${it.st === "soon" || it.st === "quota" ? "" : " one"}"><select class="field" data-k="st" aria-label="Статус зоны">${Object.entries(K_ST).map(([k, l]) => `<option value="${k}" ${k === it.st ? "selected" : ""}>${l}</option>`).join("")}</select>${
+      it.st === "soon" ? `<input class="field" type="date" data-k="date" value="${esc(it.date || "")}" aria-label="Дата начала запрета">`
+      : it.st === "quota" ? `<input class="field mono" type="number" min="0" step="1" data-k="n" value="${+it.n || 0}" aria-label="Квота, вагонов" title="Квота, вагонов">` : ""}</div>
+    ${it.st === "quota" && it.keys.length > 1 ? `<div class="kz-row one"><select class="field" data-k="scope" aria-label="Как считать квоту"><option value="group" ${it.scope !== "each" ? "selected" : ""}>Квота на весь набор</option><option value="each" ${it.scope === "each" ? "selected" : ""}>Квота ${unit(it)}</option></select></div>` : ""}
+    <div class="kz-s">${kStats(it, z)}</div></li>`).join("");
+  const used = new Set(K.items.map(it => it.label));
+  $("kAdd").innerHTML = `<option value="">+ Добавить зону…</option>` + K_OPTS.map(([g, opts], gi) => `<optgroup label="${g}">${opts.map((o, oi) =>
+    used.has(o.label) ? "" : `<option value="${gi}:${oi}">${esc(o.label)}</option>`).join("")}</optgroup>`).join("");
+  const hint = [];
+  if (!K.items.length) hint.push(K.mode === "deny" ? "Добавьте зоны, где вагонам находиться нельзя: страну, дорогу, регион или готовый набор."
+    : "Добавьте зоны, где вагонам находиться можно, — всё остальное считается нарушением.");
+  if (K.items.some(it => it.keys.some(k => k[0] === "railway"))) hint.push("Дороги на карте не закрашиваются (у них нет контура) — вагоны на них видны по цвету кружков.");
+  $("kHint").textContent = hint.join(" "); $("kHint").hidden = !hint.length;
+  $("kResSec").hidden = !R || !K.items.length;
+  $("kBadge").textContent = R && R.red ? fmtVal(R.red) : "";
+  $("kExport").hidden = !R || !R.by.size;
+  if (!R || !K.items.length) return;
+  $("kkRed").textContent = fmtVal(R.red); $("kkGray").textContent = fmtVal(R.gray);
+  $("kkSt").textContent = fmt(R.by.size);
+  const nf = [...W.filters.values()].filter(x => x.size).length + (W.num ? 1 : 0);
+  $("kResHint").textContent = `Проверено ${fmtVal(R.total)} ваг.` + (nf ? " — с учётом фильтров на вкладке «Вагоны»" : "")
+    + (R.by.size ? ". Станции с вагонами в нарушении и в серой зоне:" : ". Нарушений нет.");
+  $("kStList").innerHTML = [...R.by].sort((a, b) => b[1].lv - a[1].lv || b[1].w - a[1].w).slice(0, 100).map(([i, x]) =>
+    `<li data-i="${i}" title="${esc(x.why)}"><span class="kz-sw lv${x.lv}"></span><span class="t">${esc(S[i].name)} <span style="color:var(--muted)">· ${esc(x.why)}</span></span><span class="c mono">${fmtVal(x.w)} ваг.</span></li>`).join("")
+    + (R.by.size > 100 ? `<li style="cursor:default;color:var(--muted)">… ещё ${fmt(R.by.size - 100)} ст. — полный перечень в выгрузке</li>` : "");
+}
+function kRender() {
+  if (map.getSource("kzones")) map.getSource("kzones").setData(kZoneFeatures());
+  if (map.getLayer("kz-line")) map.setPaintProperty("kz-line", "line-color", ["match", ["get", "lv"], 2, WG_DANGER, 1, K_GRAY, cssVar("--accent")]);
+  renderKurs();
+}
+// изменение набора зон: пересчёт, карта, панель, легенда
+function kApply() {
+  kStore(); kEval();
+  if (W.loaded) setWgData();
+  kRender(); applyModeStyling(); renderLegend(); updateLabels();
+  if (state.selected && $("panel").classList.contains("show-detail")) selectStation(state.selected, { fly: false, push: false, keepScroll: true });
+}
+function kLegend() {
+  const R = K.res, sw = l => `<span class="kz-sw lv${l}"></span>`;
+  $("colorBy").hidden = true; $("legendTitle").textContent = "Курсирование";
+  let h = "";
+  if (R && K.items.length) h += [[WG_DANGER, "В нарушении", R.red], [K_GRAY, "В серой зоне", R.gray], [WG_COLOR, "Без ограничений", R.total - R.red - R.gray]]
+    .map(([c, l, n]) => `<div class="legend-item"><span class="dot" style="background:${c}"></span><span class="t">${l}</span><span class="c mono">${fmtVal(n)}</span></div>`).join("");
+  if (K.show && K.items.length) {
+    const lvs = new Set(K.items.map(kItemLevel));
+    if (R?.red && K.mode === "allow") lvs.add(2);
+    h += [[2, K.mode === "allow" ? "Запрет или вне разрешённых" : "Запрет"], [1, "Предстоящий запрет, квота"], [0, "Разрешено"]]
+      .filter(([l]) => lvs.has(l)).map(([l, t]) => `<div class="legend-item">${sw(l)}<span class="t">${t}</span></div>`).join("");
+  }
+  $("legendItems").innerHTML = h || '<p class="legend-note" style="display:block">Добавьте зоны на вкладке «Курсирование».</p>';
+}
+function kCard(s) {
+  const x = K.res?.by.get(s.i); if (!x) return "";
+  return `<div class="restr-card${x.lv === 1 ? " none" : ""}">${ICON_WARN}<div><b>Курсирование: ${x.lv === 2 ? "нарушение" : "серая зона"} · ${fmtVal(x.w)} ваг.</b><br>${esc(x.why)}</div></div>`;
+}
+function kExport() {
+  const col = activeCol(), out = [];
+  for (const [i, x] of K.res.by) { const o = W.agg.by.get(i); for (const r of o.rows)
+    out.push([...W.headers.map((_, j) => cellStr(r[j])), o.s.esr, o.s.name, o.s.railway, o.s.region, o.s.country, x.lv === 2 ? "нарушение" : "серая зона", x.why]); }
+  download(`kursirovanie_${kToday()}.csv`, new Blob([toCSV([...W.headers, "Код ЕСР (" + col.h + ")", "Станция", "Дорога", "Регион", "Страна", "Статус", "Причина"], out)], { type: "text/csv;charset=utf-8" }));
+}
+$("kMode").addEventListener("click", e => {
+  const b = e.target.closest("[data-m]"); if (!b || b.dataset.m === K.mode) return;
+  // смена режима: «запрет» и «разрешено» меняются местами, даты и квоты сохраняются
+  K.mode = b.dataset.m;
+  for (const it of K.items) if (it.st === "deny" || it.st === "allow") it.st = K.mode === "deny" ? "deny" : "allow";
+  kApply();
+});
+$("kAdd").addEventListener("change", e => {
+  const [g, o] = e.target.value.split(":").map(Number); e.target.value = ""; if (isNaN(o)) return;
+  const src = K_OPTS[g][1][o];
+  K.items.push({ label: src.label, keys: src.keys, st: K.mode === "deny" ? "deny" : "allow", date: "", n: 0, scope: "group" });
+  kApply();
+});
+$("kList").addEventListener("change", e => {
+  const f = e.target.closest("[data-k]"), z = +e.target.closest("[data-z]")?.dataset.z; if (!f || isNaN(z)) return;
+  const it = K.items[z], k = f.dataset.k;
+  it[k] = k === "n" ? Math.max(0, Math.round(+f.value || 0)) : f.value;
+  // квота по умолчанию — сколько вагонов в зоне сейчас (без нарушения); дата — через месяц
+  if (k === "st" && it.st === "quota" && !it.n) it.n = Math.round(K.res?.items[z]?.w || 0);
+  if (k === "st" && it.st === "soon" && !it.date) { const d = new Date(); d.setMonth(d.getMonth() + 1); it.date = d.toLocaleDateString("sv"); }
+  kApply();
+});
+$("kList").addEventListener("click", e => { const b = e.target.closest("[data-kdel]"); if (!b) return; K.items.splice(+b.closest("[data-z]").dataset.z, 1); kApply(); });
+$("kClear").addEventListener("click", () => { K.items = []; kApply(); });
+$("kShow").addEventListener("change", e => { K.show = e.target.checked; kStore(); applyModeStyling(); renderLegend(); updateLabels(); });
+$("kStList").addEventListener("click", e => { const li = e.target.closest("[data-i]"); if (li) selectStation(S[+li.dataset.i]); });
+$("kExport").addEventListener("click", kExport);
+$("kLoad").addEventListener("click", () => $("wgInput").click());
+$("kSave").addEventListener("click", () => download(`zony_kursirovaniya_${kToday()}.json`, new Blob([JSON.stringify(
+  { app: "RWS1520", kind: "kurs-zones", v: 1, saved: kToday(), mode: K.mode, items: K.items }, null, 1)], { type: "application/json" })));
+$("kOpen").addEventListener("click", () => $("kInput").click());
+$("kInput").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try {
+    const o = JSON.parse(await f.text());
+    if (o.kind !== "kurs-zones" || !Array.isArray(o.items)) throw new Error("это не набор зон курсирования");
+    const known = { country: new Set(S.map(s => s.country)), region: new Set(S.map(s => s.region)), railway: new Set(S.map(s => s.railway)) };
+    let lost = 0;
+    K.items = o.items.map(it => ({ label: String(it.label || ""), st: K_ST[it.st] ? it.st : "deny", date: String(it.date || ""), n: +it.n || 0, scope: it.scope === "each" ? "each" : "group",
+      keys: (it.keys || []).filter(k => { const ok = known[k?.[0]]?.has(k[1]); if (!ok) lost++; return ok; }) })).filter(it => it.label && it.keys.length);
+    K.mode = o.mode === "allow" ? "allow" : "deny";
+    kApply();
+    toast(`Набор зон загружен: ${K.items.length}` + (lost ? ` · не найдено в справочнике: ${lost}` : ""));
+  } catch (err) { toast("Не удалось загрузить набор зон: " + (err.message || err)); }
+});
+renderKurs();
+
 function switchTab(t) {
   state.tab = t;
   $("panel").classList.toggle("tab-wagons", t === "wagons");
+  $("panel").classList.toggle("tab-kurs", t === "kurs");
   document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
   if (W.loaded) setWgData();
+  kRender();
   if ($("panel").classList.contains("show-detail")) closeDetail();
   applyModeStyling(); renderLegend(); updateLabels();
 }
@@ -3081,6 +3410,7 @@ function wagonSection(s) {
     <div class="section-title">Вагоны из отчёта</div>
     <div class="chips" style="margin-bottom:8px">${per.map(([c, n]) =>
       `<button class="chip wg" data-wcol="${c.idx}" aria-pressed="${c.idx === W.active}" title="${esc(c.h)}">${esc(c.label)}<span class="cnt mono">${fmtVal(n)}</span></button>`).join("")}</div>
+    ${kCard(s)}
     ${o && o.v ? `<div class="restr-card">${ICON_WARN}<div><b>${fmt(o.v)} ваг. — нарушение ограничений</b><br>${esc([...new Set(vio.filter(Boolean))].join("; "))}</div></div>` : ""}
     ${o ? `<p class="hint" style="margin:0 0 6px">По столбцу «${esc(col.h)}»: <b>${fmtVal(o.n)}</b> ${esc(fnUnit())}${brIdx !== undefined ? " · " + esc(W.headers[brIdx]) + ":" : ""}</p>${bars}
     <div class="wtable-wrap"><table class="wtable"><thead><tr>${W.wagonIdx >= 0 ? "<th>№ вагона</th>" : ""}${lc.map(i => `<th>${esc(W.headers[i])}</th>`).join("")}${W.restr ? "<th>Ограничение</th>" : ""}</tr></thead>
