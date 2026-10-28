@@ -307,9 +307,10 @@ body.panel-hidden .tb-btn.panel-show { display: inline-flex; }
 .menu-item small { display: block; color: var(--faint); font-size: 11.5px; }
 .menu-sep { height: 1px; background: var(--line); margin: 6px 0; }
 
-.legend { position: fixed; z-index: 4; right: 12px; bottom: 34px; width: 248px; background: var(--panel); backdrop-filter: blur(14px); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 10px 12px; font-size: 12.5px; }
+/* ширина легенды = ширине панели инструментов над ней (левые края на одной линии), задаётся из JS */
+.legend { position: fixed; z-index: 4; right: 12px; bottom: 34px; width: var(--legend-w, 248px); background: var(--panel); backdrop-filter: blur(14px); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 10px 12px; font-size: 12.5px; }
 .legend select { width: 100%; height: 32px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--panel-solid); padding: 0 8px; margin-bottom: 8px; }
-.legend-items { max-height: 200px; overflow-y: auto; display: grid; gap: 3px; }
+.legend-items { max-height: min(360px, 45vh); overflow-y: auto; overflow-x: hidden; display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px; }
 .legend-item { display: flex; align-items: center; gap: 8px; }
 .legend-item .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .legend-item .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1833,6 +1834,12 @@ $("colorBy").addEventListener("change", e => {
   renderLegend();
 });
 $("legendToggle").addEventListener("click", () => $("legend").classList.toggle("min"));
+// легенда шириной с панель инструментов (Слои, Выгрузить, тема): длинные названия магистралей и числа помещаются
+function fitLegendWidth() {
+  const w = innerWidth > 720 ? Math.round($("legend").parentElement && document.querySelector(".toolbar").getBoundingClientRect().width) : 0;
+  document.documentElement.style.setProperty("--legend-w", Math.max(248, Math.min(w || 248, 360)) + "px");
+}
+fitLegendWidth(); addEventListener("resize", fitLegendWidth);
 
 /* ================= поиск ================= */
 let activeIdx = -1, lastResults = [];
