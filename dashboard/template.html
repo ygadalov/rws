@@ -700,6 +700,7 @@ dd .muted { color: var(--muted); }
             <button class="icon-btn" id="wgClear" title="Убрать отчёт" aria-label="Убрать отчёт"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
           </div>
         </div>
+        <i id="wgStHome" hidden></i>
         <div class="section coll" id="wgStSec">
           <button class="sec-head" type="button" aria-expanded="true"><span class="section-title">Станция на карте</span><span class="sec-sum" id="wgStSum"></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
           <div class="sec-body">
@@ -737,6 +738,7 @@ dd .muted { color: var(--muted); }
             <div class="seg" id="wgRestrMode"><button data-m="deny" aria-pressed="true" title="Перечень — запрещённые регионы">Запрещённые</button><button data-m="allow" aria-pressed="false" title="Перечень — разрешённые регионы (полигон)">Разрешённые</button></div>
           </div>
         </div>
+        <i id="wgFiltHome" hidden></i>
         <div class="section coll" id="wgFiltSec">
           <div class="sec-row"><button class="sec-head" type="button" aria-expanded="true"><span class="section-title">Фильтры по отчёту</span><span class="sec-sum" id="wgFiltSum"></span></button><button class="link-btn" id="wgReset">Сбросить</button><button class="sec-toggle" type="button" aria-expanded="true" aria-label="Свернуть или развернуть раздел"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button></div>
           <div class="sec-body">
@@ -772,6 +774,8 @@ dd .muted { color: var(--muted); }
       <div class="section" id="kNoRep">
         <div class="restr-card none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg><div>Отчёт по вагонам не загружен. Зоны можно настроить заранее — проверка начнётся, как только отчёт появится. <button class="link-btn" id="kLoad">Загрузить отчёт</button></div></div>
       </div>
+      <!-- «Станция на карте» и «Фильтры по отчёту» — те же разделы, что на вкладке «Вагоны» (переносятся при смене вкладки) -->
+      <div id="kWgBox" hidden></div>
       <div class="section">
         <div class="section-title"><span>Режим<button class="info-tip" type="button" aria-label="Про режимы"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8.01"/></svg><span class="info-bubble" role="tooltip" id="kModeTip"></span></button></span></div>
         <div class="seg" id="kMode"><button data-m="deny" aria-pressed="true">Запрещённые зоны</button><button data-m="allow" aria-pressed="false">Разрешены только</button></div>
@@ -3131,7 +3135,7 @@ function kStats(it, z) {
 }
 function renderKurs() {
   const R = K.res;
-  $("kNoRep").hidden = W.loaded;
+  $("kNoRep").hidden = W.loaded; $("kWgBox").hidden = !W.loaded;
   document.querySelectorAll("#kMode button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === K.mode)));
   $("kModeTip").innerHTML = (K.mode === "deny"
     ? "<b>Запрещённые зоны.</b> Перечислите зоны, где вагонам находиться нельзя. Нарушение — вагон в зоне со статусом «запрет», в зоне с наступившей датой запрета или сверх квоты. Вне перечисленных зон ограничений нет. Квота — зона разрешена, но не больше заданного числа вагонов."
@@ -3160,7 +3164,7 @@ function renderKurs() {
   $("kkRed").textContent = fmtVal(R.red); $("kkGray").textContent = fmtVal(R.gray);
   $("kkSt").textContent = fmt(R.by.size);
   const nf = [...W.filters.values()].filter(x => x.size).length + (W.num ? 1 : 0);
-  $("kResHint").textContent = `Проверено ${fmtVal(R.total)} ваг.` + (nf ? " с учётом фильтров на вкладке «Вагоны»" : "")
+  $("kResHint").textContent = `Проверено ${fmtVal(R.total)} ваг.` + (nf ? " с учётом фильтров по отчёту." : "")
     + (R.by.size ? " Станции с вагонами в нарушении и в серой зоне:" : " Нарушений нет.");
   $("kStList").innerHTML = [...R.by].sort((a, b) => b[1].lv - a[1].lv || b[1].w - a[1].w).slice(0, 100).map(([i, x]) =>
     `<li data-i="${i}" title="${esc(x.why)}"><span class="kz-sw lv${x.lv}"></span><span class="t">${esc(S[i].name)} <span style="color:var(--muted)">· ${esc(x.why)}</span></span><span class="c mono">${fmtVal(x.w)} ваг.</span></li>`).join("")
@@ -3271,6 +3275,9 @@ function switchTab(t) {
   $("panel").classList.toggle("tab-wagons", t === "wagons");
   $("panel").classList.toggle("tab-kurs", t === "kurs");
   document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
+  // общие с «Вагонами» разделы — на открытую вкладку
+  if (t === "kurs") $("kWgBox").append($("wgStSec"), $("wgFiltSec"));
+  else { $("wgStHome").after($("wgStSec")); $("wgFiltHome").after($("wgFiltSec")); }
   if (W.loaded) setWgData();
   kRender();
   if ($("panel").classList.contains("show-detail")) closeDetail();
