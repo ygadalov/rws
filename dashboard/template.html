@@ -1149,9 +1149,11 @@ function offlineStyle() {
         paint: { "line-color": dk ? "#5a6475" : "#a39e93", "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.7, 8, 1.5], "line-dasharray": [3, 2] } },
     ] };
 }
+// подмена — только на этот раз: выбор пользователя в памяти не трогаем, при следующем открытии подложка пробуется снова
+// (раньше офлайн-схема запоминалась и оставалась навсегда после одного сбоя сети)
 function fallbackToOffline(label) {
-  basemap = "offline"; store.set("basemap", "offline"); renderLayersPop();
-  toast(`Подложка «${label}» недоступна в этой сети — включена офлайн-схема`);
+  basemap = "offline"; renderLayersPop();
+  toast(`Подложка «${label}» недоступна в этой сети — пока включена офлайн-схема`);
   return offlineStyle();
 }
 async function loadStyle(key) {
@@ -1159,7 +1161,7 @@ async function loadStyle(key) {
   if (key === "offline") return offlineStyle();
   if (key === "custom") {
     const st = customStyle(); if (st) return st;
-    basemap = "offline"; store.set("basemap", "offline"); renderLayersPop();
+    basemap = "offline"; renderLayersPop();
     if (PM.saved) toast("Своя карта не подключена — «Слои» → «Подключить снова»");
     return offlineStyle();
   }
