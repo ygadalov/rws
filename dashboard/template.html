@@ -406,16 +406,17 @@ dd .muted { color: var(--muted); }
 .kz-list .kz-s { font-size: 12px; color: var(--muted); }
 .kz-list .kz-s b { font-weight: 600; }
 .kz-list .kz-s b.red { color: var(--danger); } .kz-list .kz-s b.gray { color: var(--text); }
-.kz-sw { width: 12px; height: 12px; border-radius: 3px; flex: none; border: 1.5px solid var(--danger);
-  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--danger) 55%, transparent) 0 2px, transparent 2px 5px); }
-.kz-sw.lv1 { border-color: #64748B; background: repeating-linear-gradient(135deg, rgba(100,116,139,.55) 0 2px, transparent 2px 5px); }
+/* значок зоны — как на карте: контур и полупрозрачная кайма внутри */
+.kz-sw { width: 12px; height: 12px; border-radius: 3px; flex: none; border: 1.5px solid var(--danger); background: none;
+  box-shadow: inset 0 0 0 2.5px color-mix(in srgb, var(--danger) 30%, transparent); }
+.kz-sw.lv1 { border: 1.5px dashed #64748B; box-shadow: inset 0 0 0 2.5px rgba(100,116,139,.3); }
 .kz-list li.noeff { opacity: .55; } .kz-list li.noeff:hover, .kz-list li.noeff:focus-within { opacity: 1; }
 .kz-list li.kz-def { background: var(--hover); border-style: dashed; }
 .kz-list li.kz-def .info-tip { margin-left: auto; }
 .kz-list .kz-note { font-size: 12px; color: var(--muted); background: var(--hover); border-radius: 7px; padding: 5px 8px; line-height: 1.35; }
-.kz-sw.lvq { border-color: #CA8A04; background: rgba(234,179,8,.3); }
-.kz-sw.lv0 { border: 1.5px dashed var(--accent); background: none; }
-.kz-sw.veil { border: 0; background: rgba(31,41,55,.35); }
+.kz-sw.lvq { border-color: #CA8A04; background: rgba(234,179,8,.25); box-shadow: inset 0 0 0 2.5px rgba(234,179,8,.35); }
+.kz-sw.lv0 { border: 1.5px dashed var(--accent); box-shadow: none; }
+.kz-sw.veil { border: 0; background: rgba(31,41,55,.35); box-shadow: none; }
 .kpi.red b { color: var(--danger); }
 .kz-add .btn { width: 100%; }
 .kz-pop { border: 1px solid var(--line-strong); border-radius: 10px; padding: 6px; margin-top: 6px; background: var(--panel-solid); }
@@ -984,6 +985,8 @@ const OPS_CLASSES = [
 ];
 const WG_COLOR = "#F97316";
 const K_GRAY = "#64748B";   // курсирование: серая зона — запрет с даты, ещё не наступившей
+const K_ST_MUTED = "#94A3B8";  // курсирование: станции справочника — приглушённо, без цветов раскраски
+let stOrig = {};  // исходная раскраска слоя станций (возвращается при уходе с вкладки «Курсирование»)
 const K_QUOTA = "#EAB308";  // курсирование: квота — разрешено, но ограниченным числом вагонов (BRANDBOOK: --warn)
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || "#2457D6";
 // вагоны отчёта на карте — на вкладках «Вагоны» и «Курсирование»
@@ -2683,19 +2686,19 @@ function addWagonLayers() {
   // запрет — красные, предстоящий запрет и квота — серые со штриховкой; регионы с нарушениями слегка залиты;
   // «остальная территория — запрещено»: всё вне разрешённых зон затемнено
   map.addSource("kzones", { type: "geojson", data: kZoneFeatures() });
-  if (!map.hasImage("hatch-g")) map.addImage("hatch-g", hatchImage("rgba(100,116,139,.5)"), { pixelRatio: 2 });
   const lv = ["get", "lv"], khot = ["==", ["get", "hot"], 1], kq = ["==", ["get", "q"], 1];
   const kcol = ["case", kq, K_QUOTA, ["match", lv, 2, WG_DANGER, K_GRAY]], zone = ["all", ["==", ["get", "veil"], 0], ["any", [">", lv, 0], kq]];
   map.addLayer({ id: "kz-veil", type: "fill", source: "kzones", filter: ["==", ["get", "veil"], 1], layout: { visibility: "none" },
     paint: { "fill-color": "#1F2937", "fill-opacity": 0.3 } }, "lines");
-  map.addLayer({ id: "kz-fill", type: "fill", source: "kzones", filter: ["all", zone, ["==", lv, 1]], layout: { visibility: "none" },
-    paint: { "fill-pattern": "hatch-g", "fill-opacity": 0.5 } }, "lines");
   map.addLayer({ id: "kz-quota", type: "fill", source: "kzones", filter: ["all", zone, kq], layout: { visibility: "none" }, paint: { "fill-color": K_QUOTA, "fill-opacity": 0.14 } }, "lines");
   map.addLayer({ id: "kz-hot", type: "fill", source: "kzones", filter: ["all", zone, khot], layout: { visibility: "none" }, paint: { "fill-color": WG_DANGER, "fill-opacity": 0.12 } }, "lines");
   map.addLayer({ id: "kz-band", type: "line", source: "kzones", filter: zone, layout: { visibility: "none" },
     paint: { "line-color": kcol, "line-width": 7, "line-offset": 3.5, "line-opacity": 0.28 } }, "lines");
-  map.addLayer({ id: "kz-line", type: "line", source: "kzones", filter: zone, layout: { visibility: "none" },
+  map.addLayer({ id: "kz-line", type: "line", source: "kzones", filter: ["all", zone, ["!=", lv, 1]], layout: { visibility: "none" },
     paint: { "line-color": kcol, "line-width": 1.5, "line-opacity": 0.9 } }, "lines");
+  // запрет с даты (ещё не действует) — пунктирный контур
+  map.addLayer({ id: "kz-line-soon", type: "line", source: "kzones", filter: ["all", zone, ["==", lv, 1]], layout: { visibility: "none" },
+    paint: { "line-color": K_GRAY, "line-width": 1.5, "line-opacity": 0.9, "line-dasharray": [3, 2] } }, "lines");
   map.addSource("wg", { type: "geojson", data: W.loaded ? wagonFeatures() : emptyFC() });
   map.addLayer({ id: "wg-heat", type: "heatmap", source: "wg", layout: { visibility: W.view === "heat" ? "visible" : "none" }, paint: {
     "heatmap-weight": ["get", "w"],
@@ -2720,7 +2723,12 @@ function addWagonLayers() {
 function applyModeStyling() {
   if (!map.getLayer("st")) return;
   const w = wgTab() && W.loaded;
-  map.setPaintProperty("st", "circle-opacity", w ? 0.25 : ["case", ["==", ["get", "e"], 1], 0.6, 0.92]);
+  const kt0 = state.tab === "kurs", st = map.getLayer("st");
+  if (stOrig.layer !== st) stOrig = { layer: st, c: map.getPaintProperty("st", "circle-color"), s: map.getPaintProperty("st", "circle-stroke-color") };
+  map.setPaintProperty("st", "circle-color", kt0 ? ["case", ["==", ["get", "h"], 1], "rgba(0,0,0,0)", K_ST_MUTED] : stOrig.c);
+  map.setPaintProperty("st", "circle-stroke-color", kt0 ? ["case", ["==", ["get", "h"], 1], K_ST_MUTED, POINT_STROKE[darkPref() ? "dark" : "light"]] : stOrig.s);
+  if (map.getLayer("depots")) map.setPaintProperty("depots", "icon-opacity", kt0 ? 0.55 : 1);  // значки предприятий — тоже фоном
+  map.setPaintProperty("st", "circle-opacity", kt0 ? (w ? 0.3 : 0.45) : w ? 0.25 : ["case", ["==", ["get", "e"], 1], 0.6, 0.92]);
   for (const id of ["wg-heat", "wg-circle"]) if (map.getLayer(id))
     map.setLayoutProperty(id, "visibility", w && (W.view === "heat") === (id === "wg-heat") ? "visible" : "none");
   if (map.getLayer("wg-viol")) map.setLayoutProperty("wg-viol", "visibility", w && W.view === "heat" && (state.tab === "kurs" ? K.res?.red : W.restr) ? "visible" : "none");
@@ -3004,7 +3012,7 @@ $("repPrint").addEventListener("click", () => reportPrint().catch(e => toast("Н
    запрет, запрет с даты, квота (вагонов на каждую часть набора или на весь набор), разрешено.
    Пересекающиеся зоны: действует самая точная (регион > дорога > страна) — так задаются исключения. */
 const K_SPEC = { country: 1, railway: 2, region: 3 };
-const K_LAYERS = ["kz-veil", "kz-fill", "kz-quota", "kz-hot", "kz-band", "kz-line"];
+const K_LAYERS = ["kz-veil", "kz-quota", "kz-hot", "kz-band", "kz-line", "kz-line-soon"];
 const K_ST = { deny: "Запрет", soon: "Запрет с даты", quota: "Квота", allow: "Разрешено" };
 const K_PRESETS = [
   ["Прибалтика", ["Латвия", "Литва", "Эстония"].map(c => ["country", c])],
