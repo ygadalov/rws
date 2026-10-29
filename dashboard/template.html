@@ -779,7 +779,7 @@ dd .muted { color: var(--muted); }
       <div id="kWgBox" hidden></div>
       <div class="section">
         <div class="section-title"><span>Вне перечисленных зон<button class="info-tip" type="button" aria-label="Как работают зоны"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8.01"/></svg><span class="info-bubble" role="tooltip" id="kModeTip"></span></button></span></div>
-        <div class="seg" id="kMode" aria-label="Вне перечисленных зон"><button data-m="deny" aria-pressed="true">Можно</button><button data-m="allow" aria-pressed="false">Нельзя</button></div>
+        <div class="seg" id="kMode" aria-label="Вне перечисленных зон"><button data-m="deny" aria-pressed="true">Разрешено</button><button data-m="allow" aria-pressed="false">Запрещено</button></div>
       </div>
       <div class="section">
         <div class="section-title"><span>Зоны</span> <button class="link-btn" id="kClear">Очистить</button></div>
@@ -2682,7 +2682,7 @@ function addWagonLayers() {
     "line-width": ["case", hot, 1.8, 1], "line-opacity": ["case", hot, 0.9, 0.55], "line-dasharray": [3, 2] } }, "lines");
   // зоны курсирования (как на авиакартах запретные зоны): кайма по внутренней стороне границы и контур;
   // запрет — красные, предстоящий запрет и квота — серые со штриховкой; регионы с нарушениями слегка залиты;
-  // «вне перечисленных зон нельзя» — всё вне разрешённых зон затемнено
+  // «вне перечисленных зон запрещено» — всё вне разрешённых зон затемнено
   map.addSource("kzones", { type: "geojson", data: kZoneFeatures() });
   if (!map.hasImage("hatch-g")) map.addImage("hatch-g", hatchImage("rgba(100,116,139,.5)"), { pixelRatio: 2 });
   const lv = ["get", "lv"], khot = ["==", ["get", "hot"], 1], kq = ["==", ["get", "q"], 1];
@@ -3099,7 +3099,7 @@ function kZoneFeatures() {
       if (it.st === "quota" && l === 0) quota = 1;
     } });
     const v = K.res?.byReg.get(reg) || 0;
-    // «вне перечисленных зон нельзя»: затемняем регионы пространства 1520 вне разрешённых зон
+    // «вне перечисленных зон запрещено»: затемняем регионы пространства 1520 вне разрешённых зон
     // (не «весь мир минус разрешённое» — полигон с сотнями дыр слишком тяжёл для отрисовки)
     if (K.mode === "allow" && (lv < 0 || lv === 2)) feats.push({ type: "Feature", properties: { reg, lv: 2, hot: 0, veil: 1 }, geometry: { type: "MultiPolygon", coordinates: kRings(reg) } });
     if (lv < 0 && !v) continue;
@@ -3139,7 +3139,7 @@ function kNoEffect(z) {
     if (other !== mine) return "";
     seen++; via = best ? `по зоне «${from}»` : "вне перечисленных зон";
   }
-  return seen ? `Статус ничего не меняет: здесь и так ${mine ? "нельзя" : "можно"} (${esc(via)}).` : "";
+  return seen ? `Статус ничего не меняет: здесь и так ${mine ? "запрещено" : "разрешено"} (${esc(via)}).` : "";
 }
 const kUnit = it => it.keys.every(k => k[0] === "country") ? "на каждую страну" : it.keys.every(k => k[0] === "region") ? "на каждый регион" : "на каждую часть";
 function kStats(it, z) {
@@ -3162,8 +3162,8 @@ function renderKurs() {
   $("kNoRep").hidden = W.loaded; $("kWgBox").hidden = !W.loaded;
   document.querySelectorAll("#kMode button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === K.mode)));
   $("kModeTip").innerHTML = (K.mode === "deny"
-    ? "<b>Вне перечисленных зон можно.</b> Перечислите, где вагонам находиться нельзя (статус «Запрет»), с даты или сверх квоты."
-    : "<b>Вне перечисленных зон нельзя.</b> Перечислите, где вагонам находиться можно (статус «Разрешено» или «Квота»); всё остальное — нарушение, на карте затемнено.")
+    ? "<b>Вне перечисленных зон разрешено.</b> Перечислите зоны, где курсирование запрещено (статус «Запрет» или «Запрет с даты») или ограничено квотой."
+    : "<b>Вне перечисленных зон запрещено.</b> Перечислите зоны, где курсирование разрешено (статус «Разрешено» или «Квота»); нахождение вагона вне них — нарушение, на карте эта территория затемнена.")
     + " У каждой зоны свой статус, переключатель на них не влияет. Если зоны пересекаются, действует более точная: регион важнее дороги, дорога важнее страны — так задаются исключения (Россия «Разрешено», Московская обл. «Запрет»).";
   $("kShow").checked = K.show; $("kLabels").checked = K.labels; $("kLabels").disabled = !K.show;
   $("kClear").hidden = !K.items.length;
@@ -3177,8 +3177,8 @@ function renderKurs() {
   const used = new Set(K.items.map(it => it.label));
   if (!$("kAddPop").hidden) kAddList();
   const hint = [];
-  if (!K.items.length) hint.push(K.mode === "deny" ? "Добавьте зоны, где вагонам находиться нельзя: страну, дорогу, регион или готовый набор."
-    : "Добавьте зоны, где вагонам находиться можно, — всё остальное считается нарушением.");
+  if (!K.items.length) hint.push(K.mode === "deny" ? "Добавьте зоны, где курсирование запрещено: страну, дорогу, регион или готовый набор."
+    : "Добавьте зоны, где курсирование разрешено, — нахождение вне них считается нарушением.");
   if (K.items.some(it => it.keys.some(k => k[0] === "railway"))) hint.push("Дороги на карте не закрашиваются (у них нет контура) — вагоны на них видны по цвету кружков.");
   $("kHint").textContent = hint.join(" "); $("kHint").hidden = !hint.length;
   $("kResSec").hidden = !R || !K.items.length;
