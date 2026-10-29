@@ -47,6 +47,7 @@
 
   /* Статусы */
   --danger:        #D92D4B;
+  --warn:          #A16207;
   --ok:            #16804F;
 
   /* Карта */
@@ -87,6 +88,7 @@
     --muted:         #A0A8B3;
     --faint:         #77808B;
     --danger:        #F05A75;
+    --warn:          #FACC15;
     --ok:            #3BB77E;
     --label-halo:    #0F1115;
     --point-stroke:  #0F1115;
@@ -116,6 +118,7 @@
   --muted:         #A0A8B3;
   --faint:         #77808B;
   --danger:        #F05A75;
+  --warn:          #FACC15;
   --ok:            #3BB77E;
   --label-halo:    #0F1115;
   --point-stroke:  #0F1115;
@@ -559,6 +562,9 @@ dd .muted { color: var(--muted); }
 .zone-label { pointer-events: none; font-size: 11.5px; font-weight: 600; color: var(--text); white-space: nowrap; padding: 3px 9px; border-radius: 999px;
   background: var(--panel-solid); border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); box-shadow: 0 1px 4px rgba(16,24,40,.25); }
 .zone-label span { font-weight: 700; color: var(--danger); }
+/* курсирование: запрет с даты — серая рамка; квота — жёлтая (превышена — красная, как нарушение) */
+.zone-label.z-soon { border-color: color-mix(in srgb, #64748B 55%, transparent); } .zone-label.z-soon span { color: var(--muted); }
+.zone-label.z-quota { border-color: color-mix(in srgb, #CA8A04 60%, transparent); } .zone-label.z-quota span { color: var(--warn); }
 .wg-count { pointer-events: none; font-size: 11.5px; font-weight: 700; color: #fff; text-shadow: 0 0 3px rgba(124,45,18,.9); }
 .drop-overlay { position: fixed; inset: 0; z-index: 90; display: none; place-items: center; background: var(--data-soft); border: 3px dashed var(--data); font-size: 18px; font-weight: 600; color: var(--data-text); pointer-events: none; }
 .drop-overlay.show { display: grid; }
@@ -804,7 +810,7 @@ dd .muted { color: var(--muted); }
       </div>
       <div class="section">
         <label class="switch-row">Зоны на карте <span class="switch"><input type="checkbox" id="kShow" checked><span></span></span></label>
-        <label class="switch-row">Подписи регионов с нарушениями <span class="switch"><input type="checkbox" id="kLabels" checked><span></span></span></label>
+        <label class="switch-row">Подписи зон <span class="switch"><input type="checkbox" id="kLabels" checked><span></span></span></label>
         <label class="switch-row" id="kDepRow">Предприятия ремонта вагонов <span class="switch"><input type="checkbox" id="depotsQuick3"><span></span></span></label>
         <button class="btn" id="kExport" style="width:100%"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Выгрузить нарушения (CSV)</button>
         <div class="btn-row">
@@ -1458,14 +1464,14 @@ function updateLabels() {
     }
   }
   if (state.tab === "kurs" && K.show && K.labels && K.res) {
-    for (const [reg, v] of [...K.res.byReg].sort((a, b) => b[1] - a[1])) {
-      const pt = labelPoint(reg); if (!pt) continue;
-      const p = map.project(pt), w = reg.length * 6.2 + 60;
+    for (const L of K.res.labels) {
+      const pt = L.reg && labelPoint(L.reg); if (!pt) continue;
+      const p = map.project(pt), w = (L.name.length + L.val.length) * 6.2 + 34;
       if (p.x < 0 || p.y < 0 || p.x > innerWidth || p.y > innerHeight) continue;
       const box = [p.x - w / 2, p.y - 9, p.x + w / 2, p.y + 9];
       if (!free(box)) continue;
       boxes.push(box);
-      const el = document.createElement("div"); el.className = "zone-label"; el.innerHTML = `${esc(reg)} <span>· ${fmtVal(v)} ваг.</span>`;
+      const el = document.createElement("div"); el.className = "zone-label z-" + L.kind; el.innerHTML = `${esc(L.name)} <span>· ${esc(L.val)}</span>`;
       labelMarkers.push(new maplibregl.Marker({ element: el }).setLngLat(pt).addTo(map));
     }
   }
@@ -3080,15 +3086,17 @@ function kEval() {
     total += w; list.push([o, w, m]);
     for (const { z, key } of m) for (const k of new Set([key, "*"])) cnt[z].set(k, (cnt[z].get(k) || 0) + w);
   }
-  const by = new Map(), items = K.items.map(() => ({ w: 0, st: 0, lv: [0, 0, 0] })), byReg = new Map();
+  const by = new Map(), items = K.items.map(() => ({ w: 0, st: 0, lv: [0, 0, 0] })), byReg = new Map(), labReg = new Map();
+  const zReg = K.items.map(() => new Map());  // зона → часть набора → регион → вагонов (место подписи)
   let red = 0, gray = 0, quota = 0; const rest = { w: 0, st: 0 }, ok = new Map();
   for (const [o, w, m] of list) {
-    let lv = -1, why = "";
+    let lv = -1, why = "", win = -1;
     if (!m.length) { rest.w += w; rest.st++; }
     for (const { z, key } of m) {
       const l = kLevel(K.items[z], z, key, cnt);
       items[z].w += w; items[z].st++; items[z].lv[l] += w;
-      if (l > lv) { lv = l; why = kWhy(K.items[z], l, key, cnt[z]); }
+      if (l > lv) { lv = l; why = kWhy(K.items[z], l, key, cnt[z]); win = z; }
+      const r = o.s.region || "—", g = zReg[z].get(key) || new Map(); g.set(r, (g.get(r) || 0) + w); zReg[z].set(key, g);
     }
     if (!m.length && K.mode === "allow" && K.items.length) { lv = 2; why = "остальная территория — запрещено"; }
     if (lv < 1) {  // без нарушения: в пределах квоты (выигравшая зона — квота) или разрешено
@@ -3097,9 +3105,28 @@ function kEval() {
       continue;
     }
     by.set(o.s.i, { lv, why, w });
-    if (lv === 2) { red += w; const r = o.s.region || "—"; byReg.set(r, (byReg.get(r) || 0) + w); } else gray += w;
+    if (lv === 2) {
+      red += w; const r = o.s.region || "—"; byReg.set(r, (byReg.get(r) || 0) + w);
+      // превышение квоты подписывается у самой квоты («612 из 500»), не регионом
+      if (K.items[win]?.st !== "quota") labReg.set(r, (labReg.get(r) || 0) + w);
+    } else gray += w;
   }
-  K.res = { by, items, cnt, red, gray, quota, total, byReg, rest, ok };
+  // подписи зон: регионы с нарушениями; запрет с даты — срок и сколько вагонов вывести; квота — занято из лимита
+  const short = t => t.replace(/ область/g, " обл.").replace(/ край/g, " кр.");
+  const topReg = (z, key) => { const t = new Map(); for (const [k, g] of zReg[z]) if (key == null || k === key) for (const [r, v] of g) t.set(r, (t.get(r) || 0) + v);
+    return [...t].sort((a, b) => b[1] - a[1])[0]?.[0]; };
+  const yr = new Date().getFullYear(), dshort = d => { const [y, mo, da] = d.split("-"); return `${da}.${mo}` + (+y !== yr ? "." + y.slice(2) : ""); };
+  const labels = [...labReg].map(([r, v]) => ({ reg: r, kind: "red", name: short(r), val: `${fmtVal(v)} ваг.`, w: v, pr: 3 }));
+  K.items.forEach((it, z) => {
+    if (it.st === "soon" && it.date && kLevel(it, z, "", cnt) === 1 && items[z].lv[1])
+      labels.push({ reg: topReg(z), kind: "soon", name: short(it.label), val: `с ${dshort(it.date)} · ${fmtVal(items[z].lv[1])} ваг.`, w: items[z].lv[1], pr: 2 });
+    if (it.st === "quota") for (const key of it.scope === "each" && it.keys.length > 1 ? it.keys.map(k => k[1]) : [null]) {
+      const c = cnt[z].get(key ?? "*") || 0, n = +it.n || 0; if (!c) continue;
+      labels.push({ reg: topReg(z, key), kind: c > n ? "over" : "quota", name: short(key ?? it.label), val: `${fmtVal(c)} из ${fmt(n)}`, w: c, pr: c > n ? 3 : 1 });
+    }
+  });
+  labels.sort((a, b) => b.pr - a.pr || b.w - a.w);
+  K.res = { by, items, cnt, red, gray, quota, total, byReg, rest, ok, labels };
 }
 // v — нарушение, g — запрет с даты (серая зона), kc — 2 в пределах квоты, 1 разрешено (без зон — 0: оранжевый цвет данных)
 const kProps = i => { const x = K.res?.by.get(i); return { v: x?.lv === 2 ? x.w : 0, g: x?.lv === 1 ? x.w : 0, kc: K.items.length ? K.res?.ok.get(i) || 0 : 0, dim: 0 }; };
@@ -3238,6 +3265,8 @@ function kLegend() {
     .map(([c, l, n]) => `<div class="legend-item"><span class="dot" style="background:${c}"></span><span class="t">${l}</span><span class="c mono">${fmtVal(n)}</span></div>`).join("");
   if (K.show && K.items.length) {
     const lvs = new Set(K.items.map(kItemLevel));
+    // квота «на каждую часть» может быть превышена в одной стране и не исчерпана в другой — смотрим зоны на карте
+    if (map.getSource("kzones")?._data?.features?.some(f => f.properties.q)) lvs.add("q");
     if (R?.red && K.mode === "allow") lvs.add(2);
     h += [[2, K.mode === "allow" ? "Запрет, нарушения вне разрешённых" : "Запрет, квота превышена"], [1, "Запрет с даты (ещё не действует)"], ["q", "Квота (в пределах)"]]
       .filter(([l]) => lvs.has(l)).map(([l, t]) => `<div class="legend-item">${sw(l)}<span class="t">${t}</span></div>`).join("")
