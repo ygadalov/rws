@@ -516,7 +516,7 @@ COLUMNS = [
     "lat", "lon", "has_coords", "coord_quality", "coord_quality_label", "coord_source",
     "coord_precision_km", "coord_note", "geo_country_mismatch", "section_conflict",
     "transit_checks", "transit_violations", "transit_conflict",
-    "ext_check", "ext_osm_km", "ext_wd_km", "osm_fresh", "wikidata",
+    "ext_check", "ext_osm_km", "ext_wd_km", "osm_fresh", "wikidata", "km_check", "km_check_dev",
     "osm_id", "osm_type", "osm_url", "osm_status", "osm_railway", "osm_name", "osm_alt_name", "osm_old_name",
     "osm_official_name", "osm_name_sim", "nbr_dist_km", "osm_candidates", "osm_places",
     "osm_spread_km", "choice_margin",
@@ -554,6 +554,7 @@ RU_HEADERS = {
     "section_conflict": "Противоречит расстояниям участка ТР №4",
     "transit_checks": "Проверок по транзитным пунктам", "transit_violations": "Нарушений тарифных расстояний",
     "transit_conflict": "Противоречит тарифным расстояниям",
+    "km_check": "Сверка с километражом участка", "km_check_dev": "От положения по участку, км",
     "ext_check": "Сверка с OSM и Викиданными", "ext_osm_km": "До точки свежего OSM, км",
     "ext_wd_km": "До точки Викиданных, км", "osm_fresh": "Объект свежего OSM", "wikidata": "Викиданные (QID)",
     "osm_id": "OSM id", "osm_type": "OSM тип объекта", "osm_url": "Ссылка OSM", "osm_status": "OSM статус привязки",
@@ -714,8 +715,11 @@ def main():
     # оставшиеся без координат — по названию среди всех станций и платформ OSM
     st, name_cnt = nm.fill_by_osm_name(st, sec)
     st, n_manual = apply_manual(st)
+    # сверка с километражом участков — последней: ловит точки OSM не на своём месте и оценки от неверных опор
+    st, km_cnt = t26.km_check(st, sec)
     verification = vs.verification_stats(before, st, ext_meta)
     verification["by_name"] = {k: v for k, v in name_cnt.items() if k in ("B", "C")}
+    verification["km_check"] = km_cnt
     st["has_coords_tmp"] = st["coord_quality"] != ""
     st = xs.check_transit(st)
     st = xs.merge_express(st)

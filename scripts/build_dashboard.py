@@ -45,11 +45,13 @@ FIELDS = [
     ("is_new_tr4", "newcode", "b"), ("tr4_date", "tr4date", "d"), ("tr4_excluded", "excluded", "b"),
     ("tr4_sections", "sections", "s"), ("tr4_port", "port", "s"), ("section_conflict", "sconf", "b"),
     ("ext_check", "xcheck", "d"), ("ext_osm_km", "xosm", "n"), ("ext_wd_km", "xwd", "n"), ("wikidata", "wd", "s"),
+    ("km_check", "kmchk", "d"), ("km_check_dev", "kmdev", "n"),
 ]
 SECTIONS = ROOT / "data" / "output" / "tr4_sections.csv"
 CITIES = ROOT / "data" / "output" / "tr4_cities.csv"
 VERIFY = ROOT / "data" / "output" / "verification.json"
 DEPOTS = ROOT / "data" / "output" / "depots.csv"
+MAINLINES = ROOT / "data" / "output" / "mainlines.csv"
 GRAPH = ROOT / "data" / "output" / "rail_graph.json"
 SNAP_MAX_KM = 50  # станция вне тарифных участков привязывается к ближайшему узлу графа не дальше этого
 
@@ -93,6 +95,21 @@ def depots(st):
     d = d[d.esr.isin(row)]
     t = lambda v: 1 if v == "True" else 0
     return [[r.code, r.name, r.short_name, r.kind, r.owner, row[r.esr], t(r.tr), t(r.dr), t(r.kr), r.extra] for r in d.itertuples()]
+
+
+def mainlines(st):
+    """Главные магистрали (scripts/build_mainlines.py): линии [код, название, описание, группа] и станции
+    [индекс станции, индекс линии, км от начала части, индекс названия начала]."""
+    if not MAINLINES.exists():
+        return None
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from build_mainlines import MAINLINES as LINES
+    m = pd.read_csv(MAINLINES, sep=";", dtype={"esr": str}, keep_default_na=False)
+    row = {e: i for i, e in enumerate(st.esr)}
+    codes = [c for c, *_ in LINES]
+    origins = sorted(set(m["from"]))
+    return {"lines": [[c, n, d, grp] for c, n, d, _, _, grp in LINES], "origins": origins,
+            "st": [[row[r.esr], codes.index(r.line), int(r.km), origins.index(r._4)] for r in m.itertuples() if r.esr in row]}
 
 
 def section_lines():
@@ -188,11 +205,13 @@ def main():
         "glyphs": glyphs(),
         # предприятия ремонта вагонов и граф сети для расстояний «по железной дороге»
         "depots": depots(st),
+        # главные магистрали: широтные (Транссиб, БАМ, Южсиб, …) и меридиональные (Москва — Санкт-Петербург, Печорская, …)
+        "mainlines": mainlines(st),
         "graph": graph, "gnode": gnode, "gsnap": gsnap,
         # сверка со свежим OSM и Викиданными (scripts/verify_sources.py)
         "verify": json.loads(VERIFY.read_text(encoding="utf-8")) if VERIFY.exists() else None,
         # контуры регионов для запретных зон (ограничения курсирования, только в пробной сборке), см. scripts/build_region_shapes.py
-        "regionShapes": json.loads((VENDOR / "region-shapes.json").read_text(encoding="utf-8")) if PREVIEW else {},
+        "regionShapes": json.loads((VENDOR / "region-shapes.json").read_text(encoding="utf-8")),
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     # только в шаблоне, до встраивания библиотек

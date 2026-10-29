@@ -32,7 +32,9 @@ NODE_KM = 30
 BORDER_KM = 12            # пограничный переход: ближайшие станции двух несвязанных сетей не дальше этого
 BORDER_FACTOR = 1.3       # путь через переход длиннее прямой
 # переходы без грузового транзитного движения — не связываем (Абхазия)
-NO_LINK = [{"веселое", "леселидзе"}]
+NO_LINK = [{"веселое", "леселидзе"},
+           {"заволжск", "кинешма"},  # друг напротив друга через Волгу, железнодорожного моста нет
+           {"шарур", "ерасх"}]  # Нахичевань — Армения: движение закрыто с начала 1990-х
 NO_LINK_COUNTRIES = [{"Россия", "Грузия"}]  # единственный путь — через Абхазию, грузового транзита нет
 # известные переходы, где у станции одной из сторон нет координат: (код, код, км)
 KNOWN_LINKS = [("563606", "558701", 10.0)]  # Гардабани (эксп.) — Беюк-Кясик (эксп.): Грузия — Азербайджан
@@ -113,10 +115,70 @@ def build():
     gb["lat"], gb["lon"] = gb.lat.astype(float), gb.lon.astype(float)
     rel = gb[gb.coord_quality.isin(["A", "B"]) | (gb.coord_quality.eq("D") & ~gb.coord_source.str.startswith("одноимённая"))]
     n_border = link_countries(adj, rel, link) + link_borders(adj, rel, link)
+    link_export_ends(adj, gb, link, sec)
+    link_dead_ends(adj, rel, link)
     return adj, st, sec, n_dup, n_name, n_border
 
 
 CROSSING_SPACING_KM = 30
+DEAD_END_KM = 10
+DEAD_END_DETOUR_KM = 300  # вокзалы-тупики Москвы и Петербурга по сети связаны (через узел) — их не трогаем
+
+
+def link_dead_ends(adj, g, link):
+    """Оборванный стык участков: участок кончается пунктом дорожного стыка, а соседний начинается другим кодом
+    («Тайга — Ост. пункт 3704 км» и «Мариинск — Ачинск I», 7 км) или участок кончается, а дальше линия идёт другим
+    участком через станцию рядом («Кама — Солдатка»: Солдатка в 8 км от Дружинино, связующего участка нет).
+    Тупик (одна связь) с надёжной точкой связываем с ближайшим узлом ближе DEAD_END_KM, до которого по графу нет пути
+    в пределах DEAD_END_DETOUR_KM, ребром «прямая × 1,2». Городские вокзалы-тупики по сети связаны — их не трогаем."""
+    pos = {e: (a, b) for e, a, b in zip(g.esr, g.lat, g.lon) if e in adj}
+    nm, cn = dict(zip(g.esr, g.name.map(base_name))), dict(zip(g.esr, g.country))
+    no_link_names = set().union(*NO_LINK)  # тупики известных «несвязей» (Абхазия, через Волгу) не связываем ни с чем
+    blocked = lambda a, b: nm.get(a) in no_link_names or {cn.get(a), cn.get(b)} in NO_LINK_COUNTRIES
+    keys = list(pos)
+    xy = np.array([pos[e] for e in keys])
+    ends = [e for e in adj if len(adj[e]) == 1 and e in pos]
+    found, seen = [], set()
+    for a in ends:
+        h = haversine(pos[a][0], pos[a][1], xy[:, 0], xy[:, 1])
+        near = [(float(h[k]), keys[k]) for k in np.nonzero(h <= DEAD_END_KM)[0] if keys[k] != a]
+        if not near:
+            continue
+        reach = dijkstra(adj, a, limit=DEAD_END_DETOUR_KM)
+        cand = sorted(x for x in near if x[1] not in reach and not blocked(a, x[1]))
+        if cand and frozenset((a, cand[0][1])) not in seen:
+            seen.add(frozenset((a, cand[0][1])))
+            found.append((a, cand[0][1], cand[0][0]))
+    for a, b, h in found:
+        link(a, b, round(h * 1.2, 1))
+    print(f"оборванные стыки участков связаны: {len(found)}" + "".join(f"; {a}—{b} ({h:.1f} км)" for a, b, h in found))
+
+
+EXPORT_END_KM = 40
+
+
+def link_export_ends(adj, g, link, sec):
+    """Пограничный переход, где оба участка кончаются экспортным пунктом: «Смоленск — Красное (эксп.)» и
+    «Орша — Осиновка (эксп.)». У кодов «(эксп.)» координаты своих станций, а станции стоят по разные стороны границы
+    в 20–30 км друг от друга — под правило «ближе BORDER_KM» не попадают. Тупики-«(эксп.)» разных стран ближе
+    EXPORT_END_KM, взаимно ближайшие и без пути между ними по графу, связываем ребром «по прямой»."""
+    km = sec.assign(km=sec.km.astype(float))
+    ends = set(km.loc[km.groupby("sec").km.idxmax(), "esr"]) | set(km.loc[km.groupby("sec").km.idxmin(), "esr"])
+    ex = g[g.name.str.contains(EXPORT_RE) & g.esr.isin(ends) & g.esr.isin(adj.keys())]
+    pts = list(zip(ex.esr, ex.lat, ex.lon, ex.country, ex.name.map(base_name)))
+    no_link = set().union(*NO_LINK)
+
+    def nearest(p):
+        c = [(float(haversine(p[1], p[2], q[1], q[2])), q) for q in pts if q[3] != p[3] and q[3] and p[3]
+             and {p[3], q[3]} not in NO_LINK_COUNTRIES and p[4] not in no_link and q[4] not in no_link]
+        return min(c, key=lambda x: x[0]) if c else (1e9, None)
+    found = []
+    for p in pts:
+        h, q = nearest(p)
+        if q and h <= EXPORT_END_KM and p[0] < q[0] and nearest(q)[1][0] == p[0] and q[0] not in dijkstra(adj, p[0], limit=3 * h + 50):
+            link(p[0], q[0], round(h, 1))
+            found.append(f"{p[0]}—{q[0]} ({h:.0f} км)")
+    print(f"пограничные переходы между экспортными пунктами: {len(found)}" + ("; " + ", ".join(found) if found else ""))
 
 
 def link_countries(adj, g, link):
@@ -233,6 +295,7 @@ def split_reused_codes(sec, st):
     j = sec.join(pos, on="esr")
     j["km"] = j.km.astype(float)
     groups = {k: d for k, d in j.groupby("sec")}
+    bounds = j.groupby("sec").km.agg(["min", "max"])
     imp = None
     cen = sec.join(allpos, on="esr").groupby("sec")[["lat", "lon"]].median()
     sec = sec.copy()
@@ -242,6 +305,10 @@ def split_reused_codes(sec, st):
         if not e:
             continue
         rows = sec.index[sec.esr == e]
+        # пункт стыка участков (дорожный стык, «Пут. пост 2742 км»): в каждом участке — на его краю; не делим —
+        # соседний код другого участка мог быть повторно использован, и положение «по соседям» обманчиво
+        if all(j.at[i, "km"] in (bounds.at[sec.at[i, "sec"], "min"], bounds.at[sec.at[i, "sec"], "max"]) for i in rows):
+            continue
         if e in pos.index:
             ref = pos.loc[e].values
             for i in rows:

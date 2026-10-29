@@ -28,6 +28,7 @@
 
   /* Статусы */
   --danger:        #D92D4B;
+  --warn:          #A16207;
   --ok:            #16804F;
 
   /* Карта */
@@ -68,6 +69,8 @@
     --muted:         #A0A8B3;
     --faint:         #77808B;
     --danger:        #F05A75;
+  --warn:          #FACC15;
+    --warn:          #FACC15;
     --ok:            #3BB77E;
     --label-halo:    #0F1115;
     --point-stroke:  #0F1115;
@@ -97,6 +100,7 @@
   --muted:         #A0A8B3;
   --faint:         #77808B;
   --danger:        #F05A75;
+  --warn:          #FACC15;
   --ok:            #3BB77E;
   --label-halo:    #0F1115;
   --point-stroke:  #0F1115;

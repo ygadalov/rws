@@ -55,5 +55,11 @@
  "by_name": {
   "B": 64,
   "C": 44
+ },
+ "km_check": {
+  "checked": 17931,
+  "agree": 17770,
+  "moved": 85,
+  "demoted": 76
  }
 }

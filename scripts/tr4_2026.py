@@ -447,6 +447,74 @@ def check_sections(st, sec):
     return st, n
 
 
+KM_CHECK_GAP_KM = 80        # опоры не дальше друг от друга по участку
+KM_CHECK_EXCLUDE = re.compile(r"эксп|перев|паром|налив|перегруз", re.I)  # условные коды, не пункты линии
+
+
+def km_check(st, sec):
+    """Сверка с километражом участков ТР №4 — последний шаг, после всех источников координат.
+
+    Положение каждой станции участка по километражу между ближайшими опорами класса A (опоры должны сами согласовываться
+    с километражом: прямая между ними не длиннее пути). Отклонение больше допуска max(5 км, 30% расстояния между опорами —
+    запас на изгиб линии) — точка не на своём месте:
+      - оценки и связанные коды (C, D, E) переставляются на положение по участку (класс E);
+      - точки OSM и Викиданных (A, B): дальше max(20 км, расстояние между опорами) — переставляются (привязан
+        одноимённый объект в другом месте), ближе — класс понижается до C, точка остаётся.
+    Ручные уточнения (stations_manual.csv) не трогаем."""
+    idx = pd.Series(st.index, index=st.esr)
+    fixed = st.coord_source.str.startswith("вручную")
+    best = {}
+    for d in _sec_frames(st, sec):
+        d = d[~d.name.fillna("").str.contains(KM_CHECK_EXCLUDE) & d.lat.notna()].sort_values("km")
+        km, la, lo, q, es = d.km.astype(float).values, d.lat.values, d.lon.values, d.coord_quality.values, d.esr.values
+        anc = [k for k in range(len(d)) if q[k] == "A"]
+        for j in range(len(d)):
+            left = [k for k in anc if km[k] <= km[j] and es[k] != es[j]]
+            right = [k for k in anc if km[k] >= km[j] and es[k] != es[j]]
+            if not left or not right:
+                continue
+            a, b = left[-1], right[0]
+            gap = km[b] - km[a]
+            if not 0 < gap <= KM_CHECK_GAP_KM or haversine(la[a], lo[a], la[b], lo[b]) > gap * 1.05 + 2:
+                continue
+            t = (km[j] - km[a]) / gap
+            plat, plon = la[a] + t * (la[b] - la[a]), lo[a] + t * (lo[b] - lo[a])
+            dev = float(haversine(la[j], lo[j], plat, plon))
+            e = es[j]
+            if e not in best or gap < best[e][2]:
+                best[e] = (plat, plon, gap, dev, d.sec.iat[j], es[a], es[b])
+    st["km_check"], st["km_check_dev"] = "", np.nan
+    cnt = {"checked": 0, "agree": 0, "moved": 0, "demoted": 0}
+    for e, (plat, plon, gap, dev, s_id, a, b) in best.items():
+        if e not in idx:
+            continue
+        i = idx[e]
+        if fixed[i]:
+            continue
+        cnt["checked"] += 1
+        st.at[i, "km_check_dev"] = round(dev, 1)
+        tol = max(5.0, 0.3 * gap)
+        if dev <= tol:
+            cnt["agree"] += 1
+            st.at[i, "km_check"] = "согласуется"
+            continue
+        q, src = st.at[i, "coord_quality"], st.at[i, "coord_source"]
+        where = f"в {dev:.0f} км от положения по километражу участка {s_id} ТР №4 (между {a} и {b}, {gap:.0f} км)"
+        if q in ("A", "B") and dev <= max(20.0, gap):
+            st.at[i, "coord_quality"] = "C"
+            st.at[i, "coord_note"] = (st.at[i, "coord_note"] + "; " if st.at[i, "coord_note"] else "") + f"точка {where}"
+            st.at[i, "km_check"] = "понижено до C"
+            cnt["demoted"] += 1
+            continue
+        st.loc[i, ["lat", "lon"]] = round(plat, 6), round(plon, 6)
+        st.at[i, "coord_note"] = f"прежняя точка ({q}, {src}) была {where}; поставлена по участку"
+        st.at[i, "coord_quality"], st.at[i, "coord_source"] = "E", f"участок {s_id} (сверка)"
+        st.at[i, "coord_precision_km"] = precision_for_gap(gap)
+        st.at[i, "km_check"] = f"переставлено ({q})"
+        cnt["moved"] += 1
+    return st, cnt
+
+
 def validate_sections(st, sec):
     errs, precs = [], []
     a_only = st.assign(coord_quality=st.coord_quality.where(st.coord_quality == "A", ""))
