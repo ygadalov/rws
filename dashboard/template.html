@@ -987,7 +987,9 @@ const WG_COLOR = "#F97316";
 const K_GRAY = "#64748B";   // курсирование: серая зона — запрет с даты, ещё не наступившей
 const K_ST_MUTED = "#94A3B8";  // курсирование: станции справочника — приглушённо, без цветов раскраски
 let stOrig = {};  // исходная раскраска слоя станций (возвращается при уходе с вкладки «Курсирование»)
-const K_QUOTA = "#EAB308";  // курсирование: квота — разрешено, но ограниченным числом вагонов (BRANDBOOK: --warn)
+const K_QUOTA = "#EAB308";
+const K_QUOTA_PT = "#CA8A04";  // вагоны в пределах квоты — темнее заливки зоны, чтобы не сливались с ней
+const K_OK = { light: "#16804F", dark: "#3BB77E" };  // вагоны в разрешённой зоне — статусный --ok брендбука  // курсирование: квота — разрешено, но ограниченным числом вагонов (BRANDBOOK: --warn)
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || "#2457D6";
 // вагоны отчёта на карте — на вкладках «Вагоны» и «Курсирование»
 const wgTab = () => state.tab === "wagons" || state.tab === "kurs";
@@ -2672,7 +2674,7 @@ function wagonFeatures() {
   return { type: "FeatureCollection", features: list.map(o => ({ type: "Feature", id: o.s.i,
     geometry: { type: "Point", coordinates: [o.s.lon, o.s.lat] },
     // раскрыта группа в рейтинге (дорога, регион, страна) — остальные станции приглушены
-    properties: { i: o.s.i, n: o.n, t: fmtVal(o.n), w: q(o), r: 4 + 26 * Math.sqrt(q(o)), ...(kurs ? kProps(o.s.i) : { v: o.v, g: 0,
+    properties: { i: o.s.i, n: o.n, t: fmtVal(o.n), w: q(o), r: 4 + 26 * Math.sqrt(q(o)), ...(kurs ? kProps(o.s.i) : { v: o.v, g: 0, kc: 0,
       dim: W.group !== "st" && W.openGroup != null && grpKey(o.s) !== W.openGroup ? 1 : 0 }) } })) };
 }
 function addWagonLayers() {
@@ -2711,9 +2713,10 @@ function addWagonLayers() {
       0.35, HEAT_RAMP[1], 0.55, HEAT_RAMP[2], 0.75, HEAT_RAMP[3], 1, HEAT_RAMP[4]] } }, "sel-pt");
   map.addLayer({ id: "wg-circle", type: "circle", source: "wg",
     // станции с нарушениями — красные и поверх остальных
-    layout: { visibility: W.view === "circles" ? "visible" : "none", "circle-sort-key": ["+", ["-", 0, ["get", "n"]], ["case", [">", ["get", "v"], 0], 1e7, [">", ["get", "g"], 0], 5e6, 0]] }, paint: {
+    layout: { visibility: W.view === "circles" ? "visible" : "none", "circle-sort-key": ["+", ["-", 0, ["get", "n"]], ["case", [">", ["get", "v"], 0], 1e7, [">", ["get", "g"], 0], 5e6, ["==", ["get", "kc"], 2], 2e6, 0]] }, paint: {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, ["*", ["get", "r"], 0.75], 8, ["get", "r"]],
-      "circle-color": ["case", [">", ["get", "v"], 0], WG_DANGER, [">", ["get", "g"], 0], K_GRAY, WG_COLOR], "circle-opacity": ["case", ["==", ["get", "dim"], 1], 0.12, [">", ["get", "v"], 0], 0.85, [">", ["get", "g"], 0], 0.8, 0.6],
+      "circle-color": ["case", [">", ["get", "v"], 0], WG_DANGER, [">", ["get", "g"], 0], K_GRAY, ["==", ["get", "kc"], 2], K_QUOTA_PT, ["==", ["get", "kc"], 1], K_OK[darkPref() ? "dark" : "light"], WG_COLOR],
+      "circle-opacity": ["case", ["==", ["get", "dim"], 1], 0.12, [">", ["get", "v"], 0], 0.85, [">", ["get", "g"], 0], 0.8, [">", ["get", "kc"], 0], 0.75, 0.6],
       "circle-stroke-opacity": ["case", ["==", ["get", "dim"], 1], 0.2, 1],
       "circle-stroke-color": ["case", ["boolean", ["feature-state", "hover"], false], "#C2410C", POINT_STROKE[darkPref() ? "dark" : "light"]],
       "circle-stroke-width": ["case", ["boolean", ["feature-state", "hover"], false], 2.5, [">", ["get", "v"], 0], 2, POINT_STROKE.width] } }, "sel-pt");
@@ -3078,7 +3081,7 @@ function kEval() {
     for (const { z, key } of m) for (const k of new Set([key, "*"])) cnt[z].set(k, (cnt[z].get(k) || 0) + w);
   }
   const by = new Map(), items = K.items.map(() => ({ w: 0, st: 0, lv: [0, 0, 0] })), byReg = new Map();
-  let red = 0, gray = 0; const rest = { w: 0, st: 0 };
+  let red = 0, gray = 0, quota = 0; const rest = { w: 0, st: 0 }, ok = new Map();
   for (const [o, w, m] of list) {
     let lv = -1, why = "";
     if (!m.length) { rest.w += w; rest.st++; }
@@ -3088,13 +3091,18 @@ function kEval() {
       if (l > lv) { lv = l; why = kWhy(K.items[z], l, key, cnt[z]); }
     }
     if (!m.length && K.mode === "allow" && K.items.length) { lv = 2; why = "остальная территория — запрещено"; }
-    if (lv < 1) continue;
+    if (lv < 1) {  // без нарушения: в пределах квоты (выигравшая зона — квота) или разрешено
+      const q = lv === 0 && m.some(({ z, key }) => K.items[z].st === "quota" && kLevel(K.items[z], z, key, cnt) === 0);
+      if (q) quota += w; ok.set(o.s.i, q ? 2 : 1);
+      continue;
+    }
     by.set(o.s.i, { lv, why, w });
     if (lv === 2) { red += w; const r = o.s.region || "—"; byReg.set(r, (byReg.get(r) || 0) + w); } else gray += w;
   }
-  K.res = { by, items, cnt, red, gray, total, byReg, rest };
+  K.res = { by, items, cnt, red, gray, quota, total, byReg, rest, ok };
 }
-const kProps = i => { const x = K.res?.by.get(i); return { v: x?.lv === 2 ? x.w : 0, g: x?.lv === 1 ? x.w : 0, dim: 0 }; };
+// v — нарушение, g — запрет с даты (серая зона), kc — 2 в пределах квоты, 1 разрешено (без зон — 0: оранжевый цвет данных)
+const kProps = i => { const x = K.res?.by.get(i); return { v: x?.lv === 2 ? x.w : 0, g: x?.lv === 1 ? x.w : 0, kc: K.items.length ? K.res?.ok.get(i) || 0 : 0, dim: 0 }; };
 function kZoneFeatures() {
   if (!K.items.length) return emptyFC();
   const cnt = K.res?.cnt || [], feats = [];
@@ -3225,7 +3233,8 @@ function kLegend() {
   const R = K.res, sw = l => `<span class="kz-sw lv${l}"></span>`;
   $("colorBy").hidden = true; $("legendTitle").textContent = "Курсирование";
   let h = "";
-  if (R && K.items.length) h += [[WG_DANGER, "В нарушении", R.red], [K_GRAY, "В серой зоне", R.gray], [WG_COLOR, "Без ограничений", R.total - R.red - R.gray]]
+  if (R && K.items.length) h += [[WG_DANGER, "В нарушении", R.red], [K_GRAY, "Запрет с даты (серая зона)", R.gray], [K_QUOTA_PT, "В пределах квоты", R.quota],
+    [K_OK[darkPref() ? "dark" : "light"], "Разрешено", R.total - R.red - R.gray - R.quota]]
     .map(([c, l, n]) => `<div class="legend-item"><span class="dot" style="background:${c}"></span><span class="t">${l}</span><span class="c mono">${fmtVal(n)}</span></div>`).join("");
   if (K.show && K.items.length) {
     const lvs = new Set(K.items.map(kItemLevel));
