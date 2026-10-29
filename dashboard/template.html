@@ -3130,11 +3130,18 @@ function kEval() {
 }
 // v — нарушение, g — запрет с даты (серая зона), kc — 2 в пределах квоты, 1 разрешено (без зон — 0: оранжевый цвет данных)
 const kProps = i => { const x = K.res?.by.get(i); return { v: x?.lv === 2 ? x.w : 0, g: x?.lv === 1 ? x.w : 0, kc: K.items.length ? K.res?.ok.get(i) || 0 : 0, dim: 0 }; };
+// контур с названием страны («Украина») — для станций без области; если у страны есть области, он перекрыл бы их все
+const K_SKIP_SHAPE = (() => {
+  const main = new Map(); for (const [reg, o] of REG_CNT) main.set(reg, [...o.c].sort((a, b) => b[1] - a[1])[0][0]);
+  return new Set([...main].filter(([reg]) => REGION_SHAPES[reg] && [...main].some(([r2, c]) => r2 !== reg && c === reg && REGION_SHAPES[r2])).map(([reg]) => reg));
+})();
+// один контур на два региона (Крым: коды ЕСР России и Украины) — рисуем один раз, по более точной зоне
+const kShapeKey = reg => { const r = REGION_SHAPES[reg][0][0]; return r.length + ":" + r[0] + ":" + r[r.length >> 1]; };
 function kZoneFeatures() {
   if (!K.items.length) return emptyFC();
-  const cnt = K.res?.cnt || [], feats = [];
+  const cnt = K.res?.cnt || [], win = new Map();
   for (const reg in REGION_SHAPES) {
-    const info = REG_CNT.get(reg); if (!info) continue;
+    const info = REG_CNT.get(reg); if (!info || K_SKIP_SHAPE.has(reg)) continue;
     let best = 0, lv = -1, quota = 0;
     K.items.forEach((it, z) => { for (const [k, v] of it.keys) {
       if (!(k === "region" ? v === reg : k === "country" && (info.c.get(v) || 0) >= 0.25 * info.n)) continue;
@@ -3143,12 +3150,18 @@ function kZoneFeatures() {
       const l = kLevel(it, z, v, cnt); lv = Math.max(lv, l);
       if (it.st === "quota" && l === 0) quota = 1;
     } });
-    const v = K.res?.byReg.get(reg) || 0;
+    const x = { reg, best, lv, quota, v: K.res?.byReg.get(reg) || 0 }, key = kShapeKey(reg), o = win.get(key);
+    if (o) x.v += o.v;
+    if (!o || x.best > o.best || (x.best === o.best && x.lv > o.lv)) win.set(key, x); else o.v = x.v;
+  }
+  const feats = [];
+  for (const { reg, lv, quota, v } of win.values()) {
+    const geometry = { type: "MultiPolygon", coordinates: kRings(reg) };
     // «остальная территория — запрещено»: затемняем регионы пространства 1520 вне разрешённых зон
     // (не «весь мир минус разрешённое» — полигон с сотнями дыр слишком тяжёл для отрисовки)
-    if (K.mode === "allow" && (lv < 0 || lv === 2)) feats.push({ type: "Feature", properties: { reg, lv: 2, hot: 0, veil: 1 }, geometry: { type: "MultiPolygon", coordinates: kRings(reg) } });
+    if (K.mode === "allow" && (lv < 0 || lv === 2)) feats.push({ type: "Feature", properties: { reg, lv: 2, hot: 0, veil: 1 }, geometry });
     if (lv < 0 && !v) continue;
-    feats.push({ type: "Feature", properties: { reg, lv: lv < 0 ? 2 : lv, hot: v ? 1 : 0, veil: 0, q: lv === 0 && quota ? 1 : 0 }, geometry: { type: "MultiPolygon", coordinates: kRings(reg) } });
+    feats.push({ type: "Feature", properties: { reg, lv: lv < 0 ? 2 : lv, hot: v ? 1 : 0, veil: 0, q: lv === 0 && quota ? 1 : 0 }, geometry });
   }
   return { type: "FeatureCollection", features: feats };
 }
