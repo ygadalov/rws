@@ -782,7 +782,7 @@ dd .muted { color: var(--muted); }
       <!-- «Станция на карте» и «Фильтры по отчёту» — те же разделы, что на вкладке «Вагоны» (переносятся при смене вкладки) -->
       <div id="kWgBox" hidden></div>
       <div class="section">
-        <div class="section-title"><span>Зоны и правила</span> <button class="link-btn" id="kClear">Очистить</button></div>
+        <div class="section-title"><span>Зоны и правила<button class="info-tip" type="button" aria-label="Как работают зоны и правила"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8.01"/></svg><span class="info-bubble" role="tooltip"><b>Зона</b> — страна, дорога, регион или готовый набор; добавляется кнопкой «+ Добавить зону». <b>Статусы:</b> «Запрет»; «Запрет с даты» — до даты серая зона, после — нарушение; «Квота» — разрешено, но не больше заданного числа вагонов (на весь набор или на каждую его страну / регион), сверх — нарушение; «Разрешено». Если зоны пересекаются, действует более точная: регион важнее дороги, дорога важнее страны. Последняя строка «Остальная территория» — правило для всего, что в зоны не входит. Бледная карточка — статус зоны ничего не меняет.</span></button></span> <button class="link-btn" id="kClear">Очистить</button></div>
         <ul class="kz-list" id="kList"></ul>
         <div class="kz-add" id="kAddBox">
           <button class="btn" id="kAddBtn" type="button" aria-expanded="false" aria-controls="kAddPop">+ Добавить зону</button>
