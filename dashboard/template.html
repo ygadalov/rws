@@ -3049,7 +3049,7 @@ const K_OPTS = (() => {
   const ru = (a, b) => a.localeCompare(b, "ru");
   return [
     ["Готовые наборы", K_PRESETS.map(([label, keys]) => ({ label, keys }))],
-    ["Страны", [...cnt("country")].sort((a, b) => b[1] - a[1]).map(([c]) => ({ label: c, keys: [["country", c]] }))],
+    ["Страны (по территории)", [...cnt("country")].sort((a, b) => b[1] - a[1]).map(([c]) => ({ label: c, keys: [["country", c]] }))],
     ["Особые территории", K_SPECIAL.map(([label, keys]) => ({ label, keys }))],
     ["Дороги", [...cnt("railway").keys()].sort(ru).map(r => ({ label: r + " ж. д.", keys: [["railway", r]] }))],
     // регион с названием страны (страны без деления на области) — это та же страна, в списке не повторяем
